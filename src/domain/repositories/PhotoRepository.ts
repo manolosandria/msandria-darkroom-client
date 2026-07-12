@@ -5,4 +5,5 @@ export interface PhotoRepository {
     save(photo: Photo): Promise<void>;
     delete(id: string): Promise<void>;
     findAll(): Promise<Photo[]>;
+    findCollection(id: string): Promise<Photo[] | null>;
 }

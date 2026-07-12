@@ -1,3 +1,11 @@
+export type PhotoParams = {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  createdAt?: Date;
+};
+
 export class Photo {
   private readonly id: string;
   private title: string;
@@ -5,13 +13,7 @@ export class Photo {
   private url: string;
   private readonly createdAt: Date;
 
-  constructor(params: {
-    id: string;
-    title: string;
-    url: string;
-    description?: string;
-    createdAt?: Date;
-  }) {
+  constructor(params: PhotoParams) {
     this.id = params.id;
     this.title = params.title.trim();
     this.url = params.url.trim();
