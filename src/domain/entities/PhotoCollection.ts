@@ -8,10 +8,10 @@ export type PhotoCollectionParams = {
 };
 
 export class PhotoCollection {
-  private id: string;
-  private photos: Photo[];
-  private title: string;
-  private categories: Category[];
+  private readonly id: string;
+  private readonly photos: Photo[];
+  private readonly title: string;
+  private readonly categories: Category[];
 
   constructor(
     id: string,
@@ -23,10 +23,7 @@ export class PhotoCollection {
     this.title = title.trim();
     this.photos = photos;
     this.categories = categories ?? [];
-    this.validate();
   }
-
-  validate() {}
 
   getPhotos() {
     return this.photos;
@@ -37,7 +34,6 @@ export class PhotoCollection {
   }
 
   getId() {
-    if (!this.id) return "Selection";
     return this.id;
   }
 }

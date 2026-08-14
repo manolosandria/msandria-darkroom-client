@@ -21,7 +21,7 @@ export class Photo {
     this.createdAt = params.createdAt ?? new Date();
     this.validate();
   }
-
+  
   private validate() {
     if (!this.id) throw new Error("Photo ID is required.");
     if (!this.title) throw new Error("Photo title is required.");

@@ -8,7 +8,7 @@ export const photoData = [
   },
   {
     id: "Atardecer_heavy_zordwm",
-    title: "Atardecer",
+    title: "Intenso Atardecer",
     url: "",
   },
   {

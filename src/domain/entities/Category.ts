@@ -1,12 +1,12 @@
 export class Category {
-    private name: string;
+    private readonly name: string;
 
     constructor(name: string) {
         this.name = name.trim();
         this.validate();
     }
 
-    validate() {
+    private validate() {
         if (!this.name) throw new Error("Category name is required.");
     }
 }
