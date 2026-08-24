@@ -15,7 +15,6 @@ export default function MainHeader() {
           <Link href="/">Home</Link>
           <Link href="/gallery">Gallery</Link>
           <a href="#">Contact</a>
-          <Link href="/upload">Add photos</Link>
         </nav>
       </header>
     );
