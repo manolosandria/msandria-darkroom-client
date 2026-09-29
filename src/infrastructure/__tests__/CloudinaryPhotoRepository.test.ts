@@ -43,11 +43,49 @@ describe("CloudinaryPhotoRepository", () => {
     });
   });
 
-  describe("unsupported operations", () => {
-    it("rejects save with an explicit not-implemented error", async () => {
-      await expect(repository.save({} as never)).rejects.toThrow(/not support/i);
+  describe("save", () => {
+    const input = {
+      file: new File(["binary"], "photo.jpg", { type: "image/jpeg" }),
+      title: "Esfera",
+      description: "A sphere",
+    };
+
+    it("uploads the file and maps the response into a domain Photo", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: "esferabalero",
+            title: "Esfera",
+            description: "A sphere",
+            url: "https://cloudinary/esferabalero.jpg",
+          }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const photo = await repository.save(input);
+
+      expect(fetchMock).toHaveBeenCalledWith("/api/upload", expect.objectContaining({ method: "POST" }));
+      expect(photo.getId()).toBe("esferabalero");
+      expect(photo.getUrl()).toBe("https://cloudinary/esferabalero.jpg");
+
+      vi.unstubAllGlobals();
     });
 
+    it("throws with the server-provided message when the upload fails", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "A title is required." }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(repository.save(input)).rejects.toThrow("A title is required.");
+
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("unsupported operations", () => {
     it("rejects delete with an explicit not-implemented error", async () => {
       await expect(repository.delete("any-id")).rejects.toThrow(/not support/i);
     });

@@ -1,6 +1,6 @@
 import { getCldImageUrl } from "next-cloudinary";
 import { Photo, PhotoParams } from "../domain/entities/Photo";
-import { PhotoRepository } from "../domain/repositories/PhotoRepository";
+import { NewPhotoInput, PhotoRepository } from "../domain/repositories/PhotoRepository";
 import { photoData } from "../data/photoData";
 
 const NOT_IMPLEMENTED_MESSAGE =
@@ -21,8 +21,25 @@ export class CloudinaryPhotoRepository implements PhotoRepository {
     throw new Error(NOT_IMPLEMENTED_MESSAGE);
   }
 
-  async save(_photo: Photo): Promise<void> {
-    throw new Error(NOT_IMPLEMENTED_MESSAGE);
+  async save(input: NewPhotoInput): Promise<Photo> {
+    const formData = new FormData();
+    formData.set("file", input.file);
+    formData.set("title", input.title);
+    if (input.description) formData.set("description", input.description);
+
+    const response = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.error ?? "Failed to upload photo.");
+    }
+
+    const result = await response.json();
+    return new Photo({
+      id: result.id,
+      title: result.title,
+      description: result.description,
+      url: result.url,
+    });
   }
 
   async delete(_id: string): Promise<void> {
