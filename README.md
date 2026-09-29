@@ -1,10 +1,14 @@
-# What's this? 
+# msandria-darkroom-client
+
+Web client of my photography gallery. The API that stores the catalogue lives in a separate repository, `msandria-darkroom-api`.
+
+## What's this?
 
 Essentially, this project is the frontend for my photographer's web gallery (work in progress). 
 
 At this moment, there's only an initial structure with some domain entities and repository interfaces. 
 
-# Why? 
+## Why?
 
 In the short term, my goal is to learn and practice good architectural methodologies. For that reason, I'm using clean architecture. 
 
@@ -12,7 +16,7 @@ In the future, I hope to have created a site with well designed architecture and
 
 But one step at a time :) 
 
-# Tech Stack 
+## Tech Stack
 
 - Next.js (React) 
 - TypeScript 
