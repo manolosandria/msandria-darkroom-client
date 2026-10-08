@@ -4,7 +4,7 @@ import HomePage from "../HomePage";
 import { Photo } from "@/src/domain/entities/Photo";
 
 function makePhoto(id: string, title: string) {
-  return new Photo({ id, title, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
+  return new Photo({ id, title, width: 1920, height: 1080, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
 }
 
 describe("HomePage", () => {

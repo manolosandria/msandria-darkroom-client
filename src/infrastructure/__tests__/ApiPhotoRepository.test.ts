@@ -37,6 +37,7 @@ describe("ApiPhotoRepository", () => {
       expect(photos?.[0].getTitle()).toBe("Photo b");
       expect(photos?.[0].getCreatedAt()).toEqual(new Date("2024-06-04T23:42:00.000Z"));
       expect(photos?.[0].urlForWidth(640)).toBe("https://cdn/b-640.jpg");
+      expect(photos?.[0].getAspectRatio()).toBeCloseTo(1920 / 1080);
     });
 
     it("tolerates a trailing slash in the base url", async () => {
