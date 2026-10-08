@@ -4,7 +4,7 @@ import { Photo } from "../Photo";
 import { Category } from "../Category";
 
 function makePhoto(id: string) {
-  return new Photo({ id, title: `Photo ${id}`, url: `https://cdn/${id}.jpg` });
+  return new Photo({ id, title: `Photo ${id}`, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
 }
 
 describe("PhotoCollection", () => {
