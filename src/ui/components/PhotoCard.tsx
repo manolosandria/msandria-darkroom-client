@@ -11,12 +11,15 @@ export function PhotoCard({ photo, className = '' }: PhotoCardProps) {
     <div className={`max-w-2xl ${className}`}>
       <h2 className="text-xl mb-4">{photo.getTitle()}</h2>
       <div className="relative w-full aspect-[4/3]">
-        <Image 
-          src={photo.getUrl()} 
+        {/* The loader picks one of the renditions sent by the API, so Next.js
+            never downloads or re-encodes the original file. */}
+        <Image
+          loader={({ width }) => photo.urlForWidth(width)}
+          src={photo.getId()}
           alt={photo.getTitle()}
           fill
           className="rounded-lg shadow-lg object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          sizes="(max-width: 42rem) 100vw, 42rem"
           priority
         />
       </div>

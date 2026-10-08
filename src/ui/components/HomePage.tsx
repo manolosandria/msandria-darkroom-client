@@ -1,22 +1,21 @@
 'use client';
 
 import { useCallback } from 'react';
-import { GetPhotoById } from '@/src/application/use-cases/GetPhotoById';
-import { getPhotoById as defaultGetPhotoById } from '@/src/infrastructure/photoServices';
+import { GetAllPhotos } from '@/src/application/use-cases/GetAllPhotos';
+import { getAllPhotos as defaultGetAllPhotos } from '@/src/infrastructure/photoServices';
 import { usePhotoFetch } from '@/src/ui/hooks/usePhotoFetch';
 import { PhotoCard } from '@/src/ui/components/PhotoCard';
 import { PhotoFetchStatus } from '@/src/ui/components/PhotoFetchStatus';
 
-const FEATURED_PHOTO_ID = 'Atardecer_heavy_zordwm';
-
 interface HomePageProps {
-  getPhotoById?: Pick<GetPhotoById, "execute">;
+  getAllPhotos?: Pick<GetAllPhotos, "execute">;
 }
 
-export default function HomePage({ getPhotoById = defaultGetPhotoById }: HomePageProps) {
+export default function HomePage({ getAllPhotos = defaultGetAllPhotos }: HomePageProps) {
+  // The API lists the newest photo first; it is featured until collections exist.
   const fetchFeaturedPhoto = useCallback(
-    () => getPhotoById.execute(FEATURED_PHOTO_ID),
-    [getPhotoById],
+    async () => (await getAllPhotos.execute())?.[0] ?? null,
+    [getAllPhotos],
   );
   const { data: photo, loading, error, retry } = usePhotoFetch(fetchFeaturedPhoto, 'Photo not found');
 

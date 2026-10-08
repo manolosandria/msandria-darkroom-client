@@ -4,12 +4,8 @@ import userEvent from "@testing-library/user-event";
 import Gallery from "../Gallery";
 import { Photo } from "@/src/domain/entities/Photo";
 
-vi.mock("next/image", () => ({
-  default: (props: { src: string; alt: string }) => <img src={props.src} alt={props.alt} />,
-}));
-
 function makePhoto(id: string) {
-  return new Photo({ id, title: `Photo ${id}`, url: `https://cdn/${id}.jpg` });
+  return new Photo({ id, title: `Photo ${id}`, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
 }
 
 describe("Gallery", () => {
