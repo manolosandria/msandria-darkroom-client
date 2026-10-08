@@ -8,6 +8,8 @@ describe("PhotoCard", () => {
     const photo = new Photo({
       id: "atardecer",
       title: "Atardecer",
+      width: 1920,
+      height: 1080,
       renditions: [
         { width: 640, url: "https://cdn/w_640/atardecer" },
         { width: 1280, url: "https://cdn/w_1280/atardecer" },

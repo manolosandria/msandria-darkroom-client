@@ -20,7 +20,7 @@ export function PhotoCard({ photo, className = '' }: PhotoCardProps) {
           fill
           className="rounded-lg shadow-lg object-cover"
           sizes="(max-width: 42rem) 100vw, 42rem"
-          priority
+          loading="eager"
         />
       </div>
       <p className="text-sm text-gray-600 mt-2">Photo ID: {photo.getId()}</p>

@@ -24,3 +24,63 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Gallery in justified rows. Each tile asks for `ratio × row height` of width
+   and grows in proportion to its ratio, so all tiles in a row end up with the
+   same height and the row spans the full width. The row height follows the
+   window, so wider screens fit more photos per row. */
+.photo-grid {
+  --row-height: clamp(10rem, 22vw, 22rem);
+  --gap: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--gap);
+  list-style: none;
+  padding: 0;
+}
+
+/* Soaks up the free space of the last row, so its photos keep the row height
+   instead of stretching to fill the width. */
+.photo-grid::after {
+  content: "";
+  flex: 999999 1 0;
+}
+
+.photo-grid__tile {
+  position: relative;
+  flex: var(--ratio) 1 calc(var(--ratio) * var(--row-height));
+  aspect-ratio: var(--ratio);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+/* On phones, one photo per row at full width and in its own proportion. */
+@media (max-width: 639px) {
+  .photo-grid__tile {
+    flex-basis: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .photo-grid {
+    --gap: 0.75rem;
+  }
+}
+
+.photo-grid__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 2rem 0.75rem 0.5rem;
+  color: #fff;
+  font-size: 0.875rem;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+  pointer-events: none;
+}
+
+.photo-grid__tile:hover .photo-grid__caption,
+.photo-grid__tile:focus-within .photo-grid__caption {
+  opacity: 1;
+}

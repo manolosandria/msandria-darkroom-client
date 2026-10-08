@@ -10,6 +10,8 @@ type ApiPhoto = {
   id: string;
   title: string;
   description: string | null;
+  width: number;
+  height: number;
   createdAt: string;
   renditions: PhotoRendition[];
 };
@@ -72,6 +74,8 @@ export class ApiPhotoRepository implements PhotoRepository {
       id: entry.id,
       title: entry.title,
       description: entry.description ?? undefined,
+      width: entry.width,
+      height: entry.height,
       createdAt: new Date(entry.createdAt),
       renditions: entry.renditions,
     });

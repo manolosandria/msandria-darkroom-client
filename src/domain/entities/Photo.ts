@@ -7,6 +7,9 @@ export type PhotoRendition = {
 export type PhotoParams = {
   id: string;
   title: string;
+  // Pixel size of the original: only its proportion matters to the layout.
+  width: number;
+  height: number;
   renditions: PhotoRendition[];
   description?: string;
   createdAt?: Date;
@@ -16,12 +19,16 @@ export class Photo {
   private readonly id: string;
   private title: string;
   private description?: string;
+  private readonly width: number;
+  private readonly height: number;
   private readonly renditions: PhotoRendition[];
   private readonly createdAt: Date;
 
   constructor(params: PhotoParams) {
     this.id = params.id;
     this.title = params.title.trim();
+    this.width = params.width;
+    this.height = params.height;
     this.renditions = params.renditions
       .map((rendition) => ({ width: rendition.width, url: rendition.url.trim() }))
       .sort((a, b) => a.width - b.width);
@@ -33,6 +40,7 @@ export class Photo {
   private validate() {
     if (!this.id) throw new Error("Photo ID is required.");
     if (!this.title) throw new Error("Photo title is required.");
+    if (!(this.width > 0 && this.height > 0)) throw new Error("Photo needs a positive width and height.");
     if (this.renditions.length === 0) throw new Error("Photo needs at least one rendition.");
     if (this.renditions.some((rendition) => !rendition.url || rendition.width <= 0)) {
       throw new Error("Photo renditions need a url and a positive width.");
@@ -47,6 +55,10 @@ export class Photo {
   }
   getDescription() {
     return this.description;
+  }
+  // Width divided by height: above 1 is landscape, below 1 is portrait.
+  getAspectRatio() {
+    return this.width / this.height;
   }
   getRenditions() {
     return this.renditions;

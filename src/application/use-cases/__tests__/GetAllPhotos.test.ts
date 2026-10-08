@@ -16,7 +16,7 @@ function makeRepository(overrides: Partial<PhotoRepository> = {}): PhotoReposito
 
 describe("GetAllPhotos", () => {
   it("returns every photo from the repository", async () => {
-    const photos = [new Photo({ id: "1", title: "Esfera", renditions: [{ width: 640, url: "https://cdn/1.jpg" }] })];
+    const photos = [new Photo({ id: "1", title: "Esfera", width: 1920, height: 1080, renditions: [{ width: 640, url: "https://cdn/1.jpg" }] })];
     const repository = makeRepository({ findAll: vi.fn().mockResolvedValue(photos) });
 
     const result = await new GetAllPhotos(repository).execute();

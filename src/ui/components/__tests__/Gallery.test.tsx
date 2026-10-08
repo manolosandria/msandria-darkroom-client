@@ -5,7 +5,7 @@ import Gallery from "../Gallery";
 import { Photo } from "@/src/domain/entities/Photo";
 
 function makePhoto(id: string) {
-  return new Photo({ id, title: `Photo ${id}`, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
+  return new Photo({ id, title: `Photo ${id}`, width: 1920, height: 1080, renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }] });
 }
 
 describe("Gallery", () => {
