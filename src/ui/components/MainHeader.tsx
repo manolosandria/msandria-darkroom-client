@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import SessionMenu from "./SessionMenu";
 
 export default function MainHeader() {
 
@@ -11,11 +12,14 @@ export default function MainHeader() {
           width={384} height={96}
           className="w-64 md:w-96 lg:w-[24rem] h-auto py-2 md:py-0"
         />
-        <nav className="flex flex-col md:flex-row items-center md:space-x-10 text-lg font-semibold text-gray-700">
-          <Link href="/">Home</Link>
-          <Link href="/gallery">Gallery</Link>
-          <a href="#">Contact</a>
-        </nav>
+        <div className="flex flex-col md:flex-row items-center md:space-x-10">
+          <nav className="flex flex-col md:flex-row items-center md:space-x-10 text-lg font-semibold text-gray-700">
+            <Link href="/">Home</Link>
+            <Link href="/gallery">Gallery</Link>
+            <a href="#">Contact</a>
+          </nav>
+          <SessionMenu />
+        </div>
       </header>
     );
 }
