@@ -47,6 +47,29 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Copy `.env.example` to `.env.local` and fill it in first: `NEXT_PUBLIC_API_URL` points at msandria-darkroom-api, and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` holds the same OAuth client id the API has in `GOOGLE_CLIENT_ID`. Both are inlined at build time, so they must be set before building for production.
 
+## Security headers
+
+Every page is served with the headers in `security-headers.ts`, wired up by `next.config.ts`. They are instructions to the browser, not defences on the server: the response is the same either way, but the browser stops doing with it what it should not.
+
+The one with substance is the `Content-Security-Policy`, which lists the only places anything may be loaded from — so a tag someone manages to inject has nowhere to load from. What is allowed, and why it has to be:
+
+| Directive | Allowed | Why |
+|---|---|---|
+| `script-src` | this origin, inline, `accounts.google.com/gsi/client` | Next writes its bootstrap script into the HTML, and Google's script draws the sign-in button |
+| `style-src` | this origin, inline, `accounts.google.com/gsi/style` | `PhotoGrid` sets each photo's proportion as a style attribute, which counts as inline |
+| `img-src` | this origin, `data:`, `blob:`, `res.cloudinary.com` | Photos come from the API's image host |
+| `connect-src` | this origin, `NEXT_PUBLIC_API_URL`, `accounts.google.com/gsi/` | The page is useless if it cannot call the API, which is on another origin |
+| `frame-src` | `accounts.google.com/gsi/` | Google draws its button inside its own frame |
+| everything else | nothing | `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'` |
+
+Alongside it: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` in production.
+
+**No nonce, on purpose.** A nonce has to be new on every request, which would mean rendering every page on every request; all four pages are static today, and that trade buys little for a public gallery. The price of staying static is `'unsafe-inline'` for scripts. The day these pages need rendering per request, the nonce goes in a `proxy.ts` — Next's name for middleware in this version — and `'unsafe-inline'` comes straight out.
+
+While developing, the policy also allows `'unsafe-eval'` (React rebuilds error stacks with it) and the socket `next dev` pushes reloads through. `upgrade-insecure-requests` is left out whenever the API itself is served over plain http, or it would rewrite those calls to https and nothing would answer.
+
+These headers come from the Next.js server. A deploy that serves the build as plain files has to be configured to send them itself.
+
 ## Signing in
 
 The header offers a "Sign in with Google" button. Google Identity Services hands the page a signed ID token, which goes to the API's `POST /auth/google`; the API verifies it and answers with a session in an `HttpOnly` cookie.
