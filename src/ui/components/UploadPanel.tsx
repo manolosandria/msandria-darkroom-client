@@ -7,7 +7,7 @@ import { UploadPhoto } from "@/src/application/use-cases/UploadPhoto";
 import { PhotoHighlights } from "@/src/domain/entities/PhotoHighlights";
 import { PublishedPhoto } from "@/src/domain/repositories/PhotoRepository";
 import { uploadPhoto as defaultUploadPhoto } from "@/src/infrastructure/photoServices";
-import { messageFor } from "@/src/ui/hooks/usePhotoUpload";
+import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { OptimizationIssueList } from "./OptimizationIssueList";
@@ -135,7 +135,7 @@ export default function UploadPanel({
           });
           patch(item.id, { status: "published", published });
         } catch (failure) {
-          patch(item.id, { status: "failed", error: messageFor(failure) });
+          patch(item.id, { status: "failed", error: apiFailureMessage(failure) });
         }
       }
     } finally {

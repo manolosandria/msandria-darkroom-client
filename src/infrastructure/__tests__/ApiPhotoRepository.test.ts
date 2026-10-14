@@ -264,12 +264,59 @@ describe("ApiPhotoRepository upload", () => {
 });
 
 
- describe("ApiPhotoRepository saved highlights", () => {
-  it("uses authenticated JSON PATCH to save title, description and crops", async () => {
+describe("ApiPhotoRepository save", () => {
+  const crop = { x: 0, y: 0, width: 0.5, height: 0.5 };
+
+  const publishedPhoto = (overrides: Record<string, unknown> = {}) =>
+    new ApiPhotoRepository(
+      API_URL,
+      respondWith({ ...apiPhoto("crop"), highlights: { square: crop }, ...overrides }),
+    ).findById("crop");
+
+  // A save never carries a file: it patches the record the API already has, as JSON,
+  // with the session cookie attached like every other call.
+  it("patches the title, the description and the crops as JSON", async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
-    const repository = new ApiPhotoRepository(API_URL, fetchFn);
-    const saved = await new ApiPhotoRepository(API_URL, respondWith({ ...apiPhoto("crop"), highlights: { square: { x: 0, y: 0, width: .5, height: .5 } } })).findById("crop");
-    await repository.save(saved!);
-    expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/photos/crop`, expect.objectContaining({ method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: saved!.getTitle(), description: saved!.getDescription() ?? "", highlights: saved!.getHighlights() }) }));
+    const photo = await publishedPhoto({ description: "Evening walk" });
+
+    await new ApiPhotoRepository(API_URL, fetchFn).save(photo!);
+
+    expect(fetchFn).toHaveBeenCalledWith(
+      `${API_URL}/photos/crop`,
+      expect.objectContaining({
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Photo crop",
+          description: "Evening walk",
+          highlights: { square: crop },
+        }),
+      }),
+    );
   });
- });
+
+  // The API's own convention for "no description" is null, not an empty string.
+  it("clears a description with null rather than an empty string", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const photo = await publishedPhoto({ description: null });
+
+    await new ApiPhotoRepository(API_URL, fetchFn).save(photo!);
+
+    const sent = (fetchFn.mock.calls[0][1] as RequestInit).body as string;
+
+    expect(JSON.parse(sent)).toMatchObject({ description: null });
+  });
+
+  it("explains a refusal the same way an upload does", async () => {
+    const photo = await publishedPhoto();
+    const repository = new ApiPhotoRepository(
+      API_URL,
+      vi.fn().mockResolvedValue(new Response("nope", { status: 403 })),
+    );
+
+    await expect(repository.save(photo!)).rejects.toMatchObject({
+      failure: "forbidden",
+    });
+  });
+});

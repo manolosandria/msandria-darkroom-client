@@ -94,6 +94,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## The upload workspace and highlights
+
+`/upload` takes several photos at once, by drop or picker, and each one gets its own panel: an editable title and description, a preview, the file's own measurements and, once published, the optimization report described above. Publishing walks the queue one request at a time: a photo the API refuses keeps its edits and is the only one retried, the ones that went up stay published, and the page has to stay open until the queue finishes.
+
+Highlights are optional crops, placed by hand: square (1:1), landscape (3:2) and portrait (2:3). Drag the frame or use the sliders, which are the keyboard way in. Nothing is cropped automatically, and any of the three may be left out. They are stored as fractions of the oriented photo, so the same numbers hold against the original and against every rendition.
+
+`/manage` edits what is already published — title, description and crops — with `PATCH /photos/:id`, and never uploads a file again. Its square thumbnails crop a normal rendition with the square highlight when there is one, and centre it when there is not. Like every other screen, it only ever shows renditions the API handed it.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -108,19 +116,3 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-### Upload workspace and highlights
-
-`/upload` accepts multiple photos through drag and drop or the file picker. Each photo
-has its own editable title, description, preview, metadata and optimization report.
-Publish starts a sequential queue; failures retain their edits and can be retried without
-republishing successful photos. Keep the page open until the queue completes.
-
-Highlights are optional manual crops: square (1:1), landscape (3:2), and portrait (2:3).
-Move the selection and adjust its size; keyboard-accessible sliders also control its
-position. No crops are assigned automatically. The API stores normalized coordinates
-relative to the oriented image, so resizing preserves the selection.
-
-`/manage` lets administrators edit published titles, descriptions and highlights through
-`PATCH /photos/:id`. Its square thumbnails use the square highlight when available and
-fall back to a centered crop. It only displays image renditions supplied by the API.

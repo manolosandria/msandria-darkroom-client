@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { getAllPhotos, savePhoto } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
-import { messageFor } from "@/src/ui/hooks/usePhotoUpload";
+import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { useSessionValue } from "./SessionProvider";
@@ -161,7 +161,7 @@ function PhotoEditor({
           setSaved(true);
           onSaved(updated);
         } catch (failure) {
-          setError(messageFor(failure));
+          setError(apiFailureMessage(failure));
         } finally {
           setSaving(false);
         }
