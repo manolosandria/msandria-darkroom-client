@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import {
   centeredHighlight,
+  HIGHLIGHT_RATIOS,
   HighlightKind,
   PhotoHighlights,
 } from "@/src/domain/entities/PhotoHighlights";
@@ -224,10 +225,7 @@ export function HighlightEditor({
           return (
             <figure key={key}>
               <div
-                style={{
-                  aspectRatio:
-                    key === "square" ? 1 : key === "landscape" ? 1.5 : 2 / 3,
-                }}
+                style={{ aspectRatio: HIGHLIGHT_RATIOS[key] }}
               >
                 <Image
                   src={src}

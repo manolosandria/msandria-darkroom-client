@@ -103,7 +103,8 @@ export class ApiPhotoRepository implements PhotoRepository {
       `/photos/${encodeURIComponent(photo.getId())}`,
       JSON.stringify({
         title: photo.getTitle(),
-        description: photo.getDescription() ?? "",
+        // The API keeps "no description" as null; an empty string would store one.
+        description: photo.getDescription()?.trim() || null,
         highlights: photo.getHighlights(),
       }),
     );

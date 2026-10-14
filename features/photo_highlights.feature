@@ -1,5 +1,12 @@
+Feature: An upload workspace with manual thumbnail crops
+  As the administrator of the gallery
+  I want to prepare several photographs at once and choose how each one is cropped
+  So that a batch goes up in one sitting and every thumbnail shows what matters
 
-Feature: Photo upload workspace and manual highlights
+  Background:
+    Given a signed-in administrator
+    And the API is reachable
+
   Scenario: Publish multiple photographs sequentially
     Given the administrator selects several photographs
     When they edit each title and description and publish the queue

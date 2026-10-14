@@ -50,7 +50,7 @@ Linux shows up in the pull request.
 
 | Path | What it holds |
 |---|---|
-| `app/` | Routes: `/` (home), `/gallery`, `/upload` |
+| `app/` | Routes: `/` (home), `/gallery`, `/upload`, `/manage` |
 | `src/domain/` | Entities (`Photo`, `User`) and repository interfaces |
 | `src/application/` | Use cases, one class each |
 | `src/infrastructure/` | Repository implementations, the HTTP client, service wiring |
@@ -62,7 +62,22 @@ only on `domain` interfaces, and `infrastructure` supplies the implementations. 
 component reaches the API through a use case, never with its own `fetch`.
 
 `/upload` publishes through the API's `POST /photos` and is offered in the header to
-the administrator alone.
+the administrator alone. `/manage` edits what is already published, through `PATCH
+/photos/:id`, and is reached from a link on `/upload` rather than from the header.
+
+## Upload and management
+
+`/upload` takes several photos at once, by drop or picker, and gives each one its own
+panel: title, description, preview, the file's measurements and, once published, the
+API's optimization report. Publishing walks the queue one request at a time, so a
+rejected photo keeps its edits and is the only one retried.
+
+`HighlightEditor` edits the optional square, landscape and portrait crops as fractions
+of the oriented photo, which is why the numbers still mean the same thing against any
+rendition. Nothing is cropped automatically. The same editor serves `/manage`, where
+published titles, descriptions and crops are saved through the `SavePhoto` use case and
+the repository's `save`. The API's highlights migration has to be applied before either
+screen works.
 
 ## Sessions
 
@@ -155,12 +170,3 @@ fact merged. Without a fetch, the local view is simply wrong.
 - `fetch.prune` is enabled in this clone, so any `git fetch` or `git pull` already drops
   branches that the remote no longer has. A fresh clone needs
   `git config fetch.prune true` again.
-
-## Upload and management
-
-`/upload` provides multiple-file selection and drag and drop, independent photo panels,
-and a sequential publish queue. Each panel keeps its server optimization report.
-`HighlightEditor` edits optional square, landscape and portrait crops using normalized
-coordinates relative to the oriented photo. It is shared with `/manage`, where saved
-photos can be edited through the `SavePhoto` use case and repository `save` operation.
-The API migration for highlights must be applied before using these screens.
