@@ -108,3 +108,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Upload workspace and highlights
+
+`/upload` accepts multiple photos through drag and drop or the file picker. Each photo
+has its own editable title, description, preview, metadata and optimization report.
+Publish starts a sequential queue; failures retain their edits and can be retried without
+republishing successful photos. Keep the page open until the queue completes.
+
+Highlights are optional manual crops: square (1:1), landscape (3:2), and portrait (2:3).
+Move the selection and adjust its size; keyboard-accessible sliders also control its
+position. No crops are assigned automatically. The API stores normalized coordinates
+relative to the oriented image, so resizing preserves the selection.
+
+`/manage` lets administrators edit published titles, descriptions and highlights through
+`PATCH /photos/:id`. Its square thumbnails use the square highlight when available and
+fall back to a centered crop. It only displays image renditions supplied by the API.

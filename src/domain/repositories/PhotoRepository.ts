@@ -1,5 +1,6 @@
 import { Photo } from './../entities/Photo';
 import { PhotoOptimizationIssue } from './../entities/PhotoOptimizationIssue';
+import { PhotoHighlights } from '../entities/PhotoHighlights';
 
 // What the photographer hands in to publish a photo. The file travels as it came off
 // the disk: the API's upload pipeline is what resizes it and strips its metadata, and
@@ -8,6 +9,7 @@ export type PhotoDraft = {
   file: File;
   title: string;
   description?: string;
+  highlights?: PhotoHighlights;
 };
 
 // The published photo together with what its file was missing. The issues describe the

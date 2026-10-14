@@ -1,4 +1,5 @@
 import { Photo, PhotoRendition } from "../domain/entities/Photo";
+import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
   PhotoOptimizationIssue,
   PhotoOptimizationIssueKind,
@@ -25,6 +26,11 @@ type ApiPhoto = {
   height: number;
   createdAt: string;
   renditions: PhotoRendition[];
+  highlights?: PhotoHighlights;
+  format?: string;
+  capturedAt?: string | null;
+  lastEditDate?: string | null;
+  origin?: string;
 };
 
 type ApiOptimizationIssue = {
@@ -72,6 +78,8 @@ export class ApiPhotoRepository implements PhotoRepository {
     form.append("file", draft.file);
     form.append("title", draft.title);
     if (draft.description) form.append("description", draft.description);
+    if (draft.highlights)
+      form.append("highlights", JSON.stringify(draft.highlights));
 
     const response = await this.send("POST", "/photos", form);
     if (!response.ok) throw await this.toUploadError(response);
@@ -89,8 +97,17 @@ export class ApiPhotoRepository implements PhotoRepository {
     throw new Error(NOT_IMPLEMENTED_MESSAGE);
   }
 
-  async save(_photo: Photo): Promise<void> {
-    throw new Error(NOT_IMPLEMENTED_MESSAGE);
+  async save(photo: Photo): Promise<void> {
+    const response = await this.send(
+      "PATCH",
+      `/photos/${encodeURIComponent(photo.getId())}`,
+      JSON.stringify({
+        title: photo.getTitle(),
+        description: photo.getDescription() ?? "",
+        highlights: photo.getHighlights(),
+      }),
+    );
+    if (!response.ok) throw await this.toUploadError(response);
   }
 
   async delete(_id: string): Promise<void> {
@@ -106,18 +123,25 @@ export class ApiPhotoRepository implements PhotoRepository {
   // route and an anonymous request would simply be told no.
   private send(method: string, path: string, body?: BodyInit) {
     if (!this.baseUrl) {
-      throw new Error("NEXT_PUBLIC_API_URL is not set: the gallery cannot reach the API.");
+      throw new Error(
+        "NEXT_PUBLIC_API_URL is not set: the gallery cannot reach the API.",
+      );
     }
     return this.fetchFn(`${this.baseUrl.replace(/\/+$/, "")}${path}`, {
       method,
       credentials: "include",
+      ...(typeof body === "string"
+        ? { headers: { "Content-Type": "application/json" } }
+        : {}),
       ...(body === undefined ? {} : { body }),
     });
   }
 
   private ensureOk(response: Response) {
     if (!response.ok) {
-      throw new Error(`The API answered ${response.status} ${response.statusText}`.trim());
+      throw new Error(
+        `The API answered ${response.status} ${response.statusText}`.trim(),
+      );
     }
     return response;
   }
@@ -126,13 +150,22 @@ export class ApiPhotoRepository implements PhotoRepository {
   // translated here rather than handed on as a number.
   private async toUploadError(response: Response): Promise<PhotoUploadError> {
     if (response.status === 401) {
-      return new PhotoUploadError("unauthenticated", "There is no live session.");
+      return new PhotoUploadError(
+        "unauthenticated",
+        "There is no live session.",
+      );
     }
     if (response.status === 403) {
-      return new PhotoUploadError("forbidden", "This account cannot publish photos.");
+      return new PhotoUploadError(
+        "forbidden",
+        "This account cannot publish photos.",
+      );
     }
     if (response.status === 413) {
-      return new PhotoUploadError("tooLarge", "The file is over the API's size limit.");
+      return new PhotoUploadError(
+        "tooLarge",
+        "The file is over the API's size limit.",
+      );
     }
     if (response.status === 400 || response.status === 422) {
       return new PhotoUploadError("rejected", await this.reasonGiven(response));
@@ -172,6 +205,13 @@ export class ApiPhotoRepository implements PhotoRepository {
       height: entry.height,
       createdAt: new Date(entry.createdAt),
       renditions: entry.renditions,
+      highlights: entry.highlights,
+      metadata: {
+        format: entry.format,
+        capturedAt: entry.capturedAt,
+        lastEditDate: entry.lastEditDate,
+        origin: entry.origin,
+      },
     });
   }
 }

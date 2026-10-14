@@ -43,7 +43,8 @@ Feature: Publishing a photo through the API
     Then the file and the title are sent to the API as multipart form data
     And the session cookie travels with them
     And the published photo is shown with its title
-    And the form is emptied for the next photo
+    And its panel and optimization report stay visible
+    And additional photos can be selected
 
   # The stored file is never the one that was handed in: the API resizes it, converts
   # it to sRGB and strips every tag, the GPS location included.
@@ -76,12 +77,13 @@ Feature: Publishing a photo through the API
     When the photo is published
     Then the page says there is nothing to fix
 
-  Scenario: Submitting without choosing a file
+  Scenario: Opening the workspace without choosing a file
     Given a signed-in administrator
-    And a title but no chosen file
-    When the photo is published
+    And no chosen files
+    When the upload page is opened
     Then the API is not called
-    And the page asks for a file
+    And the page offers a drop zone and file picker
+    And no publish action is offered yet
 
   Scenario: A photo the API rejected
     Given a signed-in administrator

@@ -41,7 +41,7 @@ const FAILURE_MESSAGES: Record<PhotoUploadFailure, string> = {
   unreachable: "Could not reach the API",
 };
 
-function messageFor(failure: unknown): string {
+export function messageFor(failure: unknown): string {
   if (failure instanceof PhotoUploadError) {
     // A rejection is the only refusal the API explains in words worth repeating.
     return failure.failure === "rejected"

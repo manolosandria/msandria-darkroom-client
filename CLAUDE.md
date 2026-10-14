@@ -155,3 +155,12 @@ fact merged. Without a fetch, the local view is simply wrong.
 - `fetch.prune` is enabled in this clone, so any `git fetch` or `git pull` already drops
   branches that the remote no longer has. A fresh clone needs
   `git config fetch.prune true` again.
+
+## Upload and management
+
+`/upload` provides multiple-file selection and drag and drop, independent photo panels,
+and a sequential publish queue. Each panel keeps its server optimization report.
+`HighlightEditor` edits optional square, landscape and portrait crops using normalized
+coordinates relative to the oriented photo. It is shared with `/manage`, where saved
+photos can be edited through the `SavePhoto` use case and repository `save` operation.
+The API migration for highlights must be applied before using these screens.
