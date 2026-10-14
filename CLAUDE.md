@@ -84,6 +84,19 @@ Three rules worth keeping:
 `src/infrastructure/googleIdentity.ts` is the only place that touches `window.google`,
 so everything above it stays testable without loading Google's script.
 
+## Security headers
+
+`security-headers.ts` builds them and `next.config.ts` serves them on every page. The
+`Content-Security-Policy` is the one that can break the site: it names the only origins
+anything may be loaded from, so **a new third-party script, stylesheet, image host, frame
+or API has to be added there or the browser will block it**, with nothing to show for it
+but a console message. `README.md` has the table of what is allowed and why.
+
+There is no nonce, because these pages are static and a nonce would force a render per
+request. That is why `script-src` carries `'unsafe-inline'`. Do not add a nonce without
+moving the pages to dynamic rendering, and note that middleware is called `proxy.ts` in
+this version of Next.
+
 ## Tests
 
 Vitest with Testing Library. Unit tests live in a `__tests__/` folder beside the module
