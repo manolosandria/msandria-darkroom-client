@@ -113,10 +113,6 @@ describe("ApiPhotoRepository", () => {
   describe("unsupported operations", () => {
     const repository = new ApiPhotoRepository(API_URL, vi.fn());
 
-    it("rejects save with an explicit not-implemented error", async () => {
-      await expect(repository.save({} as never)).rejects.toThrow(/not support/i);
-    });
-
     it("rejects delete with an explicit not-implemented error", async () => {
       await expect(repository.delete("any-id")).rejects.toThrow(/not support/i);
     });
@@ -266,3 +262,14 @@ describe("ApiPhotoRepository upload", () => {
     );
   });
 });
+
+
+ describe("ApiPhotoRepository saved highlights", () => {
+  it("uses authenticated JSON PATCH to save title, description and crops", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const repository = new ApiPhotoRepository(API_URL, fetchFn);
+    const saved = await new ApiPhotoRepository(API_URL, respondWith({ ...apiPhoto("crop"), highlights: { square: { x: 0, y: 0, width: .5, height: .5 } } })).findById("crop");
+    await repository.save(saved!);
+    expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/photos/crop`, expect.objectContaining({ method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: saved!.getTitle(), description: saved!.getDescription() ?? "", highlights: saved!.getHighlights() }) }));
+  });
+ });

@@ -1,3 +1,11 @@
+import { PhotoHighlights } from "./PhotoHighlights";
+
+export type PhotoMetadata = {
+  format?: string;
+  capturedAt?: string | null;
+  lastEditDate?: string | null;
+  origin?: string;
+};
 // A web-ready version of the photo, already resized by the image host.
 export type PhotoRendition = {
   width: number;
@@ -13,9 +21,13 @@ export type PhotoParams = {
   renditions: PhotoRendition[];
   description?: string;
   createdAt?: Date;
+  highlights?: PhotoHighlights;
+  metadata?: PhotoMetadata;
 };
 
 export class Photo {
+  private readonly highlights: PhotoHighlights;
+  private readonly metadata: PhotoMetadata;
   private readonly id: string;
   private title: string;
   private description?: string;
@@ -25,12 +37,17 @@ export class Photo {
   private readonly createdAt: Date;
 
   constructor(params: PhotoParams) {
+    this.highlights = params.highlights ?? {};
+    this.metadata = params.metadata ?? {};
     this.id = params.id;
     this.title = params.title.trim();
     this.width = params.width;
     this.height = params.height;
     this.renditions = params.renditions
-      .map((rendition) => ({ width: rendition.width, url: rendition.url.trim() }))
+      .map((rendition) => ({
+        width: rendition.width,
+        url: rendition.url.trim(),
+      }))
       .sort((a, b) => a.width - b.width);
     this.description = params.description?.trim();
     this.createdAt = params.createdAt ?? new Date();
@@ -40,15 +57,33 @@ export class Photo {
   private validate() {
     if (!this.id) throw new Error("Photo ID is required.");
     if (!this.title) throw new Error("Photo title is required.");
-    if (!(this.width > 0 && this.height > 0)) throw new Error("Photo needs a positive width and height.");
-    if (this.renditions.length === 0) throw new Error("Photo needs at least one rendition.");
-    if (this.renditions.some((rendition) => !rendition.url || rendition.width <= 0)) {
+    if (!(this.width > 0 && this.height > 0))
+      throw new Error("Photo needs a positive width and height.");
+    if (this.renditions.length === 0)
+      throw new Error("Photo needs at least one rendition.");
+    if (
+      this.renditions.some(
+        (rendition) => !rendition.url || rendition.width <= 0,
+      )
+    ) {
       throw new Error("Photo renditions need a url and a positive width.");
     }
   }
 
   getId() {
     return this.id;
+  }
+  getHighlights() {
+    return this.highlights;
+  }
+  getMetadata() {
+    return this.metadata;
+  }
+  getWidth() {
+    return this.width;
+  }
+  getHeight() {
+    return this.height;
   }
   getTitle() {
     return this.title;
@@ -70,7 +105,9 @@ export class Photo {
   // The smallest rendition that still fills `width` pixels, or the largest one
   // when none is wide enough: never download more than the screen needs.
   urlForWidth(width: number) {
-    const fitting = this.renditions.find((rendition) => rendition.width >= width);
+    const fitting = this.renditions.find(
+      (rendition) => rendition.width >= width,
+    );
     return (fitting ?? this.renditions[this.renditions.length - 1]).url;
   }
 

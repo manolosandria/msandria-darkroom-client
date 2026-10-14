@@ -1,261 +1,184 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Photo } from "@/src/domain/entities/Photo";
-import { User, UserRole } from "@/src/domain/entities/User";
-import {
-  PhotoUploadError,
-  PublishedPhoto,
-} from "@/src/domain/repositories/PhotoRepository";
-import { SessionPorts } from "@/src/ui/hooks/useSession";
+import { User } from "@/src/domain/entities/User";
 import { SessionProvider } from "../SessionProvider";
 import UploadPanel from "../UploadPanel";
 
 const execute = vi.fn();
 const getCurrentUser = vi.fn();
-
-const sessionPorts: SessionPorts = {
+const photo = new Photo({
+  id: "p1",
+  title: "Published photo",
+  width: 1800,
+  height: 1200,
+  renditions: [{ width: 640, url: "https://cdn/photo.jpg" }],
+});
+const ports = {
   getCurrentUser: () => getCurrentUser(),
   signIn: vi.fn(),
   signOut: vi.fn(),
 };
-
-function accountOf(role: UserRole) {
-  return new User({
-    id: `usr_${role}`,
-    email: "manolo@example.com",
-    name: "Manolo Sandria",
-    role,
-  });
-}
-
-function publishedPhoto(optimizationIssues: PublishedPhoto["optimizationIssues"] = []) {
-  return {
-    photo: new Photo({
-      id: "virgencita",
-      title: "Virgencita",
-      width: 1920,
-      height: 1080,
-      renditions: [{ width: 640, url: "https://cdn/w_640/virgencita" }],
-    }),
-    optimizationIssues,
-  };
-}
-
+const file = (name = "first.jpg") =>
+  new File(["image"], name, { type: "image/jpeg" });
 function renderPanel() {
   return render(
-    <SessionProvider ports={sessionPorts}>
+    <SessionProvider ports={ports}>
       <UploadPanel uploadPhoto={{ execute }} />
     </SessionProvider>,
   );
 }
-
-const chosenFile = new File(["bytes"], "virgencita.jpg", { type: "image/jpeg" });
-
-async function fillInAndSubmit(title = "Virgencita") {
-  await userEvent.upload(screen.getByLabelText("Photo"), chosenFile);
-  await userEvent.type(screen.getByLabelText("Title"), title);
-  await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+async function select(files: File[] = [file()]) {
+  await userEvent.upload(await screen.findByLabelText("Photos"), files);
 }
 
 beforeEach(() => {
-  getCurrentUser.mockResolvedValue(accountOf("ADMIN"));
-  execute.mockResolvedValue(publishedPhoto());
+  getCurrentUser.mockResolvedValue(
+    new User({ id: "admin", email: "admin@example.com", role: "ADMIN" }),
+  );
+  execute.mockResolvedValue({ photo, optimizationIssues: [] });
+  vi.stubGlobal(
+    "URL",
+    Object.assign(URL, {
+      createObjectURL: vi.fn(() => "blob:preview"),
+      revokeObjectURL: vi.fn(),
+    }),
+  );
 });
-
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
-describe("UploadPanel", () => {
-  it("asks a visitor without a session to sign in from the header", async () => {
+describe("Upload workspace", () => {
+  it("asks anonymous visitors to sign in", async () => {
     getCurrentUser.mockResolvedValue(null);
-
     renderPanel();
-
     expect(
-      await screen.findByText(/Sign in with the button in the header/),
+      await screen.findByText(/Sign in with the button/),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Photo")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Photos")).not.toBeInTheDocument();
   });
-
-  // The hidden form is a courtesy, not a safeguard: the API turns the publish down
-  // for this account whatever this page draws.
-  it("tells a registered visitor that only the administrator publishes", async () => {
-    getCurrentUser.mockResolvedValue(accountOf("VIEWER"));
-
-    renderPanel();
-
-    expect(
-      await screen.findByText(/Only the gallery's administrator can publish/),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Photo")).not.toBeInTheDocument();
-  });
-
-  it("offers the form to the administrator", async () => {
-    renderPanel();
-
-    expect(await screen.findByLabelText("Photo")).toBeInTheDocument();
-    expect(screen.getByLabelText("Title")).toBeInTheDocument();
-  });
-
-  it("shows nothing until the session is known", () => {
-    getCurrentUser.mockReturnValue(new Promise(() => {}));
-
-    renderPanel();
-
-    expect(screen.queryByLabelText("Photo")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Sign in with the button/)).not.toBeInTheDocument();
-  });
-
-  it("lets the administrator retry when the session could not be read", async () => {
-    getCurrentUser.mockRejectedValueOnce(new Error("boom"));
-    renderPanel();
-
-    await userEvent.click(await screen.findByRole("button", { name: "Try Again" }));
-
-    expect(await screen.findByLabelText("Photo")).toBeInTheDocument();
-  });
-
-  it("sends the chosen file and the title to the API", async () => {
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await userEvent.type(screen.getByLabelText(/Description/), "Veracruz");
-    await fillInAndSubmit();
-
-    await waitFor(() =>
-      expect(execute).toHaveBeenCalledWith({
-        file: chosenFile,
-        title: "Virgencita",
-        description: "Veracruz",
-      }),
+  it("restricts the workspace to the administrator", async () => {
+    getCurrentUser.mockResolvedValue(
+      new User({ id: "viewer", email: "viewer@example.com", role: "VIEWER" }),
     );
-  });
-
-  it("leaves out a description nobody typed", async () => {
     renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
+    expect(await screen.findByText(/Only the gallery/)).toBeInTheDocument();
+  });
+  it("creates an independent editable panel for every selected photo", async () => {
+    renderPanel();
+    await select([file(), file("second.jpg")]);
+    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(
+      screen
+        .getAllByLabelText("Title")
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(["first", "second"]);
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it("accepts dropped photos and reports unsupported files without discarding valid ones", async () => {
+    renderPanel();
+    await screen.findByLabelText("Photos");
+    fireEvent.drop(
+      screen.getByRole("button", { name: /Drop your photos/ }).parentElement!,
+      {
+        dataTransfer: {
+          files: [file(), new File(["x"], "bad.txt", { type: "text/plain" })],
+        },
+      },
+    );
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("bad.txt");
+  });
+  it("waits for each request before starting the next, and preserves each report", async () => {
+    let finish!: (result: unknown) => void;
+    execute.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderPanel();
+    await select([file(), file("second.jpg")]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish 2 photos" }),
+    );
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Publishing…" })).toBeDisabled();
+    finish({ photo, optimizationIssues: [] });
+    await waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getAllByText(/Nothing to fix/)).toHaveLength(2),
+    );
+    expect(execute.mock.calls[1][0].file.name).toBe("second.jpg");
+  });
+  it("keeps rejected edits, continues the queue, and retries only failures", async () => {
+    execute.mockRejectedValueOnce(new Error("offline"));
+    renderPanel();
+    await select([file(), file("second.jpg")]);
+    await userEvent.type(screen.getAllByLabelText(/Description/)[0], "A story");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish 2 photos" }),
+    );
+    await screen.findByText(/Your edits are kept/);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Publish 1 photo" }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getAllByLabelText(/Description/)[0]).toHaveValue("A story");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish 1 photo" }),
+    );
+    await waitFor(() => expect(execute).toHaveBeenCalledTimes(3));
+    expect(execute.mock.calls[2][0]).toMatchObject({
+      description: "A story",
+      title: "first",
+    });
+  });
+  it("sends manually selected highlights with the photo", async () => {
+    renderPanel();
+    await select();
+    const image = screen.getByAltText("first");
+    Object.defineProperties(image, {
+      naturalWidth: { value: 1800 },
+      naturalHeight: { value: 1200 },
+    });
+    fireEvent.load(image);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add square highlight" }),
+    );
+    expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish 1 photo" }),
+    );
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
-        expect.objectContaining({ description: undefined }),
+        expect.objectContaining({
+          highlights: {
+            square: expect.objectContaining({ width: expect.any(Number) }),
+          },
+        }),
       ),
     );
   });
-
-  it("asks for a file when the form is submitted without one", async () => {
+  it("releases the local preview when removing a draft", async () => {
     renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await userEvent.type(screen.getByLabelText("Title"), "Virgencita");
-    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
-
-    expect(await screen.findByText("Choose a photo to publish.")).toBeInTheDocument();
-    expect(execute).not.toHaveBeenCalled();
-  });
-
-  it("reports the published photo and that nothing needs fixing", async () => {
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    expect(await screen.findByText("Published: Virgencita")).toBeInTheDocument();
-    expect(screen.getByText(/Nothing to fix/)).toBeInTheDocument();
-  });
-
-  it("separates what has to be exported again from what the upload corrected", async () => {
-    execute.mockResolvedValue(
-      publishedPhoto([
-        {
-          getKind: () => "LOCATION" as const,
-          getUnit: () => "TAG_COUNT" as const,
-          getCurrentValue: () => "2",
-          getRecommendedValue: () => "0",
-          isPending: () => false,
-        },
-        {
-          getKind: () => "UNDERSIZED" as const,
-          getUnit: () => "PIXELS" as const,
-          getCurrentValue: () => "1600",
-          getRecommendedValue: () => "2048",
-          isPending: () => true,
-        },
-      ] as PublishedPhoto["optimizationIssues"]),
+    await select();
+    await userEvent.click(
+      within(screen.getByRole("article")).getByRole("button", {
+        name: "Remove",
+      }),
     );
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    expect(await screen.findByText("Worth exporting again")).toBeInTheDocument();
-    expect(screen.getByText("Corrected while uploading")).toBeInTheDocument();
-    expect(screen.getByText("Smaller than recommended")).toBeInTheDocument();
-    expect(screen.getByText("GPS location")).toBeInTheDocument();
-    // The API measures and this site words it: the plain numbers it sent come out with
-    // their unit attached.
-    expect(screen.getByText(/1600 px → 2048 px/)).toBeInTheDocument();
-    expect(screen.getByText(/2 tags → 0 tags/)).toBeInTheDocument();
-  });
-
-  it("shows only the renditions the API sent, never the original file", async () => {
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    const image = await screen.findByAltText("Virgencita");
-    expect(image.getAttribute("src")).toContain("https://cdn/w_640/virgencita");
-  });
-
-  it("keeps the form filled in when the API rejected the photo", async () => {
-    execute.mockRejectedValue(
-      new PhotoUploadError("rejected", "title should not be empty"),
-    );
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    expect(
-      await screen.findByText(/title should not be empty/),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Title")).toHaveValue("Virgencita");
-  });
-
-  it("empties the form once the photo went through", async () => {
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    await screen.findByText("Published: Virgencita");
-    expect(screen.getByLabelText("Title")).toHaveValue("");
-  });
-
-  it("holds the publish button while the upload is on its way", async () => {
-    execute.mockReturnValue(new Promise(() => {}));
-    renderPanel();
-    await screen.findByLabelText("Photo");
-
-    await fillInAndSubmit();
-
-    expect(
-      await screen.findByRole("button", { name: "Publishing..." }),
-    ).toBeDisabled();
-  });
-
-  it("drops the report when it is dismissed", async () => {
-    renderPanel();
-    await screen.findByLabelText("Photo");
-    await fillInAndSubmit();
-    await screen.findByText("Published: Virgencita");
-
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-
-    expect(screen.queryByText("Published: Virgencita")).not.toBeInTheDocument();
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:preview");
   });
 });
