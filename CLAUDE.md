@@ -116,3 +116,24 @@ identity and re-run its effects for as long as the component lives.
 
 A change that touches both this site and the API needs a pull request in each
 repository, and the API's merges first.
+
+## Staying in sync
+
+Pull requests are merged on GitHub with **rebase and merge**, which rewrites the commits
+and deletes the branch on the remote. Local SHAs therefore never match the ones that
+landed on `master`, and `git branch --merged` will not recognise a branch that was in
+fact merged. Without a fetch, the local view is simply wrong.
+
+- Run `git fetch --prune` before starting a task or describing the state of the work.
+  Never read `git status`, `git branch -a` or `git log` as the truth without it.
+- Then read `git branch -vv`. A local branch marked **`[gone]`** is one whose pull
+  request was merged and whose remote branch GitHub deleted; its content is already in
+  `origin/master` however the local history looks. Confirm with
+  `gh pr list --state merged --head <branch>` when in doubt.
+- Clean up such a branch instead of working on it: `git switch master`,
+  `git pull --ff-only`, then `git branch -D <branch>` — `-D` is required, because after
+  the rebase git does not consider it merged. Check `git diff master..<branch>` first,
+  and say so rather than deleting if anything of the branch's own is still unmerged.
+- `fetch.prune` is enabled in this clone, so any `git fetch` or `git pull` already drops
+  branches that the remote no longer has. A fresh clone needs
+  `git config fetch.prune true` again.
