@@ -37,8 +37,9 @@ const published: PublishedPhoto = {
     new PhotoOptimizationIssue({
       kind: "LOCATION",
       resolution: "FIXED_ON_UPLOAD",
-      currentValue: "con ubicacion GPS",
-      recommendedValue: "sin ubicacion",
+      unit: "TAG_COUNT",
+      currentValue: "2",
+      recommendedValue: "0",
     }),
   ],
 };

@@ -3,6 +3,7 @@ import {
   PhotoOptimizationIssue,
   PhotoOptimizationIssueKind,
   PhotoOptimizationIssueResolution,
+  PhotoOptimizationIssueUnit,
 } from "../domain/entities/PhotoOptimizationIssue";
 import {
   PhotoDraft,
@@ -29,6 +30,8 @@ type ApiPhoto = {
 type ApiOptimizationIssue = {
   kind: PhotoOptimizationIssueKind;
   resolution: PhotoOptimizationIssueResolution;
+  // The API measures; `unit` says in what, and the wording is this site's business.
+  unit: PhotoOptimizationIssueUnit;
   currentValue: string;
   recommendedValue: string;
 };

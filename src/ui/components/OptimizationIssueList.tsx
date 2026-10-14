@@ -1,79 +1,102 @@
 import {
   PhotoOptimizationIssue,
   PhotoOptimizationIssueKind,
+  PhotoOptimizationIssueUnit,
 } from "@/src/domain/entities/PhotoOptimizationIssue";
+
+const BYTES_IN_A_MEGABYTE = 1024 * 1024;
 
 type Advice = {
   label: string;
   // What to do differently next time, in the words of the export dialog.
   advice: string;
-  // Whether the API's values read as a measurement. The rest are prose, which this
-  // table says better and in this site's language.
-  measured: boolean;
+  // Whether the pair of measurements adds anything to the advice. A count of tags does
+  // not: what matters is that they were there, and the advice already says so.
+  showsMeasure: boolean;
 };
 
 const ADVICE: Record<PhotoOptimizationIssueKind, Advice> = {
   LOCATION: {
     label: "GPS location",
     advice: "Export without location, so the coordinates never leave your machine.",
-    measured: false,
+    showsMeasure: true,
   },
   FILE_SIZE: {
     label: "File size",
     advice:
       "Export a lighter file: the image host builds its own delivery versions anyway.",
-    measured: true,
+    showsMeasure: true,
   },
   FORMAT: {
     label: "File format",
     advice: "Export as JPEG.",
-    measured: true,
+    showsMeasure: true,
   },
   OVERSIZED: {
     label: "Larger than needed",
     advice: "A long edge of 3840 px already covers a 4K screen.",
-    measured: true,
+    showsMeasure: true,
   },
   UNDERSIZED: {
     label: "Smaller than recommended",
     advice:
       "Export a longer edge, or the photo looks soft full screen on a large monitor.",
-    measured: true,
+    showsMeasure: true,
   },
   COLOR_PROFILE: {
     label: "Color profile",
     advice: "Export in sRGB: browsers assume it, and a wider profile looks dull.",
-    measured: true,
+    showsMeasure: true,
   },
   DEVELOP_SETTINGS: {
     label: "Develop settings",
     advice:
       'Export metadata as "All except Camera Raw info" to leave the recipe out of the file.',
-    measured: false,
+    showsMeasure: false,
   },
   MISSING_METADATA: {
     label: "Missing camera data",
     advice: "Export keeping the camera metadata, or the capture date is lost.",
-    measured: false,
+    showsMeasure: false,
   },
 };
 
-// A kind this build has never heard of still gets shown: the API's own values say
+// A kind this build has never heard of still gets shown: the API's own measurements say
 // more than hiding the line would.
 function adviceFor(kind: PhotoOptimizationIssueKind): Advice {
-  return ADVICE[kind] ?? { label: kind, advice: "", measured: true };
+  return ADVICE[kind] ?? { label: kind, advice: "", showsMeasure: true };
+}
+
+// The API sends a number and the unit it is in, never a sentence. A unit this build does
+// not know, or a value that is not the number its unit promises, is printed as it came:
+// wrong on screen is better than hidden.
+function formatMeasure(unit: PhotoOptimizationIssueUnit, value: string): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return value;
+  switch (unit) {
+    case "BYTES":
+      return `${(amount / BYTES_IN_A_MEGABYTE).toFixed(1)} MB`;
+    case "PIXELS":
+      return `${amount} px`;
+    case "TAG_COUNT":
+      return amount === 1 ? "1 tag" : `${amount} tags`;
+    default:
+      return value;
+  }
 }
 
 function IssueItem({ issue }: { issue: PhotoOptimizationIssue }) {
-  const { label, advice, measured } = adviceFor(issue.getKind());
+  const { label, advice, showsMeasure } = adviceFor(issue.getKind());
+  const unit = issue.getUnit();
 
   return (
     <li className="py-2">
       <p className="text-sm font-semibold text-gray-800">
         {label}
-        {measured && (
+        {showsMeasure && (
           <span className="ml-2 font-mono text-xs font-normal text-gray-500">
-            {issue.getCurrentValue()} → {issue.getRecommendedValue()}
+            {formatMeasure(unit, issue.getCurrentValue())} →{" "}
+            {formatMeasure(unit, issue.getRecommendedValue())}
           </span>
         )}
       </p>
