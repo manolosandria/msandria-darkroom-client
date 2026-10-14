@@ -61,7 +61,8 @@ Dependencies point inwards: `domain` knows nothing of the others, `application` 
 only on `domain` interfaces, and `infrastructure` supplies the implementations. A
 component reaches the API through a use case, never with its own `fetch`.
 
-`/upload` still holds the old form and does not work against the API yet.
+`/upload` publishes through the API's `POST /photos` and is offered in the header to
+the administrator alone.
 
 ## Sessions
 
@@ -74,6 +75,10 @@ Three rules worth keeping:
 
 - **The session cookie is `HttpOnly` on purpose.** This code cannot read it, so never try
   to infer the session from `document.cookie`. Ask the API who is signed in.
+- **One session for the whole page.** `SessionProvider` wraps the tree in
+  `app/layout.tsx` and asks `GET /auth/me` once; `useSessionValue()` is how a component
+  reads it. Calling `useSession` again in a component would spend another round trip
+  learning the same thing, and the two could disagree while the answers were in flight.
 - **Every call to the API carries `credentials: "include"`**, or the browser will not
   attach the cookie across origins.
 - **A role decides what the interface offers, never what is allowed.** `User.isAdmin()`

@@ -1,5 +1,15 @@
 import { Photo, PhotoRendition } from "../domain/entities/Photo";
-import { PhotoRepository } from "../domain/repositories/PhotoRepository";
+import {
+  PhotoOptimizationIssue,
+  PhotoOptimizationIssueKind,
+  PhotoOptimizationIssueResolution,
+} from "../domain/entities/PhotoOptimizationIssue";
+import {
+  PhotoDraft,
+  PhotoRepository,
+  PhotoUploadError,
+  PublishedPhoto,
+} from "../domain/repositories/PhotoRepository";
 
 const NOT_IMPLEMENTED_MESSAGE =
   "ApiPhotoRepository does not support this operation yet.";
@@ -14,6 +24,19 @@ type ApiPhoto = {
   height: number;
   createdAt: string;
   renditions: PhotoRendition[];
+};
+
+type ApiOptimizationIssue = {
+  kind: PhotoOptimizationIssueKind;
+  resolution: PhotoOptimizationIssueResolution;
+  currentValue: string;
+  recommendedValue: string;
+};
+
+// What the API answers to a publish: the photo plus what its file was missing. Only
+// an administrator is told this much.
+type ApiReviewedPhoto = ApiPhoto & {
+  optimizationIssues: ApiOptimizationIssue[];
 };
 
 export class ApiPhotoRepository implements PhotoRepository {
@@ -38,6 +61,27 @@ export class ApiPhotoRepository implements PhotoRepository {
     return photos.length > 0 ? photos : null;
   }
 
+  // The file goes up untouched as `multipart/form-data`. `Content-Type` is left for the
+  // browser to write, because only it knows the boundary that separates the parts;
+  // setting the header by hand produces a body the API cannot read.
+  async upload(draft: PhotoDraft): Promise<PublishedPhoto> {
+    const form = new FormData();
+    form.append("file", draft.file);
+    form.append("title", draft.title);
+    if (draft.description) form.append("description", draft.description);
+
+    const response = await this.send("POST", "/photos", form);
+    if (!response.ok) throw await this.toUploadError(response);
+
+    const entry = (await response.json()) as ApiReviewedPhoto;
+    return {
+      photo: this.toDomainPhoto(entry),
+      optimizationIssues: (entry.optimizationIssues ?? []).map(
+        (issue) => new PhotoOptimizationIssue(issue),
+      ),
+    };
+  }
+
   async findCollection(_id: string): Promise<Photo[] | null> {
     throw new Error(NOT_IMPLEMENTED_MESSAGE);
   }
@@ -51,10 +95,21 @@ export class ApiPhotoRepository implements PhotoRepository {
   }
 
   private get(path: string) {
+    return this.send("GET", path);
+  }
+
+  // `credentials: "include"` is what makes the browser attach the session cookie to a
+  // cross-origin call. Reads do not need a session today, but the API decides that per
+  // route and an anonymous request would simply be told no.
+  private send(method: string, path: string, body?: BodyInit) {
     if (!this.baseUrl) {
       throw new Error("NEXT_PUBLIC_API_URL is not set: the gallery cannot reach the API.");
     }
-    return this.fetchFn(`${this.baseUrl.replace(/\/+$/, "")}${path}`);
+    return this.fetchFn(`${this.baseUrl.replace(/\/+$/, "")}${path}`, {
+      method,
+      credentials: "include",
+      ...(body === undefined ? {} : { body }),
+    });
   }
 
   private ensureOk(response: Response) {
@@ -62,6 +117,42 @@ export class ApiPhotoRepository implements PhotoRepository {
       throw new Error(`The API answered ${response.status} ${response.statusText}`.trim());
     }
     return response;
+  }
+
+  // Each refusal means something different to whoever is publishing, so the status is
+  // translated here rather than handed on as a number.
+  private async toUploadError(response: Response): Promise<PhotoUploadError> {
+    if (response.status === 401) {
+      return new PhotoUploadError("unauthenticated", "There is no live session.");
+    }
+    if (response.status === 403) {
+      return new PhotoUploadError("forbidden", "This account cannot publish photos.");
+    }
+    if (response.status === 413) {
+      return new PhotoUploadError("tooLarge", "The file is over the API's size limit.");
+    }
+    if (response.status === 400 || response.status === 422) {
+      return new PhotoUploadError("rejected", await this.reasonGiven(response));
+    }
+    return new PhotoUploadError(
+      "unreachable",
+      `The API answered ${response.status} ${response.statusText}`.trim(),
+    );
+  }
+
+  // A rejection explains itself in `message`, as one string or a list of them. A body
+  // that is not the expected JSON leaves the status to speak for itself.
+  private async reasonGiven(response: Response): Promise<string> {
+    try {
+      const body = (await response.json()) as { message?: string | string[] };
+      const message = Array.isArray(body.message)
+        ? body.message.join(". ")
+        : body.message;
+      if (message) return message;
+    } catch {
+      // Falls through to the generic wording below.
+    }
+    return "The API rejected the photo.";
   }
 
   // A photo whose stored file is gone comes without renditions: nothing to show.
