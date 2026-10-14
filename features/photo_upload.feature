@@ -61,6 +61,15 @@ Feature: Publishing a photo through the API
     Then the issue that needs a new export is listed as worth exporting again
     And the issue the API fixed is listed as corrected while uploading
 
+  # The API measures and sends the unit; the wording is this site's, because this site
+  # is the one in English.
+  Scenario: Measurements are read in this site's words
+    Given a signed-in administrator
+    And the API answers with a file size in bytes and a long edge in pixels
+    When the photo is published
+    Then the file size is shown in megabytes
+    And the long edge is shown in pixels
+
   Scenario: A photo exported exactly as the gallery wants it
     Given a signed-in administrator
     And the API answers with no issues at all

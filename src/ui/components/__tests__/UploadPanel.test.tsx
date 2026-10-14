@@ -172,14 +172,16 @@ describe("UploadPanel", () => {
       publishedPhoto([
         {
           getKind: () => "LOCATION" as const,
-          getCurrentValue: () => "con ubicacion GPS",
-          getRecommendedValue: () => "sin ubicacion",
+          getUnit: () => "TAG_COUNT" as const,
+          getCurrentValue: () => "2",
+          getRecommendedValue: () => "0",
           isPending: () => false,
         },
         {
           getKind: () => "UNDERSIZED" as const,
-          getCurrentValue: () => "1600 px",
-          getRecommendedValue: () => ">= 2048 px",
+          getUnit: () => "PIXELS" as const,
+          getCurrentValue: () => "1600",
+          getRecommendedValue: () => "2048",
           isPending: () => true,
         },
       ] as PublishedPhoto["optimizationIssues"]),
@@ -193,9 +195,10 @@ describe("UploadPanel", () => {
     expect(screen.getByText("Corrected while uploading")).toBeInTheDocument();
     expect(screen.getByText("Smaller than recommended")).toBeInTheDocument();
     expect(screen.getByText("GPS location")).toBeInTheDocument();
-    // The API words the location in Spanish, so only the measured values are repeated.
-    expect(screen.getByText(/1600 px/)).toBeInTheDocument();
-    expect(screen.queryByText(/con ubicacion GPS/)).not.toBeInTheDocument();
+    // The API measures and this site words it: the plain numbers it sent come out with
+    // their unit attached.
+    expect(screen.getByText(/1600 px → 2048 px/)).toBeInTheDocument();
+    expect(screen.getByText(/2 tags → 0 tags/)).toBeInTheDocument();
   });
 
   it("shows only the renditions the API sent, never the original file", async () => {

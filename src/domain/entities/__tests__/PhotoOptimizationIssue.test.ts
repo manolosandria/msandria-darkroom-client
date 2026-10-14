@@ -8,27 +8,39 @@ function issue(overrides: Partial<PhotoOptimizationIssueParams> = {}) {
   return new PhotoOptimizationIssue({
     kind: "OVERSIZED",
     resolution: "FIXED_ON_UPLOAD",
-    currentValue: "4608 px",
-    recommendedValue: "<= 3840 px",
+    unit: "PIXELS",
+    currentValue: "4608",
+    recommendedValue: "3840",
     ...overrides,
   });
 }
 
 describe("PhotoOptimizationIssue", () => {
-  it("keeps what the API measured", () => {
+  it("keeps what the API measured, and the unit it measured it in", () => {
     const oversized = issue();
 
     expect(oversized.getKind()).toBe("OVERSIZED");
     expect(oversized.getResolution()).toBe("FIXED_ON_UPLOAD");
-    expect(oversized.getCurrentValue()).toBe("4608 px");
-    expect(oversized.getRecommendedValue()).toBe("<= 3840 px");
+    expect(oversized.getUnit()).toBe("PIXELS");
+    expect(oversized.getCurrentValue()).toBe("4608");
+    expect(oversized.getRecommendedValue()).toBe("3840");
   });
 
   it("trims the values it was given", () => {
-    const trimmed = issue({ currentValue: "  4608 px  ", recommendedValue: " jpg " });
+    const trimmed = issue({ currentValue: "  4608  ", recommendedValue: " jpg " });
 
-    expect(trimmed.getCurrentValue()).toBe("4608 px");
+    expect(trimmed.getCurrentValue()).toBe("4608");
     expect(trimmed.getRecommendedValue()).toBe("jpg");
+  });
+
+  // The API owns this vocabulary too, and a unit it adds later is no reason to drop the
+  // measurement on the floor.
+  it("keeps a unit this build has never heard of", () => {
+    const unknown = issue({
+      unit: "SOMETHING_NEW" as PhotoOptimizationIssueParams["unit"],
+    });
+
+    expect(unknown.getUnit()).toBe("SOMETHING_NEW");
   });
 
   // What the upload pipeline already corrected is a note about the export, not a chore.

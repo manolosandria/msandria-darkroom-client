@@ -21,26 +21,41 @@ export type PhotoOptimizationIssueResolution =
   | "NEEDS_REUPLOAD"
   | "NEEDS_REEXPORT";
 
+// How to read the two values. `BYTES`, `PIXELS` and `TAG_COUNT` carry a whole number in
+// that unit; `FILE_FORMAT` and `COLOR_SPACE` carry the code whoever read the file
+// reported, such as "png" or "Adobe RGB (1998)". The API sends measurements and no
+// wording at all, which is what lets this site word them in its own language.
+export type PhotoOptimizationIssueUnit =
+  | "BYTES"
+  | "PIXELS"
+  | "TAG_COUNT"
+  | "FILE_FORMAT"
+  | "COLOR_SPACE";
+
 export type PhotoOptimizationIssueParams = {
   kind: PhotoOptimizationIssueKind;
   resolution: PhotoOptimizationIssueResolution;
-  // As the API measured it, for instance "4608 px" against "<= 3840 px".
+  unit: PhotoOptimizationIssueUnit;
+  // As the API measured it, in `unit` and with no words: "4608" against "3840".
   currentValue: string;
   recommendedValue: string;
 };
 
 // Nothing here is validated against a closed list on purpose. The API owns the
-// vocabulary and may grow it; a kind this build has never heard of is still worth
-// showing, and an unknown resolution counts as outstanding rather than silently done.
+// vocabulary and may grow it; a kind or a unit this build has never heard of is still
+// worth showing, and an unknown resolution counts as outstanding rather than silently
+// done.
 export class PhotoOptimizationIssue {
   private readonly kind: PhotoOptimizationIssueKind;
   private readonly resolution: PhotoOptimizationIssueResolution;
+  private readonly unit: PhotoOptimizationIssueUnit;
   private readonly currentValue: string;
   private readonly recommendedValue: string;
 
   constructor(params: PhotoOptimizationIssueParams) {
     this.kind = params.kind;
     this.resolution = params.resolution;
+    this.unit = params.unit;
     this.currentValue = params.currentValue.trim();
     this.recommendedValue = params.recommendedValue.trim();
   }
@@ -50,6 +65,9 @@ export class PhotoOptimizationIssue {
   }
   getResolution() {
     return this.resolution;
+  }
+  getUnit() {
+    return this.unit;
   }
   getCurrentValue() {
     return this.currentValue;
