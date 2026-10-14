@@ -6,6 +6,7 @@ import { Photo } from "@/src/domain/entities/Photo";
 function makeRepository(overrides: Partial<PhotoRepository> = {}): PhotoRepository {
   return {
     findById: vi.fn(),
+    upload: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),
     findAll: vi.fn(),

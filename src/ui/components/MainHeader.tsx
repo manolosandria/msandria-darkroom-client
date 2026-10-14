@@ -3,10 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import SessionMenu from "./SessionMenu";
+import { useSessionValue } from "./SessionProvider";
 
 export default function MainHeader() {
+  const { user } = useSessionValue();
+  // Offered to the administrator only, and only as a shortcut: the API turns down a
+  // publish from anyone else, whatever the header chose to show.
+  const canPublish = user?.isAdmin() ?? false;
 
-    return (
+  return (
       <header className="bg-gray-100 py-4 md:py-6 flex md:flex-row flex-col items-center justify-between px-8">
         <Image src="/images/branding/manolo-logo-black.svg" alt="Manolo Sandria Fotografía"
           width={384} height={96}
@@ -16,6 +21,7 @@ export default function MainHeader() {
           <nav className="flex flex-col md:flex-row items-center md:space-x-10 text-lg font-semibold text-gray-700">
             <Link href="/">Home</Link>
             <Link href="/gallery">Gallery</Link>
+            {canPublish && <Link href="/upload">Upload</Link>}
             <a href="#">Contact</a>
           </nav>
           <SessionMenu />

@@ -1,24 +1,13 @@
 "use client";
 
 import { useCallback } from "react";
-import {
-  getCurrentUser,
-  googleClientId,
-  signIn,
-  signOut,
-} from "@/src/infrastructure/sessionServices";
+import { googleClientId } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
-import { useSession } from "@/src/ui/hooks/useSession";
 import GoogleSignInButton from "./GoogleSignInButton";
-
-const ports = {
-  getCurrentUser: () => getCurrentUser.execute(),
-  signIn: (idToken: string) => signIn.execute(idToken),
-  signOut: () => signOut.execute(),
-};
+import { useSessionValue } from "./SessionProvider";
 
 export default function SessionMenu() {
-  const session = useSession(ports);
+  const session = useSessionValue();
 
   const endSession = useCallback(async () => {
     await session.signOut();
