@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback } from "react";
 import { googleClientId } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
@@ -23,7 +24,7 @@ export default function SessionMenu() {
 
   if (session.error) {
     return (
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex flex-wrap justify-center items-center gap-3 text-sm">
         <span className="text-red-700">{session.error}</span>
         <button type="button" onClick={session.reload} className="underline">
           Retry
@@ -39,10 +40,10 @@ export default function SessionMenu() {
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="font-semibold text-gray-700">
+    <div className="flex flex-wrap justify-center items-center gap-3 text-sm">
+      <Link href="/account" className="font-semibold text-gray-700 underline" aria-label="Account settings">
         {session.user.getDisplayName()}
-      </span>
+      </Link>
       {session.user.isAdmin() && (
         <span className="rounded bg-gray-700 px-2 py-0.5 text-xs font-semibold text-white">
           Admin

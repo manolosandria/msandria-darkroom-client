@@ -1,3 +1,5 @@
+import { AccountDeletionError } from "../domain/errors/AccountDeletionError";
+import { AccountRepository, AccountDeletionPreview } from "../domain/repositories/AccountRepository";
 import { rateLimitError } from "./rateLimitError";
 import { User, UserRole } from "../domain/entities/User";
 import { SessionRepository } from "../domain/repositories/SessionRepository";
@@ -12,7 +14,7 @@ type ApiUser = {
   role: UserRole;
 };
 
-export class ApiSessionRepository implements SessionRepository {
+export class ApiSessionRepository implements SessionRepository, AccountRepository {
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
@@ -35,6 +37,19 @@ export class ApiSessionRepository implements SessionRepository {
 
   async signOut(): Promise<void> {
     this.ensureOk(await this.send("POST", "/auth/logout"));
+  }
+
+  async deletionPreview(): Promise<AccountDeletionPreview> {
+    return (await this.ensureOk(await this.send("GET", "/auth/me/deletion-preview")).json()) as AccountDeletionPreview;
+  }
+
+  async deleteAccount(confirmLastAdmin: boolean): Promise<void> {
+    const response = await this.send("DELETE", "/auth/me", { confirmLastAdmin });
+    if (response.status === 409) {
+      const body = await response.json() as { code?: string };
+      throw new AccountDeletionError(body.code === "LAST_ADMIN_CONFIRMATION_REQUIRED" ? "lastAdmin" : "changed");
+    }
+    this.ensureOk(response);
   }
 
   // `credentials: "include"` is what makes the browser attach the session cookie to

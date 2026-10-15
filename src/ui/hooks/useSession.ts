@@ -71,5 +71,9 @@ export function useSession(ports: SessionPorts) {
     }
   }, [signOut]);
 
-  return { ...state, signIn: startSession, signOut: endSession, reload: load };
+  const clearSession = useCallback(() => {
+    setState({ user: null, loading: false, error: null });
+  }, []);
+
+  return { clearSession, ...state, signIn: startSession, signOut: endSession, reload: load };
 }
