@@ -84,25 +84,25 @@ describe("PhotoViewer", () => {
     vi.restoreAllMocks();
   });
 
-  it("links to the neighbouring photos and to the gallery", async () => {
+  it("turns each side edge into a link to the neighbouring photo and offers a way back", async () => {
     setup("b");
     await screen.findByAltText("Photo b");
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "Previous" })).toHaveAttribute("href", "/photo/a"));
-    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute("href", "/photo/c");
-    expect(screen.getByRole("link", { name: "Gallery" })).toHaveAttribute("href", "/gallery");
+    await waitFor(() => expect(screen.getByRole("link", { name: "Previous photo" })).toHaveAttribute("href", "/photo/a"));
+    expect(screen.getByRole("link", { name: "Next photo" })).toHaveAttribute("href", "/photo/c");
+    expect(screen.getByRole("link", { name: "Back to gallery" })).toHaveAttribute("href", "/gallery");
   });
 
   it("offers no previous link on the first photo and no next on the last", async () => {
     setup("a");
     await screen.findByAltText("Photo a");
-    await waitFor(() => expect(screen.getByRole("link", { name: "Next" })).toBeInTheDocument());
-    expect(screen.queryByRole("link", { name: "Previous" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "Previous photo" })).not.toBeInTheDocument();
   });
 
   it("moves with the arrow keys and leaves with Escape", async () => {
     setup("b");
-    await waitFor(() => expect(screen.getByRole("link", { name: "Next" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(push).toHaveBeenLastCalledWith("/photo/c");
@@ -115,7 +115,7 @@ describe("PhotoViewer", () => {
   it("moves on a horizontal swipe but not on a short or vertical one", async () => {
     setup("b");
     const image = await screen.findByAltText("Photo b");
-    await waitFor(() => expect(screen.getByRole("link", { name: "Next" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
     const swipe = (from: [number, number], to: [number, number]) => {
       fireEvent.pointerDown(image, { clientX: from[0], clientY: from[1] });
       fireEvent.pointerUp(image, { clientX: to[0], clientY: to[1] });
@@ -136,6 +136,72 @@ describe("PhotoViewer", () => {
     await screen.findByAltText("Photo b");
 
     expect(screen.getByTestId("photo-frame").style.background).toBe("rgb(255, 255, 255)");
+  });
+
+  it("shows the title over the photo together with the controls", async () => {
+    setup("b");
+    await screen.findByAltText("Photo b");
+
+    expect(screen.getByText("Photo b", { selector: "figcaption" })).toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("hides everything on a mouse click and brings it back when the mouse moves", async () => {
+    setup("b");
+    const image = await screen.findByAltText("Photo b");
+    const main = screen.getByRole("main");
+
+    fireEvent.pointerDown(image, { pointerType: "mouse", clientX: 200, clientY: 200 });
+    fireEvent.pointerUp(image, { pointerType: "mouse", clientX: 200, clientY: 200 });
+    fireEvent.click(image, { clientX: 200, clientY: 200 });
+    expect(main).toHaveAttribute("data-controls", "hidden");
+
+    fireEvent.pointerMove(main, { pointerType: "mouse", clientX: 203, clientY: 201 });
+    expect(main).toHaveAttribute("data-controls", "hidden");
+
+    fireEvent.pointerMove(main, { pointerType: "mouse", clientX: 260, clientY: 220 });
+    expect(main).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("toggles the controls with each tap on a touch screen", async () => {
+    setup("b");
+    const image = await screen.findByAltText("Photo b");
+    const main = screen.getByRole("main");
+    const tap = () => {
+      fireEvent.pointerDown(image, { pointerType: "touch", clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(image, { pointerType: "touch", clientX: 100, clientY: 100 });
+      fireEvent.click(image);
+    };
+
+    tap();
+    expect(main).toHaveAttribute("data-controls", "hidden");
+    fireEvent.pointerMove(main, { pointerType: "touch", clientX: 300, clientY: 300 });
+    expect(main).toHaveAttribute("data-controls", "hidden");
+    tap();
+    expect(main).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("does not hide the controls when a swipe ends", async () => {
+    setup("b");
+    const image = await screen.findByAltText("Photo b");
+    await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
+
+    fireEvent.pointerDown(image, { pointerType: "touch", clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(image, { pointerType: "touch", clientX: 100, clientY: 100 });
+    fireEvent.click(image);
+
+    expect(push).toHaveBeenLastCalledWith("/photo/c");
+    expect(screen.getByRole("main")).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("keeps the controls when a quality button is clicked", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    await screen.findByAltText("Photo b");
+
+    await user.click(screen.getByRole("button", { name: "Maximum" }));
+
+    expect(screen.getByRole("main")).toHaveAttribute("data-controls", "visible");
   });
 
   it("explains when the photo does not exist and lets the visitor retry", async () => {

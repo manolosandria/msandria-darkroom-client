@@ -33,9 +33,23 @@ Feature: Photo viewer
 
   Scenario: Moving between photos
     Given the visitor is viewing a photo that has neighbours
-    When they press the arrow keys or swipe sideways
+    When they click anywhere on the left or right edge of the window, press the arrow keys or swipe sideways
     Then the previous or next photo opens at its own URL
-    And Escape returns to the gallery
+    And the return arrow or Escape goes back to the gallery
+
+  Scenario: Title and controls over the photo
+    Given a photo is open
+    Then its title is shown over the photo with the arrows and the quality selector
+    When the visitor left-clicks the photo
+    Then the title and every control hide
+    When the visitor moves the mouse
+    Then they show again
+
+  Scenario: Touch screens
+    Given a photo is open on a touch screen
+    When the visitor taps the photo
+    Then the title and controls toggle between shown and hidden
+    And a swipe changes the photo without toggling them
 
   Scenario: A photo that does not exist
     Given a link to a photo the API does not know

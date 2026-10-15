@@ -85,6 +85,47 @@ body {
   opacity: 1;
 }
 
+/* Photo viewer. The title floats over the photo in the serif used by page headings,
+   white with a thin dark outline so it reads on light and dark photos alike. */
+.photo-viewer__title {
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  bottom: 1rem;
+  font-family: Georgia, serif;
+  font-size: clamp(1.25rem, 2.4vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #fff;
+  -webkit-text-stroke: 0.6px rgb(0 0 0 / 0.75);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.45);
+}
+
+.photo-viewer__control {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: #fff;
+  background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(4px);
+}
+
+/* Each side edge of the window is one tall link, so the whole border moves to the
+   neighbouring photo, whether or not its arrow is showing. */
+.photo-viewer__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  width: clamp(3rem, 12vw, 8rem);
+}
+
 /* The upload workspace uses its own paper-and-ink palette in both color schemes. */
 .upload-workspace { background: #f3f2ef; color: #262923; min-height: 100vh; padding: 64px 24px 96px; }
 .upload-container { max-width: 1180px; margin: auto; }
