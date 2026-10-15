@@ -45,6 +45,11 @@ describe("ApiPhotoRepository", () => {
     expect(entries.map((entry) => entry.photo.getId())).toEqual(["pending"]);
     expect(entries[0].optimizationIssues[0].isPending()).toBe(true);
   });
+  it("reads the title corner from the detail response", async () => {
+    const fetchFn = respondWith({ ...apiPhoto("t"), description: null, titlePosition: "TOP_LEFT" });
+    const photo = await new ApiPhotoRepository(API_URL, fetchFn).findById("t");
+    expect(photo?.getTitlePosition()).toBe("TOP_LEFT");
+  });
   it("replaces in one multipart request with edits and without overriding Content-Type", async () => {
     const fetchFn = respondWith({ ...apiPhoto("a/b"), optimizationIssues: [] });
     const photo = new Photo({ id: "a/b", title: "Coast", description: "Story", width: 1920, height: 1080, renditions: [{ width: 640, url: "https://cdn/old.jpg" }], highlights: {} });
@@ -58,6 +63,7 @@ describe("ApiPhotoRepository", () => {
     expect(options.body.get("title")).toBe("Coast");
     expect(options.body.get("description")).toBe("Story");
     expect(options.body.get("highlights")).toBe("{}");
+    expect(options.body.get("titlePosition")).toBe("BOTTOM_LEFT");
     expect(result.photo.getId()).toBe("a/b");
   });
   it.each([401, 403, 409, 413, 429, 500])("does not replay a rejected replacement (%i)", async (status) => {
@@ -323,7 +329,7 @@ describe("ApiPhotoRepository save", () => {
 
   // A save never carries a file: it patches the record the API already has, as JSON,
   // with the session cookie attached like every other call.
-  it("patches the title, the description and the crops as JSON", async () => {
+  it("patches the title, the description, the crops and the title corner as JSON", async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     const photo = await publishedPhoto({ description: "Evening walk" });
 
@@ -339,6 +345,7 @@ describe("ApiPhotoRepository save", () => {
           title: "Photo crop",
           description: "Evening walk",
           highlights: { square: crop },
+          titlePosition: "BOTTOM_LEFT",
         }),
       }),
     );

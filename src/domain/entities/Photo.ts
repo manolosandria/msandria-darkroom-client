@@ -1,6 +1,7 @@
 import { PhotoFrame } from "./PhotoFrame";
 import { PhotoHighlights } from "./PhotoHighlights";
 import { PHOTO_QUALITY_WIDTH, PhotoQuality } from "./PhotoQuality";
+import { DEFAULT_TITLE_POSITION, PhotoTitlePosition } from "./PhotoTitlePosition";
 
 // How the photo was taken, as read from its EXIF by the API. Aperture is an f-number,
 // exposure time is in seconds and focal length in millimetres; null when not recorded.
@@ -38,12 +39,14 @@ export type PhotoParams = {
   createdAt?: Date;
   highlights?: PhotoHighlights;
   frame?: PhotoFrame | null;
+  titlePosition?: PhotoTitlePosition;
   metadata?: PhotoMetadata;
 };
 
 export class Photo {
   private readonly highlights: PhotoHighlights;
   private readonly frame: PhotoFrame | null;
+  private readonly titlePosition: PhotoTitlePosition;
   private readonly metadata: PhotoMetadata;
   private readonly id: string;
   private title: string;
@@ -56,6 +59,7 @@ export class Photo {
   constructor(params: PhotoParams) {
     this.highlights = params.highlights ?? {};
     this.frame = params.frame ?? null;
+    this.titlePosition = params.titlePosition ?? DEFAULT_TITLE_POSITION;
     this.metadata = params.metadata ?? {};
     this.id = params.id;
     this.title = params.title.trim();
@@ -96,6 +100,9 @@ export class Photo {
   }
   getFrame() {
     return this.frame;
+  }
+  getTitlePosition() {
+    return this.titlePosition;
   }
   getMetadata() {
     return this.metadata;

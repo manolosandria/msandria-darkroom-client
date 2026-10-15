@@ -9,6 +9,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
+import { PhotoTitlePosition } from "@/src/domain/entities/PhotoTitlePosition";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
 import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import {
@@ -33,6 +34,13 @@ const SWIPE_DISTANCE = 50;
 const REVEAL_DISTANCE = 8;
 
 const photoHref = (id: string) => `/photo/${encodeURIComponent(id)}`;
+
+const TITLE_CORNER_CLASS: Record<PhotoTitlePosition, string> = {
+  BOTTOM_LEFT: "photo-viewer__title--bottom-left",
+  BOTTOM_RIGHT: "photo-viewer__title--bottom-right",
+  TOP_LEFT: "photo-viewer__title--top-left",
+  TOP_RIGHT: "photo-viewer__title--top-right",
+};
 
 // One photo, large, in its frame. The detail response carries the renditions up to
 // 2560 px; the listing, already fetched by the gallery, only supplies the order so the
@@ -144,57 +152,64 @@ export default function PhotoViewer({
   return (
     <main
       data-controls={controlsVisible ? "visible" : "hidden"}
-      className={`relative flex h-dvh items-center justify-center overflow-hidden bg-neutral-950 text-neutral-100 touch-pan-y select-none ${controlsVisible ? "" : "cursor-none"}`}
+      className={`flex h-dvh flex-col overflow-hidden bg-neutral-950 text-neutral-100 md:flex-row ${controlsVisible ? "" : "cursor-none"}`}
       onPointerMove={onPointerMove}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onClick={onClick}
       onFocusCapture={show}
     >
-      <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
+      {/* The photo's own area. It shrinks to make room for the panel, and the photo fits
+          inside it (container units), so the panel never covers the photo or its frame. */}
+      <div className="photo-viewer__stage touch-pan-y select-none">
+        <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
 
-      {photo && layout && (
-        <figure
-          className="relative m-0"
-          style={{ width: `min(100vw - 2rem, calc((100dvh - 2rem) / ${layout.heightPerWidth}))` }}
-        >
-          <div
-            data-testid="photo-frame"
-            style={{
-              background: frame?.color,
-              padding: `${layout.paddingY}% ${layout.paddingX}%`,
-            }}
+        {photo && layout && (
+          <figure
+            className="relative m-0"
+            style={{ width: `min(100cqw - 2rem, calc((100cqh - 2rem) / ${layout.heightPerWidth}))` }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- API rendition URLs are used verbatim. */}
-            <img
-              src={photo.urlForQuality(quality)}
-              alt={photo.getTitle()}
-              width={photo.getWidth()}
-              height={photo.getHeight()}
-              draggable={false}
-              className="block h-auto w-full"
-            />
-          </div>
-          <figcaption className={`photo-viewer__title ${fade}`}>{photo.getTitle()}</figcaption>
-        </figure>
-      )}
+            <div
+              data-testid="photo-frame"
+              style={{
+                background: frame?.color,
+                padding: `${layout.paddingY}% ${layout.paddingX}%`,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- API rendition URLs are used verbatim. */}
+              <img
+                src={photo.urlForQuality(quality)}
+                alt={photo.getTitle()}
+                width={photo.getWidth()}
+                height={photo.getHeight()}
+                draggable={false}
+                className="block h-auto w-full"
+              />
+            </div>
+            <figcaption
+              data-position={photo.getTitlePosition()}
+              className={`photo-viewer__title ${TITLE_CORNER_CLASS[photo.getTitlePosition()]} ${fade}`}
+            >
+              {photo.getTitle()}
+            </figcaption>
+          </figure>
+        )}
 
-      <Link
-        href="/gallery"
-        aria-label="Back to gallery"
-        className={`photo-viewer__control absolute left-4 top-4 z-20 ${fade}`}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
-          <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+        <Link
+          href="/gallery"
+          aria-label="Back to gallery"
+          className={`photo-viewer__control absolute left-4 top-4 z-20 ${fade}`}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
+            <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
 
-      {/* While the panel is open, its own close button takes this corner. */}
-      {!panelOpen && (
         <button
           type="button"
-          aria-label="Show photo information"
-          onClick={() => setPanelOpen(true)}
+          aria-label={panelOpen ? "Hide photo information" : "Show photo information"}
+          aria-expanded={panelOpen}
+          onClick={() => setPanelOpen((open) => !open)}
           className={`photo-viewer__control absolute right-4 top-4 z-20 ${fade}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -202,36 +217,36 @@ export default function PhotoViewer({
             <path d="M12 11v6M12 7.5v.01" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-      )}
 
-      {photo && panelOpen && (
-        <PhotoInfoPanel photo={photo} onClose={() => setPanelOpen(false)} className={fade} />
-      )}
+        {previousId && (
+          <Link
+            href={photoHref(previousId)}
+            rel="prev"
+            aria-label="Previous photo"
+            className="photo-viewer__edge left-0 justify-start"
+          >
+            <EdgeArrow direction="left" className={fade} />
+          </Link>
+        )}
+        {nextId && (
+          <Link
+            href={photoHref(nextId)}
+            rel="next"
+            aria-label="Next photo"
+            className="photo-viewer__edge right-0 justify-end"
+          >
+            <EdgeArrow direction="right" className={fade} />
+          </Link>
+        )}
 
-      {previousId && (
-        <Link
-          href={photoHref(previousId)}
-          rel="prev"
-          aria-label="Previous photo"
-          className="photo-viewer__edge left-0 justify-start"
-        >
-          <EdgeArrow direction="left" className={fade} />
-        </Link>
-      )}
-      {nextId && (
-        <Link
-          href={photoHref(nextId)}
-          rel="next"
-          aria-label="Next photo"
-          className="photo-viewer__edge right-0 justify-end"
-        >
-          <EdgeArrow direction="right" className={fade} />
-        </Link>
-      )}
-
-      <div className={fade}>
-        <QualitySelector quality={quality} onChange={setQuality} />
+        <div className={fade}>
+          <QualitySelector quality={quality} onChange={setQuality} />
+        </div>
       </div>
+
+      {/* Beside the photo on wide screens and below it on phones. It stays put when the
+          controls hide: it is not over the photo, and hiding it would resize the photo. */}
+      {photo && panelOpen && <PhotoInfoPanel photo={photo} onClose={() => setPanelOpen(false)} />}
     </main>
   );
 }

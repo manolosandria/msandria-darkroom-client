@@ -1,6 +1,7 @@
 import { rateLimitError } from "./rateLimitError";
 import { Photo, PhotoCamera, PhotoRendition } from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
+import { PhotoTitlePosition } from "../domain/entities/PhotoTitlePosition";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
   PhotoOptimizationIssue,
@@ -39,6 +40,7 @@ type ApiPhoto = ApiPhotoListItem & {
   lastEditDate?: string | null;
   origin?: string;
   camera?: PhotoCamera;
+  titlePosition?: PhotoTitlePosition;
 };
 
 type ApiOptimizationIssue = {
@@ -116,6 +118,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     form.append("title", photo.getTitle());
     form.append("description", photo.getDescription()?.trim() || "");
     form.append("highlights", JSON.stringify(photo.getHighlights()));
+    form.append("titlePosition", photo.getTitlePosition());
     const response = await this.send("POST", `/photos/${encodeURIComponent(photo.getId())}/file`, form);
     if (!response.ok) throw await this.toUploadError(response);
     return this.toReviewedPhoto((await response.json()) as ApiReviewedPhoto);
@@ -138,6 +141,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
         // The API keeps "no description" as null; an empty string would store one.
         description: photo.getDescription()?.trim() || null,
         highlights: photo.getHighlights(),
+        titlePosition: photo.getTitlePosition(),
       }),
     );
     if (!response.ok) throw await this.toUploadError(response);
@@ -245,6 +249,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       renditions: entry.renditions,
       highlights: entry.highlights,
       frame: entry.frame,
+      titlePosition: detail?.titlePosition,
       metadata: {
         format: detail?.format,
         capturedAt: detail?.capturedAt,

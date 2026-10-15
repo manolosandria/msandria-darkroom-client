@@ -224,7 +224,7 @@ describe("PhotoViewer", () => {
     expect(text).toContain("FUJIFILM X-T4");
     expect(text).toContain("f/5.6");
     expect(text).toContain("1/500 s");
-    expect(screen.queryByRole("button", { name: "Show photo information" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide photo information" })).toHaveAttribute("aria-expanded", "true");
 
     await user.click(screen.getByRole("button", { name: "Close photo information" }));
     expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
@@ -243,6 +243,59 @@ describe("PhotoViewer", () => {
 
     fireEvent.keyDown(window, { key: "Escape" });
     expect(push).toHaveBeenLastCalledWith("/gallery");
+  });
+
+  it("toggles the panel from the information button too", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    await screen.findByAltText("Photo b");
+
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+    await user.click(screen.getByRole("button", { name: "Hide photo information" }));
+
+    expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the panel open when a click on the photo hides the controls", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    const image = await screen.findByAltText("Photo b");
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+
+    fireEvent.pointerDown(image, { pointerType: "mouse", clientX: 200, clientY: 200 });
+    fireEvent.pointerUp(image, { pointerType: "mouse", clientX: 200, clientY: 200 });
+    fireEvent.click(image, { clientX: 200, clientY: 200 });
+
+    expect(screen.getByRole("main")).toHaveAttribute("data-controls", "hidden");
+    expect(screen.getByRole("complementary", { name: "Photo information" })).toBeInTheDocument();
+  });
+
+  it("puts the title in the bottom-left corner unless the photo chooses another", async () => {
+    setup("b");
+    const caption = await screen.findByText("Photo b", { selector: "figcaption" });
+    expect(caption).toHaveAttribute("data-position", "BOTTOM_LEFT");
+    expect(caption.className).toContain("photo-viewer__title--bottom-left");
+  });
+
+  it("puts the title in the corner chosen for the photo", async () => {
+    const photo = new Photo({
+      id: "t",
+      title: "Top",
+      width: 10,
+      height: 10,
+      titlePosition: "TOP_RIGHT",
+      renditions: [{ width: 640, url: "https://cdn/t" }],
+    });
+    render(
+      <PhotoViewer
+        photoId="t"
+        getPhoto={{ execute: vi.fn().mockResolvedValue(photo) }}
+        getAllPhotos={{ execute: vi.fn().mockResolvedValue([photo]) }}
+      />,
+    );
+
+    const caption = await screen.findByText("Top", { selector: "figcaption" });
+    expect(caption.className).toContain("photo-viewer__title--top-right");
   });
 
   it("neither hides the controls nor swipes when the panel is clicked or dragged", async () => {
