@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Photo } from "@/src/domain/entities/Photo";
-import { getAllPhotos, savePhoto } from "@/src/infrastructure/photoServices";
+import { getAllPhotos, getPhotoById, savePhoto } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
@@ -78,7 +78,7 @@ function PhotoLibrary() {
         })}
       </nav>
       {selected ? (
-        <PhotoEditor
+        <PhotoDetailEditor
           key={selected.getId()}
           photo={selected}
           onSaved={(updated) => {
@@ -96,6 +96,19 @@ function PhotoLibrary() {
       )}
     </div>
   );
+}
+
+// A listing item is never used to initialize an editor: it has no description.
+function PhotoDetailEditor({ photo, onSaved }: {
+  photo: Photo;
+  onSaved: (photo: Photo) => void;
+}) {
+  const id = photo.getId();
+  const loadDetail = useCallback(() => getPhotoById.execute(id), [id]);
+  const { data, loading, error, retry } = usePhotoFetch(loadDetail, "Photo not found.");
+  if (loading) return <p role="status">Loading photograph…</p>;
+  if (error) return <ErrorMessage message={error} onRetry={retry} />;
+  return data ? <PhotoEditor photo={data} onSaved={onSaved} /> : null;
 }
 
 function thumbnailStyle(photo: Photo): React.CSSProperties {

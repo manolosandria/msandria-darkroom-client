@@ -3,13 +3,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Photo } from "@/src/domain/entities/Photo";
 import { User } from "@/src/domain/entities/User";
-import { getAllPhotos, savePhoto } from "@/src/infrastructure/photoServices";
+import { getAllPhotos, getPhotoById, savePhoto } from "@/src/infrastructure/photoServices";
 import { SessionProvider } from "../SessionProvider";
 import ManagePhotos from "../ManagePhotos";
 
 vi.mock("@/src/infrastructure/photoServices", () => ({
   getAllPhotos: { execute: vi.fn() },
   savePhoto: { execute: vi.fn() },
+  getPhotoById: { execute: vi.fn() },
 }));
 const photo = new Photo({
   id: "photo",
@@ -40,6 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getAllPhotos.execute).mockResolvedValue([photo]);
   vi.mocked(savePhoto.execute).mockResolvedValue();
+  vi.mocked(getPhotoById.execute).mockResolvedValue(photo);
 });
 
 describe("ManagePhotos", () => {
@@ -48,7 +50,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
-    expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
+    expect(await screen.findByAltText("square thumbnail preview")).toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Title"));
     await userEvent.type(screen.getByLabelText("Title"), "Coastal light");
     await userEvent.click(
@@ -64,12 +66,38 @@ describe("ManagePhotos", () => {
       screen.getByRole("button", { name: "Coastal light" }),
     ).toBeInTheDocument();
   });
+  it("loads the description from detail before editing a compact listing item", async () => {
+    const detail = new Photo({ id: "photo", title: "The coast", width: 1800, height: 1200,
+      description: "A story only in the detail", renditions: [{ width: 1800, url: "https://cdn/detail.jpg" }] });
+    vi.mocked(getPhotoById.execute).mockResolvedValue(detail);
+    show();
+    expect(getPhotoById.execute).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    expect(await screen.findByLabelText("Description")).toHaveValue("A story only in the detail");
+    expect(getPhotoById.execute).toHaveBeenCalledWith("photo");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Changes saved.");
+    expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getDescription()).toBe("A story only in the detail");
+  });
+
+  it("offers retry after detail fails without opening an empty editor", async () => {
+    vi.mocked(getPhotoById.execute).mockRejectedValueOnce(new Error("offline"));
+    show();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    await screen.findByText("Failed to fetch photos");
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
+    expect(savePhoto.execute).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /retry|try again/i }));
+    expect(await screen.findByLabelText("Title")).toHaveValue("The coast");
+  });
+
   it("keeps edits available after a failed save", async () => {
     vi.mocked(savePhoto.execute).mockRejectedValueOnce(new Error("offline"));
     show();
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
+    await screen.findByLabelText("Description");
     await userEvent.type(screen.getByLabelText("Description"), "Evening walk");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>

@@ -48,3 +48,8 @@ Feature: API photo repository
   Scenario: Saving, deleting and collections are not supported yet
     When "save", "delete" or "findCollection" is called
     Then it rejects with an explicit "not implemented" error
+
+  Scenario: Read a compact public listing
+    When the API returns listing items without descriptions or technical metadata
+    Then the gallery displays their titles and responsive renditions
+    And it does not fetch every photo detail

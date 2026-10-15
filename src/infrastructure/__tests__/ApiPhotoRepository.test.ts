@@ -43,6 +43,16 @@ describe("ApiPhotoRepository", () => {
       expect(photos?.[0].getAspectRatio()).toBeCloseTo(1920 / 1080);
     });
 
+    it("accepts compact listing items without detail fields", async () => {
+      const item = { id: "compact", title: "Coast", width: 1800, height: 1200,
+        createdAt: "2026-10-15T00:00:00.000Z", highlights: {},
+        renditions: [{ width: 1280, url: "https://cdn/coast-1280.jpg" }] };
+      const photos = await new ApiPhotoRepository(API_URL, respondWith([item])).findAll();
+      expect(photos?.[0].getDescription()).toBeUndefined();
+      expect(photos?.[0].getMetadata().format).toBeUndefined();
+      expect(photos?.[0].urlForWidth(2560)).toBe("https://cdn/coast-1280.jpg");
+    });
+
     it("tolerates a trailing slash in the base url", async () => {
       const fetchFn = respondWith([]);
 

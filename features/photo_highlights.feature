@@ -29,3 +29,10 @@ Feature: An upload workspace with manual thumbnail crops
     Given the administrator opens a published photograph in the management screen
     When they save its title, description and highlights
     Then the existing photograph is updated without another file upload
+
+  Scenario: Edit a photo from a compact listing
+    Given the listing does not include descriptions
+    When the administrator selects a photo to edit
+    Then its detail is loaded before opening the editor
+    And saving preserves the description returned by the detail
+    But a failed detail request offers retry without opening an incomplete editor
