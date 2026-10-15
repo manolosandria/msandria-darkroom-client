@@ -170,3 +170,16 @@ fact merged. Without a fetch, the local view is simply wrong.
 - `fetch.prune` is enabled in this clone, so any `git fetch` or `git pull` already drops
   branches that the remote no longer has. A fresh clone needs
   `git config fetch.prune true` again.
+
+## Public photo responses
+
+`GET /photos` returns compact listing items: id, title, dimensions, publication date,
+frame, highlights and responsive renditions up to 1280 pixels wide (without upscaling).
+Descriptions and technical metadata come from public `GET /photos/:id`, whose
+renditions reach 2560 pixels. The browser selects from the supplied renditions using
+`srcset` and `sizes`; it does not download every listed URL.
+
+`/manage` loads the selected photo's detail before enabling its editor, preserving
+its description and highlights when saving. A failed detail request offers retry
+without opening an incomplete editor. This does not add a public detail viewer or
+quality selector yet.

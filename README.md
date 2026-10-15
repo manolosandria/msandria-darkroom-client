@@ -116,3 +116,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Public photo responses
+
+`GET /photos` returns compact listing items: id, title, dimensions, publication date,
+frame, highlights and responsive renditions up to 1280 pixels wide (without upscaling).
+Descriptions and technical metadata come from public `GET /photos/:id`, whose
+renditions reach 2560 pixels. The browser selects from the supplied renditions using
+`srcset` and `sizes`; it does not download every listed URL.
+
+`/manage` loads the selected photo's detail before enabling its editor, preserving
+its description and highlights when saving. A failed detail request offers retry
+without opening an incomplete editor. This does not add a public detail viewer or
+quality selector yet.

@@ -18,15 +18,18 @@ const NOT_IMPLEMENTED_MESSAGE =
 
 // The subset of the API's photo response the gallery uses. Image URLs come
 // ready-made from the API: the client never talks to the image host directly.
-type ApiPhoto = {
+type ApiPhotoListItem = {
   id: string;
   title: string;
-  description: string | null;
   width: number;
   height: number;
   createdAt: string;
   renditions: PhotoRendition[];
   highlights?: PhotoHighlights;
+};
+
+type ApiPhoto = ApiPhotoListItem & {
+  description: string | null;
   format?: string;
   capturedAt?: string | null;
   lastEditDate?: string | null;
@@ -63,7 +66,7 @@ export class ApiPhotoRepository implements PhotoRepository {
 
   async findAll(): Promise<Photo[] | null> {
     const response = await this.get("/photos");
-    const entries = (await this.ensureOk(response).json()) as ApiPhoto[];
+    const entries = (await this.ensureOk(response).json()) as ApiPhotoListItem[];
     const photos = entries
       .filter((entry) => this.isDeliverable(entry))
       .map((entry) => this.toDomainPhoto(entry));
@@ -193,25 +196,26 @@ export class ApiPhotoRepository implements PhotoRepository {
   }
 
   // A photo whose stored file is gone comes without renditions: nothing to show.
-  private isDeliverable(entry: ApiPhoto) {
+  private isDeliverable(entry: ApiPhotoListItem) {
     return entry.renditions.length > 0;
   }
 
-  private toDomainPhoto(entry: ApiPhoto): Photo {
+  private toDomainPhoto(entry: ApiPhotoListItem | ApiPhoto): Photo {
+    const detail = "description" in entry ? entry : undefined;
     return new Photo({
       id: entry.id,
       title: entry.title,
-      description: entry.description ?? undefined,
+      description: detail?.description ?? undefined,
       width: entry.width,
       height: entry.height,
       createdAt: new Date(entry.createdAt),
       renditions: entry.renditions,
       highlights: entry.highlights,
       metadata: {
-        format: entry.format,
-        capturedAt: entry.capturedAt,
-        lastEditDate: entry.lastEditDate,
-        origin: entry.origin,
+        format: detail?.format,
+        capturedAt: detail?.capturedAt,
+        lastEditDate: detail?.lastEditDate,
+        origin: detail?.origin,
       },
     });
   }
