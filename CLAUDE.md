@@ -208,7 +208,16 @@ a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) 
 renditions are ever requested, which favours browser and CDN caches. The choice is
 kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads and
 writes are guarded and fall back to memory), and it applies to every photo opened.
-The metadata side panel and comments are not part of the viewer yet.
+Ratings and comments are not part of the viewer yet.
+
+The **info panel** (`PhotoInfoPanel`) opens from the ⓘ button in the top-right corner
+and closes with its own ✕ (which takes that corner while it is open) or with Escape,
+which closes the panel before it leaves the photo. Top to bottom it shows the title,
+the description and the details the API recorded from the file's EXIF: capture date
+(in the project's time zone), camera, lens, focal length, aperture, shutter speed and
+ISO, written in photographers' notation by `photoDetails` and left out when missing.
+Ratings and comments will go below them. The panel fades with the other controls, and
+clicking, selecting or dragging inside it neither hides the controls nor swipes.
 
 ## Responsive photo delivery
 

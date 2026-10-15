@@ -2,7 +2,20 @@ import { PhotoFrame } from "./PhotoFrame";
 import { PhotoHighlights } from "./PhotoHighlights";
 import { PHOTO_QUALITY_WIDTH, PhotoQuality } from "./PhotoQuality";
 
+// How the photo was taken, as read from its EXIF by the API. Aperture is an f-number,
+// exposure time is in seconds and focal length in millimetres; null when not recorded.
+export type PhotoCamera = {
+  make: string | null;
+  model: string | null;
+  lens: string | null;
+  iso: number | null;
+  aperture: number | null;
+  exposureTime: number | null;
+  focalLength: number | null;
+};
+
 export type PhotoMetadata = {
+  camera?: PhotoCamera;
   format?: string;
   capturedAt?: string | null;
   lastEditDate?: string | null;

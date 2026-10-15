@@ -21,7 +21,7 @@ export function QualitySelector({ quality, onChange }: QualitySelectorProps) {
     <div
       role="group"
       aria-label="Image quality"
-      className="fixed bottom-4 right-4 z-10 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
+      className="fixed bottom-4 right-4 z-40 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
     >
       {PHOTO_QUALITIES.map((level) => (
         <button
