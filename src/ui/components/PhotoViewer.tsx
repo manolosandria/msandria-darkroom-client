@@ -19,6 +19,7 @@ import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { usePhotoQuality } from "@/src/ui/hooks/usePhotoQuality";
 import { framedLayout } from "@/src/ui/framedLayout";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
+import { PhotoInfoPanel } from "./PhotoInfoPanel";
 import { QualitySelector } from "./QualitySelector";
 
 interface PhotoViewerProps {
@@ -47,6 +48,7 @@ export default function PhotoViewer({
   const router = useRouter();
   const [quality, setQuality] = usePhotoQuality();
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
   const lastPointerType = useRef("mouse");
@@ -72,11 +74,15 @@ export default function PhotoViewer({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") go(previousId);
       else if (event.key === "ArrowRight") go(nextId);
-      else if (event.key === "Escape") router.push("/gallery");
+      // Escape closes the panel first, and only then leaves the photo.
+      else if (event.key === "Escape") {
+        if (panelOpen) setPanelOpen(false);
+        else router.push("/gallery");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, previousId, nextId, router]);
+  }, [go, previousId, nextId, router, panelOpen]);
 
   const show = () => {
     hiddenAt.current = null;
@@ -96,6 +102,11 @@ export default function PhotoViewer({
 
   const onPointerDown = (event: PointerEvent) => {
     lastPointerType.current = event.pointerType || "mouse";
+    // Scrolling or selecting text in the panel is not a swipe.
+    if (insidePanel(event.target)) {
+      swipeStart.current = null;
+      return;
+    }
     swipeStart.current = { x: event.clientX, y: event.clientY };
     swiped.current = false;
   };
@@ -111,9 +122,9 @@ export default function PhotoViewer({
     go(dx > 0 ? previousId : nextId);
   };
 
-  // Clicks on the edges, the back arrow or the quality buttons do their own job.
+  // Clicks on the edges, the back arrow, the buttons or the panel do their own job.
   const onClick = (event: MouseEvent) => {
-    if ((event.target as Element).closest("a, button")) return;
+    if ((event.target as Element).closest("a, button") || insidePanel(event.target)) return;
     if (swiped.current) {
       swiped.current = false;
       return;
@@ -178,6 +189,25 @@ export default function PhotoViewer({
         </svg>
       </Link>
 
+      {/* While the panel is open, its own close button takes this corner. */}
+      {!panelOpen && (
+        <button
+          type="button"
+          aria-label="Show photo information"
+          onClick={() => setPanelOpen(true)}
+          className={`photo-viewer__control absolute right-4 top-4 z-20 ${fade}`}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M12 11v6M12 7.5v.01" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
+
+      {photo && panelOpen && (
+        <PhotoInfoPanel photo={photo} onClose={() => setPanelOpen(false)} className={fade} />
+      )}
+
       {previousId && (
         <Link
           href={photoHref(previousId)}
@@ -221,4 +251,8 @@ function EdgeArrow({ direction, className }: { direction: "left" | "right"; clas
       </svg>
     </span>
   );
+}
+
+function insidePanel(target: EventTarget) {
+  return target instanceof Element && target.closest("[data-viewer-panel]") !== null;
 }

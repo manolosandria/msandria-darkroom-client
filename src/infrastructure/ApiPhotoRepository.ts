@@ -1,5 +1,5 @@
 import { rateLimitError } from "./rateLimitError";
-import { Photo, PhotoRendition } from "../domain/entities/Photo";
+import { Photo, PhotoCamera, PhotoRendition } from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
@@ -38,6 +38,7 @@ type ApiPhoto = ApiPhotoListItem & {
   capturedAt?: string | null;
   lastEditDate?: string | null;
   origin?: string;
+  camera?: PhotoCamera;
 };
 
 type ApiOptimizationIssue = {
@@ -249,6 +250,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
         capturedAt: detail?.capturedAt,
         lastEditDate: detail?.lastEditDate,
         origin: detail?.origin,
+        camera: detail?.camera,
       },
     });
   }

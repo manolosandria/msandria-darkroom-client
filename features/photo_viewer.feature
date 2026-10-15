@@ -51,6 +51,19 @@ Feature: Photo viewer
     Then the title and controls toggle between shown and hidden
     And a swipe changes the photo without toggling them
 
+  Scenario: Opening the info panel
+    Given a photo is open
+    When the visitor presses the information button
+    Then a side panel shows the title, then the description, then the details
+    And the details list capture date, camera, lens, focal length, aperture, shutter speed and ISO when recorded
+    When the visitor presses Escape
+    Then the panel closes and the photo stays open
+
+  Scenario: A photo without camera details
+    Given a photo whose file had no EXIF
+    When the visitor opens the info panel
+    Then it says no camera details were recorded
+
   Scenario: A photo that does not exist
     Given a link to a photo the API does not know
     When the viewer opens

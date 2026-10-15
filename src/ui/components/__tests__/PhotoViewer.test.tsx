@@ -11,6 +11,11 @@ function makePhoto(id: string, frame?: ReturnType<Photo["getFrame"]>) {
   return new Photo({
     id,
     title: `Photo ${id}`,
+    description: `The story of ${id}`,
+    metadata: {
+      capturedAt: "2024-05-10T20:23:01.000Z",
+      camera: { make: "FUJIFILM", model: "X-T4", lens: null, iso: 160, aperture: 5.6, exposureTime: 0.002, focalLength: 23 },
+    },
     width: 3000,
     height: 2000,
     frame,
@@ -202,6 +207,74 @@ describe("PhotoViewer", () => {
     await user.click(screen.getByRole("button", { name: "Maximum" }));
 
     expect(screen.getByRole("main")).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("opens and closes the info panel with title, description and camera details", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    await screen.findByAltText("Photo b");
+    expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+
+    const panel = screen.getByRole("complementary", { name: "Photo information" });
+    const text = panel.textContent ?? "";
+    expect(text.indexOf("Photo b")).toBeLessThan(text.indexOf("The story of b"));
+    expect(text.indexOf("The story of b")).toBeLessThan(text.indexOf("Details"));
+    expect(text).toContain("FUJIFILM X-T4");
+    expect(text).toContain("f/5.6");
+    expect(text).toContain("1/500 s");
+    expect(screen.queryByRole("button", { name: "Show photo information" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close photo information" }));
+    expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show photo information" })).toBeInTheDocument();
+  });
+
+  it("closes the panel with Escape before leaving the photo", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    await screen.findByAltText("Photo b");
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(push).toHaveBeenLastCalledWith("/gallery");
+  });
+
+  it("neither hides the controls nor swipes when the panel is clicked or dragged", async () => {
+    const user = userEvent.setup();
+    setup("b");
+    await screen.findByAltText("Photo b");
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+    const panel = screen.getByRole("complementary", { name: "Photo information" });
+
+    fireEvent.pointerDown(panel, { pointerType: "mouse", clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(panel, { pointerType: "mouse", clientX: 100, clientY: 100 });
+    fireEvent.click(panel);
+
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("main")).toHaveAttribute("data-controls", "visible");
+  });
+
+  it("says so when no camera details were recorded", async () => {
+    const user = userEvent.setup();
+    const bare = new Photo({ id: "x", title: "Bare", width: 10, height: 10, renditions: [{ width: 640, url: "https://cdn/x" }] });
+    render(
+      <PhotoViewer
+        photoId="x"
+        getPhoto={{ execute: vi.fn().mockResolvedValue(bare) }}
+        getAllPhotos={{ execute: vi.fn().mockResolvedValue([bare]) }}
+      />,
+    );
+    await screen.findByAltText("Bare");
+
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+
+    expect(screen.getByText("No camera details were recorded for this photo.")).toBeInTheDocument();
   });
 
   it("explains when the photo does not exist and lets the visitor retry", async () => {
