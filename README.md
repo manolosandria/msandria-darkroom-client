@@ -177,3 +177,19 @@ pending list when no issues remain. Normal metadata edits still use `PATCH`.
 
 The header stacks below the desktop breakpoint and allows wrapping between the
 logo, navigation and session controls, including the Google sign-in button.
+
+## Account deletion
+
+The signed-in name in the header links to `/account`. The account page loads
+`GET /auth/me/deletion-preview` before offering deletion and requires an explicit
+confirmation. The last administrator sees a warning that restoring administrative
+access requires contacting the database administrator; deletion remains available
+once acknowledged. The API rechecks that condition when processing the deletion.
+
+`DELETE /auth/me` sends only `confirmLastAdmin`, with session credentials. Successful
+deletion clears shared session state and disables Google auto-select. Failures keep
+the current UI session; conflicts require reviewing the warning and acknowledging
+again, without automatically replaying a destructive request. Every server session
+is invalidated, while published gallery photographs and the Google account remain.
+Signing in again creates a new viewer account without restoring administrator access.
+The privacy notice remains a separate pending task.

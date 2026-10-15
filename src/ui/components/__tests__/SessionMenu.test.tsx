@@ -75,6 +75,7 @@ describe("SessionMenu", () => {
     renderMenu();
 
     expect(await screen.findByText("Visitante")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute("href", "/account");
   });
 
   it("marks the administrator", async () => {

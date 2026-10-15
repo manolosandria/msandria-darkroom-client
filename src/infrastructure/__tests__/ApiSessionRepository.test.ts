@@ -26,6 +26,29 @@ const optionsOf = (fetchFn: ReturnType<typeof vi.fn>) =>
   fetchFn.mock.calls[0][1] as RequestInit;
 
 describe("ApiSessionRepository", () => {
+  describe("account deletion", () => {
+    it("loads the current user's last administrator warning with credentials", async () => {
+      const fetchFn = respondWith({ isLastAdmin: true });
+      await expect(new ApiSessionRepository(API_URL, fetchFn).deletionPreview()).resolves.toEqual({ isLastAdmin: true });
+      expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/auth/me/deletion-preview`, { method: "GET", credentials: "include" });
+    });
+    it("deletes only the current account with an explicit boolean acknowledgement", async () => {
+      const fetchFn = respondWith({ status: "deleted" });
+      await new ApiSessionRepository(API_URL, fetchFn).deleteAccount(true);
+      expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/auth/me`, { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmLastAdmin: true }) });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+    it.each([["LAST_ADMIN_CONFIRMATION_REQUIRED", "lastAdmin"], ["ACCOUNT_DELETION_CHANGED", "changed"]])("maps %s to a confirmation requirement without retry", async (code, reason) => {
+      const fetchFn = respondWith({ code }, 409);
+      await expect(new ApiSessionRepository(API_URL, fetchFn).deleteAccount(false)).rejects.toMatchObject({ reason });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+    it.each([401, 500])("reports a deletion failure (%i)", async (status) => {
+      const fetchFn = respondWith({}, status);
+      await expect(new ApiSessionRepository(API_URL, fetchFn).deleteAccount(false)).rejects.toThrow(`The API answered ${status}`);
+    });
+  });
+
   describe("signIn", () => {
     it("reports throttling without retrying a Google token", async () => {
       const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "42" } }));

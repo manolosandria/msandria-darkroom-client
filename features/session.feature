@@ -85,3 +85,28 @@ Feature: Signing in with Google
     When the sign-in API returns 429 with Retry-After
     Then I see how long to wait before trying again
     And the Google token is not automatically sent again
+
+  Scenario: Delete the signed-in account
+    Given I am signed in
+    When I open my account and confirm permanent deletion
+    Then my gallery account and all its sessions are deleted
+    And the shared session state is cleared
+    And my Google account and the gallery photographs remain
+
+  Scenario: Delete the last administrator account
+    Given I am the last administrator
+    When I open the deletion confirmation
+    Then I see that I must contact the database administrator to restore administrative access
+    And I can permanently delete my account after acknowledging that warning
+
+  Scenario: Administrator status changes before deletion
+    Given another administrator existed when I opened the account page
+    And I am now the last administrator
+    When I attempt deletion without acknowledging that warning
+    Then I must review the warning and confirm again
+    And the deletion request is not replayed automatically
+
+  Scenario: Cancel deletion
+    Given I opened the account deletion confirmation
+    When I cancel
+    Then my account and sessions remain active

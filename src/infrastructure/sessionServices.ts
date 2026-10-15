@@ -1,3 +1,5 @@
+import { GetAccountDeletionPreview } from "../application/use-cases/GetAccountDeletionPreview";
+import { DeleteAccount } from "../application/use-cases/DeleteAccount";
 import { GetCurrentUser } from "../application/use-cases/GetCurrentUser";
 import { SignIn } from "../application/use-cases/SignIn";
 import { SignOut } from "../application/use-cases/SignOut";
@@ -13,3 +15,6 @@ export const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 export const signIn = new SignIn(sessionRepository);
 export const getCurrentUser = new GetCurrentUser(sessionRepository);
 export const signOut = new SignOut(sessionRepository);
+
+export const getAccountDeletionPreview = new GetAccountDeletionPreview(sessionRepository);
+export const deleteAccount = new DeleteAccount(sessionRepository);
