@@ -108,3 +108,12 @@ Feature: Publishing a photo through the API
     Given a signed-in administrator
     When the photo is published and the API has not answered yet
     Then the publish button is disabled
+
+  Scenario: Pause publishing when the API rate limits an upload
+    Given some photos have already been published and others are queued
+    When an upload receives 429 with Retry-After
+    Then the wait is shown and the queue pauses
+    And the current photo keeps its edits and remaining photos return to draft
+    And no request is retried automatically
+    When I retry publishing after waiting
+    Then only failed and draft photos are sent

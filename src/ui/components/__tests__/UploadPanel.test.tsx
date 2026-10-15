@@ -1,3 +1,4 @@
+import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fireEvent,
@@ -143,6 +144,22 @@ describe("Upload workspace", () => {
       description: "A story",
       title: "first",
     });
+  });
+  it("pauses on 429, preserves edits and never republishes completed photos on retry", async () => {
+    execute.mockResolvedValueOnce({ photo, optimizationIssues: [] }).mockRejectedValueOnce(new RateLimitError(42));
+    renderPanel();
+    await select([file(), file("second.jpg"), file("third.jpg")]);
+    await userEvent.type(screen.getAllByLabelText(/Description/)[1], "Keep this story");
+    await userEvent.click(screen.getByRole("button", { name: "Publish 3 photos" }));
+    await screen.findByText(/Publishing paused/);
+    expect(screen.getByText("Too many attempts. Try again in 42 seconds.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Publish 2 photos" })).toBeEnabled());
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByLabelText(/Description/)[1]).toHaveValue("Keep this story");
+    await userEvent.click(screen.getByRole("button", { name: "Publish 2 photos" }));
+    await waitFor(() => expect(execute).toHaveBeenCalledTimes(4));
+    expect(execute.mock.calls[2][0]).toMatchObject({ description: "Keep this story", file: expect.objectContaining({ name: "second.jpg" }) });
+    expect(execute.mock.calls[3][0].file.name).toBe("third.jpg");
   });
   it("sends manually selected highlights with the photo", async () => {
     renderPanel();

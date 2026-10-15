@@ -1,3 +1,4 @@
+import { rateLimitError } from "./rateLimitError";
 import { Photo, PhotoRendition } from "../domain/entities/Photo";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
@@ -152,7 +153,8 @@ export class ApiPhotoRepository implements PhotoRepository {
 
   // Each refusal means something different to whoever is publishing, so the status is
   // translated here rather than handed on as a number.
-  private async toUploadError(response: Response): Promise<PhotoUploadError> {
+  private async toUploadError(response: Response): Promise<Error> {
+    if (response.status === 429) return rateLimitError(response);
     if (response.status === 401) {
       return new PhotoUploadError(
         "unauthenticated",

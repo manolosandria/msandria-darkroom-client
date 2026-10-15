@@ -201,3 +201,15 @@ This change does not add the detail viewer or a manual quality selector.
 
 See [photo delivery verification](docs/photo-delivery-verification.md) for the tested
 viewports, synthetic density/zoom budgets, cache observations and remaining limits.
+
+## Rate-limited login and uploads
+
+The API can return `429` with a `Retry-After` delay in seconds. Repositories translate
+that response to the domain's `RateLimitError`; the UI explains the wait rather than
+calling it an API outage. Invalid or unavailable delay headers use a generic wait
+message. Sign-in and upload requests are never automatically replayed.
+
+On an upload rate limit, the current photo remains failed with its edits intact,
+remaining queued photos return to draft, and publishing pauses. A manual retry sends
+only failed/draft photos, preserving photos already published. Default API quotas
+are 10 sign-in attempts/minute per IP and 30 upload attempts/minute per admin account.
