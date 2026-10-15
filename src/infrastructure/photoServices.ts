@@ -1,3 +1,5 @@
+import { GetUnoptimizedPhotos } from "../application/use-cases/GetUnoptimizedPhotos";
+import { ReplacePhoto } from "../application/use-cases/ReplacePhoto";
 import { GetAllPhotos } from "../application/use-cases/GetAllPhotos";
 import { GetPhotoById } from "../application/use-cases/GetPhotoById";
 import { UploadPhoto } from "../application/use-cases/UploadPhoto";
@@ -11,3 +13,6 @@ export const getAllPhotos = new GetAllPhotos(photoRepository);
 export const getPhotoById = new GetPhotoById(photoRepository);
 export const uploadPhoto = new UploadPhoto(photoRepository);
 export const savePhoto = new SavePhoto(photoRepository);
+
+export const getUnoptimizedPhotos = new GetUnoptimizedPhotos(photoRepository);
+export const replacePhoto = new ReplacePhoto(photoRepository);

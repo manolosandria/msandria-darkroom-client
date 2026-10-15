@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
 import { User } from "@/src/domain/entities/User";
-import { getAllPhotos, getPhotoById, savePhoto } from "@/src/infrastructure/photoServices";
+import { getAllPhotos, getPhotoById, savePhoto, getUnoptimizedPhotos, replacePhoto } from "@/src/infrastructure/photoServices";
 import { SessionProvider } from "../SessionProvider";
 import ManagePhotos from "../ManagePhotos";
 
 vi.mock("@/src/infrastructure/photoServices", () => ({
   getAllPhotos: { execute: vi.fn() },
+  getUnoptimizedPhotos: { execute: vi.fn() },
+  replacePhoto: { execute: vi.fn() },
   savePhoto: { execute: vi.fn() },
   getPhotoById: { execute: vi.fn() },
 }));
@@ -45,6 +48,38 @@ beforeEach(() => {
 });
 
 describe("ManagePhotos", () => {
+  it("shows only outstanding photos and removes a resolved replacement from the pending list", async () => {
+    const issue = new PhotoOptimizationIssue({ kind: "LOCATION", resolution: "NEEDS_REUPLOAD", unit: "TAG_COUNT", currentValue: "2", recommendedValue: "0" });
+    vi.mocked(getUnoptimizedPhotos.execute).mockResolvedValue([{ photo, optimizationIssues: [issue] }]);
+    const replacement = new Photo({ id: "photo", title: "The coast", width: 2400, height: 1600, renditions: [{ width: 640, url: "https://cdn/new.jpg" }] });
+    vi.mocked(replacePhoto.execute).mockResolvedValue({ photo: replacement, optimizationIssues: [] });
+    show();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Only photos needing optimization" }));
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    expect(await screen.findByText("GPS location")).toBeInTheDocument();
+    const file = new File(["image"], "new.jpg", { type: "image/jpeg" });
+    await userEvent.upload(screen.getByLabelText("Replacement file"), file);
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("No photos need optimization.");
+    expect(replacePhoto.execute).toHaveBeenCalledWith(expect.any(Photo), file);
+    expect(savePhoto.execute).not.toHaveBeenCalled();
+  });
+  it("keeps the chosen file and edits available after replacement fails", async () => {
+    vi.mocked(replacePhoto.execute).mockRejectedValue(new Error("offline"));
+    show();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    const input = await screen.findByLabelText("Replacement file");
+    const file = new File(["image"], "new.jpg", { type: "image/jpeg" });
+    await userEvent.upload(input, file);
+    await userEvent.type(screen.getByLabelText("Description"), "Preserved story");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("Description")).toHaveValue("Preserved story");
+    expect((input as HTMLInputElement).files?.[0]).toBe(file);
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(replacePhoto.execute).toHaveBeenCalledTimes(2);
+  });
+
   it("loads persisted highlights and saves edits without uploading another file", async () => {
     show();
     await userEvent.click(

@@ -213,3 +213,21 @@ On an upload rate limit, the current photo remains failed with its edits intact,
 remaining queued photos return to draft, and publishing pauses. A manual retry sends
 only failed/draft photos, preserving photos already published. Default API quotas
 are 10 sign-in attempts/minute per IP and 30 upload attempts/minute per admin account.
+
+## Photo maintenance
+
+On `/manage`, **Only photos needing optimization** queries admin-only
+`GET /photos/unoptimized`. Pending issues require another upload or export;
+`FIXED_ON_UPLOAD` entries remain history rather than pending work. An empty result
+is shown as a completed queue.
+
+Choose a **Replacement file** and save to submit the file and edits together using
+`POST /photos/:id/file`. The API preserves the record, publication date, relations,
+frame and existing crops, and returns new dimensions, renditions and optimization
+results. Review crops after changing image proportions. Failures preserve the file
+and edits for manual retry; requests are never replayed automatically. A concurrent
+replacement returns a conflict requiring reload. Completed replacements leave the
+pending list when no issues remain. Normal metadata edits still use `PATCH`.
+
+The header stacks below the desktop breakpoint and allows wrapping between the
+logo, navigation and session controls, including the Google sign-in button.

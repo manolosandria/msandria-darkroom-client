@@ -46,3 +46,8 @@ export interface PhotoRepository {
     findAll(): Promise<Photo[] | null>;
     findCollection(id: string): Promise<Photo[] | null>;
 }
+
+export interface PhotoMaintenanceRepository {
+  findUnoptimized(): Promise<PublishedPhoto[]>;
+  replace(photo: Photo, file: File): Promise<PublishedPhoto>;
+}

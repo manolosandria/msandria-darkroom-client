@@ -117,3 +117,21 @@ Feature: Publishing a photo through the API
     And no request is retried automatically
     When I retry publishing after waiting
     Then only failed and draft photos are sent
+
+  Scenario: Filter photos that still need optimization
+    Given an administrator managing published photos
+    When they enable only photos needing optimization
+    Then photos with pending issues are shown
+    And corrected upload history does not count as pending
+
+  Scenario: Replace a published file and keep its record
+    Given an administrator editing a published photo
+    When they choose a replacement file and save
+    Then the file and edits are sent in one request
+    And the updated image and optimization report are displayed
+    And its identity and publication date are preserved
+
+  Scenario: Retry a rejected replacement
+    Given a replacement request fails
+    Then the selected file and edits remain available
+    And no replacement is retried automatically

@@ -3,15 +3,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { PublishedPhoto } from "@/src/domain/repositories/PhotoRepository";
+import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
+import { OptimizationIssueList } from "./OptimizationIssueList";
 import { Photo } from "@/src/domain/entities/Photo";
-import { getAllPhotos, getPhotoById, savePhoto } from "@/src/infrastructure/photoServices";
+import {
+  getAllPhotos,
+  getPhotoById,
+  savePhoto,
+  getUnoptimizedPhotos,
+  replacePhoto,
+} from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { useSessionValue } from "./SessionProvider";
-
-const loadPhotos = () => getAllPhotos.execute();
 
 export default function ManagePhotos() {
   const session = useSessionValue();
@@ -31,7 +38,7 @@ export default function ManagePhotos() {
         ) : session.error ? (
           <ErrorMessage message={session.error} onRetry={session.reload} />
         ) : session.user?.isAdmin() ? (
-          <PhotoLibrary />
+          <PhotoManager />
         ) : (
           <p>Sign in as the gallery&apos;s administrator to manage photos.</p>
         )}
@@ -40,52 +47,104 @@ export default function ManagePhotos() {
   );
 }
 
-function PhotoLibrary() {
+function PhotoManager() {
+  const [pendingOnly, setPendingOnly] = useState(false);
+  return (
+    <>
+      <label className="block my-4">
+        <input
+          type="checkbox"
+          checked={pendingOnly}
+          onChange={(event) => setPendingOnly(event.target.checked)}
+        />{" "}
+        Only photos needing optimization
+      </label>
+      <PhotoLibrary key={String(pendingOnly)} pendingOnly={pendingOnly} />
+    </>
+  );
+}
+
+function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
+  const loadPhotos = useCallback(
+    async () => ({
+      entries: pendingOnly
+        ? await getUnoptimizedPhotos.execute()
+        : ((await getAllPhotos.execute()) ?? []).map((photo) => ({
+            photo,
+            optimizationIssues: [],
+          })),
+    }),
+    [pendingOnly],
+  );
   const { data, loading, error, retry } = usePhotoFetch(
     loadPhotos,
     "No photos published yet.",
   );
   const [selected, setSelected] = useState<Photo | null>(null);
-  const [revisions, setRevisions] = useState<Record<string, Photo>>({});
+  const [revisions, setRevisions] = useState<Record<string, PublishedPhoto>>(
+    {},
+  );
   if (loading) return <p role="status">Loading photographs…</p>;
   if (error) return <ErrorMessage message={error} onRetry={retry} />;
+  const entries = (data?.entries ?? [])
+    .map((entry) => revisions[entry.photo.getId()] ?? entry)
+    .filter(
+      (entry) =>
+        !pendingOnly ||
+        entry.optimizationIssues.some((issue) => issue.isPending()),
+    );
+  const issues = selected
+    ? ((
+        revisions[selected.getId()] ??
+        data?.entries.find((entry) => entry.photo.getId() === selected.getId())
+      )?.optimizationIssues ?? [])
+    : [];
   return (
     <div className="manage-layout">
       <nav className="manage-library" aria-label="Published photos">
-        {data?.map((original) => {
-          const photo = revisions[original.getId()] ?? original;
-          return (
-            <button
-              type="button"
-              key={photo.getId()}
-              aria-pressed={selected?.getId() === photo.getId()}
-              onClick={() => setSelected(photo)}
-            >
-              <span className="manage-thumbnail">
-                <Image
-                  src={photo.urlForWidth(320)}
-                  alt=""
-                  width={photo.getWidth()}
-                  height={photo.getHeight()}
-                  unoptimized
-                  sizes="64px"
-                  style={thumbnailStyle(photo)}
-                />
-              </span>
-              <span>{photo.getTitle()}</span>
-            </button>
-          );
-        })}
+        {entries.length === 0 && (
+          <p>
+            {pendingOnly
+              ? "No photos need optimization."
+              : "No photos published yet."}
+          </p>
+        )}
+        {entries.map(({ photo }) => (
+          <button
+            type="button"
+            key={photo.getId()}
+            aria-pressed={selected?.getId() === photo.getId()}
+            onClick={() => setSelected(photo)}
+          >
+            <span className="manage-thumbnail">
+              <Image
+                src={photo.urlForWidth(320)}
+                alt=""
+                width={photo.getWidth()}
+                height={photo.getHeight()}
+                unoptimized
+                sizes="64px"
+                style={thumbnailStyle(photo)}
+              />
+            </span>
+            <span>{photo.getTitle()}</span>
+          </button>
+        ))}
       </nav>
       {selected ? (
         <PhotoDetailEditor
           key={selected.getId()}
           photo={selected}
-          onSaved={(updated) => {
+          revised={Boolean(revisions[selected.getId()])}
+          issues={issues}
+          onSaved={(updated, optimizationIssues) => {
             setSelected(updated);
             setRevisions((previous) => ({
               ...previous,
-              [updated.getId()]: updated,
+              [updated.getId()]: {
+                photo: updated,
+                optimizationIssues: optimizationIssues ?? issues,
+              },
             }));
           }}
         />
@@ -99,16 +158,32 @@ function PhotoLibrary() {
 }
 
 // A listing item is never used to initialize an editor: it has no description.
-function PhotoDetailEditor({ photo, onSaved }: {
+function PhotoDetailEditor({
+  photo,
+  onSaved,
+  issues,
+  revised,
+}: {
   photo: Photo;
-  onSaved: (photo: Photo) => void;
+  revised: boolean;
+  issues: PhotoOptimizationIssue[];
+  onSaved: (photo: Photo, issues?: PhotoOptimizationIssue[]) => void;
 }) {
   const id = photo.getId();
   const loadDetail = useCallback(() => getPhotoById.execute(id), [id]);
-  const { data, loading, error, retry } = usePhotoFetch(loadDetail, "Photo not found.");
+  const { data, loading, error, retry } = usePhotoFetch(
+    loadDetail,
+    "Photo not found.",
+  );
   if (loading) return <p role="status">Loading photograph…</p>;
   if (error) return <ErrorMessage message={error} onRetry={retry} />;
-  return data ? <PhotoEditor photo={data} onSaved={onSaved} /> : null;
+  return data ? (
+    <PhotoEditor
+      photo={revised ? photo : data}
+      issues={issues}
+      onSaved={onSaved}
+    />
+  ) : null;
 }
 
 function thumbnailStyle(photo: Photo): React.CSSProperties {
@@ -135,10 +210,14 @@ function thumbnailStyle(photo: Photo): React.CSSProperties {
 function PhotoEditor({
   photo,
   onSaved,
+  issues,
 }: {
   photo: Photo;
-  onSaved: (photo: Photo) => void;
+  issues: PhotoOptimizationIssue[];
+  onSaved: (photo: Photo, issues?: PhotoOptimizationIssue[]) => void;
 }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [report, setReport] = useState(issues);
   const [title, setTitle] = useState(photo.getTitle());
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
@@ -170,9 +249,16 @@ function PhotoEditor({
             metadata: photo.getMetadata(),
             createdAt: photo.getCreatedAt(),
           });
-          await savePhoto.execute(updated);
+          if (file) {
+            const result = await replacePhoto.execute(updated, file);
+            setFile(null);
+            setReport(result.optimizationIssues);
+            onSaved(result.photo, result.optimizationIssues);
+          } else {
+            await savePhoto.execute(updated);
+            onSaved(updated);
+          }
           setSaved(true);
-          onSaved(updated);
         } catch (failure) {
           setError(apiFailureMessage(failure));
         } finally {
@@ -181,6 +267,25 @@ function PhotoEditor({
       }}
     >
       <fieldset className="upload-fields" disabled={saving}>
+        {report.length > 0 && <OptimizationIssueList issues={report} />}
+        <label>
+          Replacement file
+          <input
+            key={photo.urlForWidth(320)}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null);
+              setSaved(false);
+            }}
+          />
+        </label>
+        {file && (
+          <p>
+            Replace with {file.name}. The record, publication date, frame and
+            highlights are preserved. Review crops after replacing.
+          </p>
+        )}
         <label>
           Title
           <input

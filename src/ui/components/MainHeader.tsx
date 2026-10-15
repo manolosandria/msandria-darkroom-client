@@ -12,13 +12,13 @@ export default function MainHeader() {
   const canPublish = user?.isAdmin() ?? false;
 
   return (
-      <header className="bg-gray-100 py-4 md:py-6 flex md:flex-row flex-col items-center justify-between px-8">
+      <header className="bg-gray-100 py-4 md:py-6 flex flex-wrap gap-6 xl:flex-row flex-col items-center justify-between px-8">
         <Image src="/images/branding/manolo-logo-black.svg" alt="Manolo Sandria Fotografía"
           width={384} height={96}
-          className="w-64 md:w-96 lg:w-[24rem] h-auto py-2 md:py-0"
+          className="w-64 max-w-full xl:w-96 h-auto py-2 md:py-0"
         />
-        <div className="flex flex-col md:flex-row items-center md:space-x-10">
-          <nav className="flex flex-col md:flex-row items-center md:space-x-10 text-lg font-semibold text-gray-700">
+        <div className="flex flex-wrap justify-center gap-6 flex-col sm:flex-row items-center">
+          <nav className="flex flex-wrap justify-center gap-6 flex-col sm:flex-row items-center text-lg font-semibold text-gray-700">
             <Link href="/">Home</Link>
             <Link href="/gallery">Gallery</Link>
             {canPublish && <Link href="/upload">Upload</Link>}
