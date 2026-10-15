@@ -1,4 +1,5 @@
 import { PhotoImage } from './PhotoImage';
+import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { Photo } from '../../domain/entities/Photo';
 
@@ -22,6 +23,7 @@ export function PhotoGrid({ photos, className = '' }: PhotoGridProps) {
             className="photo-grid__tile"
             style={{ '--ratio': ratio } as CSSProperties}
           >
+            <Link href={`/photo/${encodeURIComponent(photo.getId())}`} className="absolute inset-0 block">
             <PhotoImage
               photo={photo}
               className="object-cover"
@@ -30,6 +32,7 @@ export function PhotoGrid({ photos, className = '' }: PhotoGridProps) {
               fallbackSizes={`(max-width: 639px) calc(100vw - 2rem), min(${(ratio * 33).toFixed(1)}vw, ${(ratio * 33).toFixed(1)}rem)`}
             />
             <span className="photo-grid__caption">{photo.getTitle()}</span>
+            </Link>
           </li>
         );
       })}

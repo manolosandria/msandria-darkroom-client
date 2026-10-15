@@ -1,5 +1,6 @@
 import { rateLimitError } from "./rateLimitError";
 import { Photo, PhotoRendition } from "../domain/entities/Photo";
+import { PhotoFrame } from "../domain/entities/PhotoFrame";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
   PhotoOptimizationIssue,
@@ -28,6 +29,7 @@ type ApiPhotoListItem = {
   createdAt: string;
   renditions: PhotoRendition[];
   highlights?: PhotoHighlights;
+  frame?: PhotoFrame | null;
 };
 
 type ApiPhoto = ApiPhotoListItem & {
@@ -241,6 +243,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       createdAt: new Date(entry.createdAt),
       renditions: entry.renditions,
       highlights: entry.highlights,
+      frame: entry.frame,
       metadata: {
         format: detail?.format,
         capturedAt: detail?.capturedAt,
