@@ -185,10 +185,18 @@ without opening an incomplete editor.
 
 ## Photo viewer
 
-`/photo/[id]` (`PhotoViewer`) shows one photo large. The page reads the detail from
-`GET /photos/:id` and the listing for ordering only, so Previous/Next, the arrow keys
-and a sideways swipe move along the gallery's order, each photo at its own shareable
-URL; Escape returns to `/gallery`. Gallery tiles link here.
+`/photo/[id]` (`PhotoViewer`) shows one photo large, filling the window. The page
+reads the detail from `GET /photos/:id` and the listing for ordering only. Each side
+edge of the window is one tall link with an arrow to the previous or next photo, so
+the whole border can be clicked; the arrow keys and a sideways swipe do the same, each
+photo at its own shareable URL. A return arrow in the top-left corner and Escape go
+back to `/gallery`. Gallery tiles link here.
+
+The title floats over the photo in the serif of the page headings (`Georgia`), white
+with a thin dark outline. Title, arrows, return button and quality selector show
+together: a left click on the photo hides them all and moving the mouse brings them
+back (a few pixels of jitter are ignored); on a touch screen each tap toggles them, and
+a swipe never does. Clicks on a control only do that control's job.
 
 The photo sits in its own `frame` from the API (colour and thickness as a percentage
 of the short side; `framedLayout` converts that to CSS percentages and fits the framed
