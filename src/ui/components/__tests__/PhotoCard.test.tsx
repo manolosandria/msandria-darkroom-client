@@ -19,6 +19,8 @@ describe("PhotoCard", () => {
     render(<PhotoCard photo={photo} />);
 
     const image = screen.getByAltText("Atardecer");
+    expect(image.getAttribute("srcset")).toBe("https://cdn/w_640/atardecer 640w, https://cdn/w_1280/atardecer 1280w");
+    expect(image.getAttribute("sizes")).toBe("auto, (max-width: 42rem) 100vw, 42rem");
     const candidates = [image.getAttribute("src"), ...image.getAttribute("srcset")!.split(", ").map((c) => c.split(" ")[0])];
     expect(new Set(candidates)).toEqual(
       new Set(["https://cdn/w_640/atardecer", "https://cdn/w_1280/atardecer"]),

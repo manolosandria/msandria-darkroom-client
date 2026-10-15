@@ -129,3 +129,21 @@ renditions reach 2560 pixels. The browser selects from the supplied renditions u
 its description and highlights when saving. A failed detail request offers retry
 without opening an incomplete editor. This does not add a public detail viewer or
 quality selector yet.
+
+## Responsive photo delivery
+
+`PhotoImage` uses a native `<img>` with the API's rendition URLs and their exact
+width descriptors. It does not pass through the Next image loader or optimizer.
+`sizes="auto, ..."` lets supporting browsers use the actual laid-out width; the
+fallback covers the phone viewport minus gallery padding and caps desktop estimates
+at the maximum row height. Images use native lazy loading and async decoding;
+photos near the viewport start loading without eagerly fetching the whole gallery.
+
+URLs are kept unchanged between pages and renders, allowing the browser HTTP cache
+to reuse the same rendition. A browser can choose an already cached larger image;
+a larger card or zoom can legitimately require another rendition. Listing images
+remain capped at 1280 px, so zoom and dense mobile screens can reach that ceiling.
+This change does not add the detail viewer or a manual quality selector.
+
+See [photo delivery verification](docs/photo-delivery-verification.md) for the tested
+viewports, synthetic density/zoom budgets, cache observations and remaining limits.

@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { PhotoImage } from './PhotoImage';
 import type { CSSProperties } from 'react';
 import { Photo } from '../../domain/entities/Photo';
 
@@ -7,9 +7,6 @@ interface PhotoGridProps {
   className?: string;
 }
 
-// The first tiles are usually on screen when the page opens: load them right away.
-const EAGER_TILES = 4;
-
 // Justified rows: every tile in a row shares the same height and takes a width
 // proportional to its photo, so photos keep their shape and each row fills the
 // page. The arrangement lives in CSS (.photo-grid in globals.css), which makes it
@@ -17,7 +14,7 @@ const EAGER_TILES = 4;
 export function PhotoGrid({ photos, className = '' }: PhotoGridProps) {
   return (
     <ul className={`photo-grid ${className}`}>
-      {photos.map((photo, index) => {
+      {photos.map((photo) => {
         const ratio = photo.getAspectRatio();
         return (
           <li
@@ -25,16 +22,12 @@ export function PhotoGrid({ photos, className = '' }: PhotoGridProps) {
             className="photo-grid__tile"
             style={{ '--ratio': ratio } as CSSProperties}
           >
-            <Image
-              loader={({ width }) => photo.urlForWidth(width)}
-              src={photo.getId()}
-              alt={photo.getTitle()}
-              fill
+            <PhotoImage
+              photo={photo}
               className="object-cover"
-              // A tile is `ratio` times the row height wide. Rows are 22vw tall
-              // and can stretch about 1.5 times to fill the width: 33vw covers it.
-              sizes={`(max-width: 639px) 100vw, ${(ratio * 33).toFixed(1)}vw`}
-              loading={index < EAGER_TILES ? 'eager' : 'lazy'}
+              // Native auto-sizes uses the laid-out tile. The fallback is bounded
+              // by the maximum row height, even on wide desktop/TV screens.
+              fallbackSizes={`(max-width: 639px) calc(100vw - 2rem), min(${(ratio * 33).toFixed(1)}vw, ${(ratio * 33).toFixed(1)}rem)`}
             />
             <span className="photo-grid__caption">{photo.getTitle()}</span>
           </li>
