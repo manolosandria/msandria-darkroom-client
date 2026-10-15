@@ -33,3 +33,17 @@ Feature: Gallery grid in justified rows
     When the gallery shows a photo
     Then every candidate in its src and srcset is one of the photo's renditions
     And only the first 4 photos load right away; the rest load as they come into view
+
+  Scenario: Select a rendition using its real pixel width
+    Given the API supplies signed renditions with their actual widths
+    When the gallery renders a photo
+    Then its native srcset contains exactly those URLs and width descriptors
+    And no Next image loader translates widths or generates additional variants
+    And auto sizes uses the laid-out photo width with a bounded responsive fallback
+    And images are loaded lazily near the viewport
+
+  Scenario: Reuse cached renditions across gallery pages
+    Given a rendition is cached by the browser and its URL has not changed
+    When I return to a page using that rendition
+    Then the browser can reuse it without transferring its image bytes again
+    But a larger display size may require downloading a larger rendition once

@@ -37,18 +37,22 @@ describe("PhotoGrid", () => {
     render(<PhotoGrid photos={photos} />);
 
     const image = screen.getByAltText("Photo portrait");
+    expect(image.getAttribute("srcset")).toBe("https://cdn/w_640/portrait 640w, https://cdn/w_1280/portrait 1280w");
     const candidates = [image.getAttribute("src"), ...image.getAttribute("srcset")!.split(", ").map((c) => c.split(" ")[0])];
     for (const candidate of candidates) {
       expect(candidate).toMatch(/^https:\/\/cdn\/w_(640|1280)\/portrait$/);
     }
   });
 
-  it("loads the first photos right away and the rest when they come into view", () => {
+  it("lets the browser load photos near the viewport using their actual layout sizes", () => {
     const many = Array.from({ length: 6 }, (_, i) => makePhoto(String(i), 1500, 1000));
 
     render(<PhotoGrid photos={many} />);
 
     const loading = screen.getAllByRole("img").map((image) => image.getAttribute("loading"));
-    expect(loading).toEqual(["eager", "eager", "eager", "eager", "lazy", "lazy"]);
+    expect(loading).toEqual(Array(6).fill("lazy"));
+    for (const image of screen.getAllByRole("img")) {
+      expect(image.getAttribute("sizes")).toMatch(/^auto, /);
+    }
   });
 });
