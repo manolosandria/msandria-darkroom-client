@@ -1,4 +1,6 @@
+import { PhotoFrame } from "./PhotoFrame";
 import { PhotoHighlights } from "./PhotoHighlights";
+import { PHOTO_QUALITY_WIDTH, PhotoQuality } from "./PhotoQuality";
 
 export type PhotoMetadata = {
   format?: string;
@@ -22,11 +24,13 @@ export type PhotoParams = {
   description?: string;
   createdAt?: Date;
   highlights?: PhotoHighlights;
+  frame?: PhotoFrame | null;
   metadata?: PhotoMetadata;
 };
 
 export class Photo {
   private readonly highlights: PhotoHighlights;
+  private readonly frame: PhotoFrame | null;
   private readonly metadata: PhotoMetadata;
   private readonly id: string;
   private title: string;
@@ -38,6 +42,7 @@ export class Photo {
 
   constructor(params: PhotoParams) {
     this.highlights = params.highlights ?? {};
+    this.frame = params.frame ?? null;
     this.metadata = params.metadata ?? {};
     this.id = params.id;
     this.title = params.title.trim();
@@ -76,6 +81,9 @@ export class Photo {
   getHighlights() {
     return this.highlights;
   }
+  getFrame() {
+    return this.frame;
+  }
   getMetadata() {
     return this.metadata;
   }
@@ -109,6 +117,14 @@ export class Photo {
       (rendition) => rendition.width >= width,
     );
     return (fitting ?? this.renditions[this.renditions.length - 1]).url;
+  }
+
+  // The widest rendition the quality level allows, or the narrowest one when even that
+  // is over the cap: a photo always has something to show.
+  urlForQuality(quality: PhotoQuality) {
+    const cap = PHOTO_QUALITY_WIDTH[quality];
+    const allowed = this.renditions.filter((rendition) => rendition.width <= cap);
+    return (allowed.length > 0 ? allowed[allowed.length - 1] : this.renditions[0]).url;
   }
 
   rename(newTitle: string) {

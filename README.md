@@ -127,8 +127,26 @@ renditions reach 2560 pixels. The browser selects from the supplied renditions u
 
 `/manage` loads the selected photo's detail before enabling its editor, preserving
 its description and highlights when saving. A failed detail request offers retry
-without opening an incomplete editor. This does not add a public detail viewer or
-quality selector yet.
+without opening an incomplete editor.
+
+## Photo viewer
+
+`/photo/[id]` (`PhotoViewer`) shows one photo large. The page reads the detail from
+`GET /photos/:id` and the listing for ordering only, so Previous/Next, the arrow keys
+and a sideways swipe move along the gallery's order, each photo at its own shareable
+URL; Escape returns to `/gallery`. Gallery tiles link here.
+
+The photo sits in its own `frame` from the API (colour and thickness as a percentage
+of the short side; `framedLayout` converts that to CSS percentages and fits the framed
+box to the screen height). Photos without a frame are shown bare.
+
+A fixed corner control (`QualitySelector`) picks one of three levels, each capped at
+a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) and
+**Maximum** (the widest the detail response offers, 2560 px). Only these few
+renditions are ever requested, which favours browser and CDN caches. The choice is
+kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads and
+writes are guarded and fall back to memory), and it applies to every photo opened.
+The metadata side panel and comments are not part of the viewer yet.
 
 ## Responsive photo delivery
 
@@ -143,7 +161,7 @@ URLs are kept unchanged between pages and renders, allowing the browser HTTP cac
 to reuse the same rendition. A browser can choose an already cached larger image;
 a larger card or zoom can legitimately require another rendition. Listing images
 remain capped at 1280 px, so zoom and dense mobile screens can reach that ceiling.
-This change does not add the detail viewer or a manual quality selector.
+The gallery itself has no quality selector; the viewer does (see "Photo viewer").
 
 See [photo delivery verification](docs/photo-delivery-verification.md) for the tested
 viewports, synthetic density/zoom budgets, cache observations and remaining limits.
