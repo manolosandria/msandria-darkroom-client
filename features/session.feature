@@ -80,3 +80,8 @@ Feature: Signing in with Google
     When the header loads
     Then the header says the client id is missing
     And Google's button is not rendered
+
+  Scenario: Explain a rate-limited sign-in
+    When the sign-in API returns 429 with Retry-After
+    Then I see how long to wait before trying again
+    And the Google token is not automatically sent again

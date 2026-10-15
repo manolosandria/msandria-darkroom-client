@@ -1,3 +1,5 @@
+import { RateLimitError } from "@/src/domain/errors/RateLimitError";
+import { rateLimitMessage } from "./rateLimitMessage";
 import {
   PhotoUploadError,
   PhotoUploadFailure,
@@ -17,6 +19,7 @@ const FAILURE_MESSAGES: Record<PhotoUploadFailure, string> = {
 // Anything that is not one of the API's own refusals never reached it, so it reads as
 // a reachability problem rather than leaking a stack trace onto the screen.
 export function apiFailureMessage(failure: unknown): string {
+  if (failure instanceof RateLimitError) return rateLimitMessage(failure);
   if (failure instanceof PhotoUploadError) {
     // A rejection is the only refusal the API explains in words worth repeating.
     return failure.failure === "rejected"

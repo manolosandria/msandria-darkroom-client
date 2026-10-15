@@ -1,3 +1,5 @@
+import { RateLimitError } from "@/src/domain/errors/RateLimitError";
+import { rateLimitMessage } from "@/src/ui/rateLimitMessage";
 import { useCallback, useEffect, useState } from "react";
 import { User } from "@/src/domain/entities/User";
 
@@ -44,8 +46,9 @@ export function useSession(ports: SessionPorts) {
       setState({ user: null, loading: true, error: null });
       try {
         setState({ user: await signIn(googleIdToken), loading: false, error: null });
-      } catch {
-        setState({ user: null, loading: false, error: "Could not sign in" });
+      } catch (failure) {
+        setState({ user: null, loading: false, error: failure instanceof RateLimitError
+          ? rateLimitMessage(failure) : "Could not sign in" });
       }
     },
     [signIn],

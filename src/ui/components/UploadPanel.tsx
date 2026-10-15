@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { UploadPhoto } from "@/src/application/use-cases/UploadPhoto";
@@ -136,6 +137,13 @@ export default function UploadPanel({
           patch(item.id, { status: "published", published });
         } catch (failure) {
           patch(item.id, { status: "failed", error: apiFailureMessage(failure) });
+          if (failure instanceof RateLimitError) {
+            setItems((previous) => previous.map((entry) =>
+              entry.status === "queued" ? { ...entry, status: "draft" } : entry,
+            ));
+            setSelectionError("Publishing paused. Wait before retrying; your remaining photos and edits are kept.");
+            break;
+          }
         }
       }
     } finally {

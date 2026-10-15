@@ -27,6 +27,12 @@ const optionsOf = (fetchFn: ReturnType<typeof vi.fn>) =>
 
 describe("ApiSessionRepository", () => {
   describe("signIn", () => {
+    it("reports throttling without retrying a Google token", async () => {
+      const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "42" } }));
+      await expect(new ApiSessionRepository(API_URL, fetchFn).signIn("token")).rejects.toMatchObject({ name: "RateLimitError", retryAfterSeconds: 42 });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+
     it("trades the Google token for a session and maps the account", async () => {
       const fetchFn = respondWith(apiUser());
 

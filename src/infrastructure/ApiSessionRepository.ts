@@ -1,3 +1,4 @@
+import { rateLimitError } from "./rateLimitError";
 import { User, UserRole } from "../domain/entities/User";
 import { SessionRepository } from "../domain/repositories/SessionRepository";
 
@@ -54,6 +55,7 @@ export class ApiSessionRepository implements SessionRepository {
   }
 
   private ensureOk(response: Response) {
+    if (response.status === 429) throw rateLimitError(response);
     if (!response.ok) {
       throw new Error(`The API answered ${response.status} ${response.statusText}`.trim());
     }

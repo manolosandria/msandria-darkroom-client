@@ -29,6 +29,13 @@ function respondWith(body: unknown, status = 200) {
 }
 
 describe("ApiPhotoRepository", () => {
+  it("reports upload throttling with its retry interval without retrying the request", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "25" } }));
+    const repository = new ApiPhotoRepository(API_URL, fetchFn);
+    await expect(repository.upload({ file: new File(["x"], "photo.jpg"), title: "Photo" })).rejects.toMatchObject({ name: "RateLimitError", retryAfterSeconds: 25 });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   describe("findAll", () => {
     it("maps the API listing into domain photos, keeping its order", async () => {
       const fetchFn = respondWith([apiPhoto("b"), apiPhoto("a")]);

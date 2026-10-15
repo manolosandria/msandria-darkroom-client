@@ -1,3 +1,4 @@
+import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { User } from "@/src/domain/entities/User";
@@ -51,6 +52,16 @@ describe("useSession", () => {
   });
 
   describe("signIn", () => {
+    it("shows the rate limit wait and does not automatically retry sign-in", async () => {
+      const signIn = vi.fn().mockRejectedValue(new RateLimitError(42));
+      const { result } = renderHook(() => useSession(ports({ signIn })));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => { await result.current.signIn("token"); });
+      expect(result.current.error).toBe("Too many attempts. Try again in 42 seconds.");
+      expect(result.current.user).toBeNull();
+      expect(signIn).toHaveBeenCalledTimes(1);
+    });
+
     it("trades the Google token for a session and keeps the user", async () => {
       const signIn = vi.fn().mockResolvedValue(viewer);
       const { result } = renderHook(() => useSession(ports({ signIn })));
