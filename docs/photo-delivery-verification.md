@@ -90,3 +90,12 @@ parameters were introduced. No billing savings percentage is claimed.
    With Resource Timing (Cloudinary exposes timing) or the Network panel, distinguish
    zero-transfer cache delivery from a new, larger rendition being downloaded once.
 5. Confirm real Safari/iOS and the intended TV browser before claiming device support.
+
+## Header overflow follow-up (2026-10-15)
+
+The header now stacks below the desktop breakpoint and wraps its navigation and
+session controls. Checked in Chromium with the actual Google sign-in button
+visible at widths 320, 412, 768, 892, 956, 1024, 1280 and 1920 CSS pixels. No header
+descendant crossed the viewport and the document had no horizontal overflow.
+This verifies the reported 892 px case; physical Safari/iPhone and TV checks remain
+pending.

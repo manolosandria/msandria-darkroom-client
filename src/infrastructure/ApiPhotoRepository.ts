@@ -9,6 +9,7 @@ import {
 } from "../domain/entities/PhotoOptimizationIssue";
 import {
   PhotoDraft,
+  PhotoMaintenanceRepository,
   PhotoRepository,
   PhotoUploadError,
   PublishedPhoto,
@@ -52,7 +53,7 @@ type ApiReviewedPhoto = ApiPhoto & {
   optimizationIssues: ApiOptimizationIssue[];
 };
 
-export class ApiPhotoRepository implements PhotoRepository {
+export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepository {
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
@@ -95,6 +96,30 @@ export class ApiPhotoRepository implements PhotoRepository {
         (issue) => new PhotoOptimizationIssue(issue),
       ),
     };
+  }
+
+  async findUnoptimized(): Promise<PublishedPhoto[]> {
+    const response = await this.get("/photos/unoptimized");
+    if (!response.ok) throw await this.toUploadError(response);
+    return ((await response.json()) as ApiReviewedPhoto[])
+      .filter((entry) => this.isDeliverable(entry))
+      .map((entry) => this.toReviewedPhoto(entry))
+      .filter((entry) => entry.optimizationIssues.some((issue) => issue.isPending()));
+  }
+
+  async replace(photo: Photo, file: File): Promise<PublishedPhoto> {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("title", photo.getTitle());
+    form.append("description", photo.getDescription()?.trim() || "");
+    form.append("highlights", JSON.stringify(photo.getHighlights()));
+    const response = await this.send("POST", `/photos/${encodeURIComponent(photo.getId())}/file`, form);
+    if (!response.ok) throw await this.toUploadError(response);
+    return this.toReviewedPhoto((await response.json()) as ApiReviewedPhoto);
+  }
+
+  private toReviewedPhoto(entry: ApiReviewedPhoto): PublishedPhoto {
+    return { photo: this.toDomainPhoto(entry), optimizationIssues: entry.optimizationIssues.map((issue) => new PhotoOptimizationIssue(issue)) };
   }
 
   async findCollection(_id: string): Promise<Photo[] | null> {
@@ -166,6 +191,9 @@ export class ApiPhotoRepository implements PhotoRepository {
         "forbidden",
         "This account cannot publish photos.",
       );
+    }
+    if (response.status === 409) {
+      return new PhotoUploadError("rejected", "The photo changed. Reload before replacing it.");
     }
     if (response.status === 413) {
       return new PhotoUploadError(

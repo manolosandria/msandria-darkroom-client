@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Photo } from "@/src/domain/entities/Photo";
 import { ApiPhotoRepository } from "../ApiPhotoRepository";
 
 const API_URL = "http://api.test";
@@ -33,6 +34,36 @@ describe("ApiPhotoRepository", () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "25" } }));
     const repository = new ApiPhotoRepository(API_URL, fetchFn);
     await expect(repository.upload({ file: new File(["x"], "photo.jpg"), title: "Photo" })).rejects.toMatchObject({ name: "RateLimitError", retryAfterSeconds: 25 });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches pending reviews with credentials and excludes corrected-only history", async () => {
+    const issue = { kind: "LOCATION", resolution: "NEEDS_REUPLOAD", unit: "TAG_COUNT", currentValue: "2", recommendedValue: "0" };
+    const fetchFn = respondWith([{ ...apiPhoto("pending"), optimizationIssues: [issue] }, { ...apiPhoto("settled"), optimizationIssues: [{ ...issue, resolution: "FIXED_ON_UPLOAD" }] }]);
+    const entries = await new ApiPhotoRepository(API_URL, fetchFn).findUnoptimized();
+    expect(fetchFn).toHaveBeenCalledWith("http://api.test/photos/unoptimized", READ_REQUEST);
+    expect(entries.map((entry) => entry.photo.getId())).toEqual(["pending"]);
+    expect(entries[0].optimizationIssues[0].isPending()).toBe(true);
+  });
+  it("replaces in one multipart request with edits and without overriding Content-Type", async () => {
+    const fetchFn = respondWith({ ...apiPhoto("a/b"), optimizationIssues: [] });
+    const photo = new Photo({ id: "a/b", title: "Coast", description: "Story", width: 1920, height: 1080, renditions: [{ width: 640, url: "https://cdn/old.jpg" }], highlights: {} });
+    const file = new File(["image"], "replacement.jpg", { type: "image/jpeg" });
+    const result = await new ApiPhotoRepository(API_URL, fetchFn).replace(photo, file);
+    const [url, options] = fetchFn.mock.calls[0];
+    expect(url).toBe("http://api.test/photos/a%2Fb/file");
+    expect(options).toMatchObject({ method: "POST", credentials: "include" });
+    expect(options.headers).toBeUndefined();
+    expect(options.body.get("file")).toBe(file);
+    expect(options.body.get("title")).toBe("Coast");
+    expect(options.body.get("description")).toBe("Story");
+    expect(options.body.get("highlights")).toBe("{}");
+    expect(result.photo.getId()).toBe("a/b");
+  });
+  it.each([401, 403, 409, 413, 429, 500])("does not replay a rejected replacement (%i)", async (status) => {
+    const fetchFn = respondWith({}, status);
+    const photo = new Photo({ ...apiPhoto("a"), description: undefined, createdAt: new Date() });
+    await expect(new ApiPhotoRepository(API_URL, fetchFn).replace(photo, new File(["x"], "x.jpg"))).rejects.toBeInstanceOf(Error);
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
