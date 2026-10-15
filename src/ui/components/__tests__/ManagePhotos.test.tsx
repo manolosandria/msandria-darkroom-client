@@ -115,6 +115,20 @@ describe("ManagePhotos", () => {
     expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getDescription()).toBe("A story only in the detail");
   });
 
+  it("saves the title corner chosen for the viewer, starting from the photo's own", async () => {
+    const detail = new Photo({ id: "photo", title: "The coast", width: 1800, height: 1200,
+      titlePosition: "TOP_LEFT", renditions: [{ width: 1800, url: "https://cdn/detail.jpg" }] });
+    vi.mocked(getPhotoById.execute).mockResolvedValue(detail);
+    show();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    const corner = await screen.findByLabelText("Title corner in the viewer");
+    expect(corner).toHaveValue("TOP_LEFT");
+    await userEvent.selectOptions(corner, "BOTTOM_RIGHT");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Changes saved.");
+    expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getTitlePosition()).toBe("BOTTOM_RIGHT");
+  });
+
   it("offers retry after detail fails without opening an empty editor", async () => {
     vi.mocked(getPhotoById.execute).mockRejectedValueOnce(new Error("offline"));
     show();

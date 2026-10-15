@@ -156,14 +156,22 @@ kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads an
 writes are guarded and fall back to memory), and it applies to every photo opened.
 Ratings and comments are not part of the viewer yet.
 
-The **info panel** (`PhotoInfoPanel`) opens from the ⓘ button in the top-right corner
-and closes with its own ✕ (which takes that corner while it is open) or with Escape,
-which closes the panel before it leaves the photo. Top to bottom it shows the title,
-the description and the details the API recorded from the file's EXIF: capture date
-(in the project's time zone), camera, lens, focal length, aperture, shutter speed and
-ISO, written in photographers' notation by `photoDetails` and left out when missing.
-Ratings and comments will go below them. The panel fades with the other controls, and
+The **info panel** (`PhotoInfoPanel`) is a white column of its own, in the manner of a
+social photo post: beside the photo on wide screens and below it on phones, never over
+the photo or its frame. The photo's area (`.photo-viewer__stage`) is a size container,
+so the photo shrinks to fit what is left. The ⓘ button toggles the panel; its ✕ and
+Escape close it too, and Escape closes the panel before it leaves the photo. Top to
+bottom it shows the title, the description and the details the API recorded from the
+file's EXIF: capture date (in the project's time zone), camera, lens, focal length,
+aperture, shutter speed and ISO, written in photographers' notation by `photoDetails`
+and left out when missing. Ratings and comments will go below them. The panel stays
+open when a click hides the controls, since hiding it would resize the photo, and
 clicking, selecting or dragging inside it neither hides the controls nor swipes.
+
+Each photo chooses the corner of its title (`titlePosition`: bottom left by default,
+bottom right, top left or top right) so it does not get lost over a bright or busy
+area. It is set in `/manage` under **Title corner in the viewer** and saved with the
+other edits.
 
 ## Responsive photo delivery
 

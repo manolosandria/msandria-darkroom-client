@@ -18,6 +18,17 @@ import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
+import {
+  PHOTO_TITLE_POSITIONS,
+  PhotoTitlePosition,
+} from "@/src/domain/entities/PhotoTitlePosition";
+
+const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
+  BOTTOM_LEFT: "Bottom left",
+  BOTTOM_RIGHT: "Bottom right",
+  TOP_LEFT: "Top left",
+  TOP_RIGHT: "Top right",
+};
 import { useSessionValue } from "./SessionProvider";
 
 export default function ManagePhotos() {
@@ -221,6 +232,7 @@ function PhotoEditor({
   const [title, setTitle] = useState(photo.getTitle());
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
+  const [titlePosition, setTitlePosition] = useState(photo.getTitlePosition());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -243,6 +255,8 @@ function PhotoEditor({
             title,
             description,
             highlights,
+            titlePosition,
+            frame: photo.getFrame(),
             width: photo.getWidth(),
             height: photo.getHeight(),
             renditions: photo.getRenditions(),
@@ -307,6 +321,22 @@ function PhotoEditor({
               setSaved(false);
             }}
           />
+        </label>
+        <label>
+          Title corner in the viewer
+          <select
+            value={titlePosition}
+            onChange={(event) => {
+              setTitlePosition(event.target.value as PhotoTitlePosition);
+              setSaved(false);
+            }}
+          >
+            {PHOTO_TITLE_POSITIONS.map((position) => (
+              <option key={position} value={position}>
+                {TITLE_POSITION_LABELS[position]}
+              </option>
+            ))}
+          </select>
         </label>
         <HighlightEditor
           src={photo.urlForWidth(1280)}

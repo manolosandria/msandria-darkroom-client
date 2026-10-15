@@ -54,10 +54,17 @@ Feature: Photo viewer
   Scenario: Opening the info panel
     Given a photo is open
     When the visitor presses the information button
-    Then a side panel shows the title, then the description, then the details
+    Then a white panel beside the photo, or below it on a phone, shows the title, then the description, then the details
+    And the photo shrinks to fit beside it instead of being covered
     And the details list capture date, camera, lens, focal length, aperture, shutter speed and ISO when recorded
     When the visitor presses Escape
     Then the panel closes and the photo stays open
+
+  Scenario: Choosing the corner of the title
+    Given a photo whose title would be lost over a bright corner
+    When the administrator picks "Top right" as its title corner in /manage and saves
+    Then the viewer shows that photo's title in the top-right corner
+    And photos without a choice keep it in the bottom-left corner
 
   Scenario: A photo without camera details
     Given a photo whose file had no EXIF

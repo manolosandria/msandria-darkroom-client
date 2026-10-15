@@ -15,13 +15,13 @@ interface QualitySelectorProps {
   onChange: (quality: PhotoQuality) => void;
 }
 
-// Fixed to a corner so it stays within reach while moving between photos.
+// Pinned to a corner of the photo's area so it stays within reach between photos.
 export function QualitySelector({ quality, onChange }: QualitySelectorProps) {
   return (
     <div
       role="group"
       aria-label="Image quality"
-      className="fixed bottom-4 right-4 z-40 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
+      className="absolute bottom-4 right-4 z-20 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
     >
       {PHOTO_QUALITIES.map((level) => (
         <button
