@@ -208,13 +208,24 @@ a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) 
 renditions are ever requested, which favours browser and CDN caches. The choice is
 kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads and
 writes are guarded and fall back to memory), and it applies to every photo opened.
+Each option carries a small picture drawn in pixel blocks, coarser for Data saver and
+finer for Maximum.
+
+The first time a browser opens a photo, a hint without a background says that a click
+hides the controls; it fades on its own or with that first click, and is not shown
+again (`viewerHintSeen` in `localStorage`, guarded like the quality). The controls,
+the edge arrows and the return button light up under the pointer.
 Ratings are not part of the viewer yet; comments are (see "Comments").
 
 The **info panel** (`PhotoInfoPanel`) is a white column of its own, in the manner of a
 social photo post: beside the photo on wide screens and below it on phones, never over
 the photo or its frame. The photo's area (`.photo-viewer__stage`) is a size container,
 so the photo shrinks to fit what is left. The ⓘ button toggles the panel; its ✕ and
-Escape close it too, and Escape closes the panel before it leaves the photo. Top to
+Escape close it too, and Escape closes the panel before it leaves the photo. Whether
+it is open lives outside the viewer (`viewerPanelState`, in memory), because the
+route remounts the viewer for every photo: an open panel stays open from photo to
+photo and only its content changes, with an empty panel holding its place while the
+next photo loads. The return arrow closes it. Top to
 bottom it shows the title, the description and the details the API recorded from the
 file's EXIF: capture date (in the project's time zone), camera, lens, focal length,
 aperture, shutter speed and ISO, written in photographers' notation by `photoDetails`
@@ -309,8 +320,11 @@ comment will carry, with a pencil linking to `/account` to change it. The box gr
 with its text, and its placeholder rotates through a few invitations while it is
 empty. **Enter** sends (from the box or the arrow button) and **Shift+Enter** breaks
 the line. A sent comment first waits 5 seconds as a card with **Edit** (the text goes
-back to the box) and **Cancel**; closing the panel or changing photo during that wait
-sends it anyway. Comments go through
+back to the box), **Cancel** and **Send now**, and a note that a moderator will review
+it; closing the panel or changing photo during that wait sends it anyway. Unsent text
+is kept per photo while the page is open (`commentDrafts`, in memory only), so moving
+to another photo and back does not lose it. An own comment awaiting moderation offers
+**Cancel**; once approved, **Delete**. Comments go through
 `POST /photos/:id/comments` and start pending: nothing appears publicly until the
 administrator approves it. The API rejects links, hidden control characters and more
 than 1000 characters, and allows 5 comments per minute per account; the panel explains

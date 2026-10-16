@@ -11,6 +11,7 @@ import {
   postComment,
 } from "@/src/infrastructure/commentServices";
 import { SessionPorts } from "@/src/ui/hooks/useSession";
+import { clearCommentDrafts } from "@/src/ui/commentDrafts";
 import { SessionProvider } from "../SessionProvider";
 import { COMMENT_PROMPTS, PhotoComments, SEND_DELAY_MS } from "../PhotoComments";
 
@@ -59,6 +60,7 @@ function show(user: User | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearCommentDrafts();
   vi.mocked(getPhotoComments.execute).mockResolvedValue([]);
 });
 
@@ -126,6 +128,7 @@ describe("PhotoComments", () => {
 
       expect(box).toHaveValue("");
       expect(screen.getByText("Sending…")).toBeInTheDocument();
+      expect(screen.getByText(/moderator will review it/)).toBeInTheDocument();
       expect(postComment.execute).not.toHaveBeenCalled();
       await wait(SEND_DELAY_MS);
 
@@ -143,6 +146,29 @@ describe("PhotoComments", () => {
       await wait(SEND_DELAY_MS);
 
       expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
+    });
+
+    it("sends at once when the visitor confirms", async () => {
+      show(viewer());
+
+      await user.type(await screen.findByRole("textbox", { name: "Comment" }), "Lovely{Enter}");
+      await user.click(screen.getByRole("button", { name: "Send now" }));
+
+      expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
+      expect(await screen.findByText("Awaiting moderation")).toBeInTheDocument();
+      await wait(SEND_DELAY_MS);
+      expect(postComment.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps an unsent draft for the photo when the panel comes back", async () => {
+      show(viewer());
+      await user.type(await screen.findByRole("textbox", { name: "Comment" }), "Half a thought");
+      cleanup();
+
+      show(viewer());
+
+      expect(await screen.findByRole("textbox", { name: "Comment" })).toHaveValue("Half a thought");
+      expect(postComment.execute).not.toHaveBeenCalled();
     });
 
     it("breaks the line on Shift+Enter instead of sending", async () => {
@@ -248,6 +274,19 @@ describe("PhotoComments", () => {
     show(viewer());
 
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+
+    expect(deleteComment.execute).toHaveBeenCalledWith("cmt_1");
+    await waitFor(() => expect(screen.queryByText("What light")).not.toBeInTheDocument());
+  });
+
+  it("offers to cancel an own comment still awaiting moderation", async () => {
+    vi.mocked(getPhotoComments.execute).mockResolvedValue([
+      comment({ mine: true, status: "PENDING" }),
+    ]);
+    vi.mocked(deleteComment.execute).mockResolvedValue();
+    show(viewer());
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(deleteComment.execute).toHaveBeenCalledWith("cmt_1");
     await waitFor(() => expect(screen.queryByText("What light")).not.toBeInTheDocument());

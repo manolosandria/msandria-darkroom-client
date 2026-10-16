@@ -13,6 +13,7 @@ import {
   commentFailureMessage,
   formatCommentDate,
 } from "@/src/ui/commentMessages";
+import { readCommentDraft, saveCommentDraft } from "@/src/ui/commentDrafts";
 import { useSessionValue } from "./SessionProvider";
 
 type LoadState =
@@ -145,7 +146,7 @@ function CommentItem({ comment, onDeleted }: { comment: PhotoComment; onDeleted:
           {comment.isMine() && (
             <button
               type="button"
-              className="photo-comments__link"
+              className="photo-comments__button is-dark"
               disabled={deleting}
               onClick={async () => {
                 setDeleting(true);
@@ -159,7 +160,14 @@ function CommentItem({ comment, onDeleted }: { comment: PhotoComment; onDeleted:
                 }
               }}
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {/* Taking back a comment nobody has seen yet is cancelling it. */}
+              {comment.isPending()
+                ? deleting
+                  ? "Cancelling…"
+                  : "Cancel"
+                : deleting
+                  ? "Deleting…"
+                  : "Delete"}
             </button>
           )}
         </p>
@@ -181,7 +189,8 @@ function CommentForm({
   onPosted: (comment: PhotoComment) => void;
 }) {
   const session = useSessionValue();
-  const [body, setBody] = useState("");
+  // A draft survives moving to another photo and back.
+  const [body, setBody] = useState(() => readCommentDraft(photoId));
   const [queued, setQueued] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -198,6 +207,8 @@ function CommentForm({
     element.style.height = "auto";
     element.style.height = `${Math.min(element.scrollHeight, MAX_BOX_HEIGHT_PX)}px`;
   }, [body]);
+
+  useEffect(() => saveCommentDraft(photoId, body), [photoId, body]);
 
   const empty = body.length === 0;
   useEffect(() => {
@@ -266,6 +277,10 @@ function CommentForm({
     pending.current = text;
     timer.current = setTimeout(() => void send(text), SEND_DELAY_MS);
   };
+  const sendNow = () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (queued) void send(queued);
+  };
   const takeBack = (keepText: boolean) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
@@ -284,12 +299,26 @@ function CommentForm({
             <span>Sending…</span>
           </p>
           <p className="photo-comments__body">{queued}</p>
+          <p className="photo-comments__hint">
+            A moderator will review it before it appears.
+          </p>
           <p className="photo-comments__footer">
-            <button type="button" className="photo-comments__link" onClick={() => takeBack(true)}>
+            <button
+              type="button"
+              className="photo-comments__button is-light"
+              onClick={() => takeBack(true)}
+            >
               Edit
             </button>
-            <button type="button" className="photo-comments__link" onClick={() => takeBack(false)}>
+            <button
+              type="button"
+              className="photo-comments__button is-dark"
+              onClick={() => takeBack(false)}
+            >
               Cancel
+            </button>
+            <button type="button" className="photo-comments__button is-go" onClick={sendNow}>
+              Send now
             </button>
           </p>
           <span

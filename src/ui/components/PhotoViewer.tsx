@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type MouseEvent,
   type PointerEvent,
 } from "react";
@@ -19,6 +20,12 @@ import {
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { usePhotoQuality } from "@/src/ui/hooks/usePhotoQuality";
 import { framedLayout } from "@/src/ui/framedLayout";
+import { hasSeenViewerHint, markViewerHintSeen } from "@/src/ui/viewerHint";
+import {
+  isViewerPanelOpen,
+  setViewerPanelOpen,
+  subscribeViewerPanel,
+} from "@/src/ui/viewerPanelState";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoInfoPanel } from "./PhotoInfoPanel";
 import { QualitySelector } from "./QualitySelector";
@@ -56,11 +63,27 @@ export default function PhotoViewer({
   const router = useRouter();
   const [quality, setQuality] = usePhotoQuality();
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const panelOpen = useSyncExternalStore(subscribeViewerPanel, isViewerPanelOpen, () => false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
   const lastPointerType = useRef("mouse");
   const hiddenAt = useRef<{ x: number; y: number } | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+
+  // Tells a first-time visitor, once, that the controls can be hidden. Read after
+  // mounting, since the server cannot know what this browser has seen.
+  useEffect(() => {
+    if (hasSeenViewerHint()) return;
+    markViewerHintSeen();
+    const touch = window.matchMedia?.("(hover: none)").matches ?? false;
+    queueMicrotask(() =>
+      setHint(
+        touch
+          ? "Tap the photo to hide or show the controls"
+          : "Click the photo to hide the controls; move the mouse to bring them back",
+      ),
+    );
+  }, []);
 
   const fetchPhoto = useCallback(() => getPhoto.execute(photoId), [getPhoto, photoId]);
   const fetchAll = useCallback(() => getAllPhotos.execute(), [getAllPhotos]);
@@ -84,7 +107,7 @@ export default function PhotoViewer({
       else if (event.key === "ArrowRight") go(nextId);
       // Escape closes the panel first, and only then leaves the photo.
       else if (event.key === "Escape") {
-        if (panelOpen) setPanelOpen(false);
+        if (panelOpen) setViewerPanelOpen(false);
         else router.push("/gallery");
       }
     };
@@ -143,6 +166,7 @@ export default function PhotoViewer({
     }
     hiddenAt.current = { x: event.clientX, y: event.clientY };
     setControlsVisible(false);
+    setHint(null);
   };
 
   const frame = photo?.getFrame() ?? null;
@@ -198,6 +222,8 @@ export default function PhotoViewer({
         <Link
           href="/gallery"
           aria-label="Back to gallery"
+          // The panel follows the visitor between photos, not back into the gallery.
+          onClick={() => setViewerPanelOpen(false)}
           className={`photo-viewer__control absolute left-4 top-4 z-20 ${fade}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -209,7 +235,7 @@ export default function PhotoViewer({
           type="button"
           aria-label={panelOpen ? "Hide photo information" : "Show photo information"}
           aria-expanded={panelOpen}
-          onClick={() => setPanelOpen((open) => !open)}
+          onClick={() => setViewerPanelOpen(!panelOpen)}
           className={`photo-viewer__control absolute right-4 top-4 z-20 ${fade}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -239,6 +265,16 @@ export default function PhotoViewer({
           </Link>
         )}
 
+        {hint && (
+          <p
+            role="status"
+            className="photo-viewer__hint"
+            onAnimationEnd={() => setHint(null)}
+          >
+            {hint}
+          </p>
+        )}
+
         <div className={fade}>
           <QualitySelector quality={quality} onChange={setQuality} />
         </div>
@@ -246,7 +282,13 @@ export default function PhotoViewer({
 
       {/* Beside the photo on wide screens and below it on phones. It stays put when the
           controls hide: it is not over the photo, and hiding it would resize the photo. */}
-      {photo && panelOpen && <PhotoInfoPanel photo={photo} onClose={() => setPanelOpen(false)} />}
+      {panelOpen &&
+        (photo ? (
+          <PhotoInfoPanel photo={photo} onClose={() => setViewerPanelOpen(false)} />
+        ) : (
+          // Holds the panel's place while the next photo loads, so nothing jumps.
+          <aside aria-label="Photo information" aria-busy="true" className="photo-viewer__panel" />
+        ))}
     </main>
   );
 }

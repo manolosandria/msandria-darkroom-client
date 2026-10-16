@@ -9,6 +9,11 @@ Feature: Photo viewer
     Then the viewer opens at /photo/<id>
     And the photo is shown in its own frame colour, if it has one
 
+  Scenario: Quality icons
+    Given a photo is open
+    Then each quality option shows the same small picture in pixel blocks
+    And the blocks get finer from Data saver to Standard to Maximum
+
   Scenario: Default quality
     Given a visitor who never chose a quality
     When a photo opens
@@ -59,6 +64,18 @@ Feature: Photo viewer
     And the details list capture date, camera, lens, focal length, aperture, shutter speed and ISO when recorded
     When the visitor presses Escape
     Then the panel closes and the photo stays open
+
+  Scenario: The info panel stays open between photos
+    Given the info panel is open
+    When the visitor moves to the next photo
+    Then the panel stays where it is and shows the new photo's information
+
+  Scenario: A first-time visitor learns that a click hides the controls
+    Given a visitor opens a photo for the first time in this browser
+    Then a short hint over the photo, without a background, says a click hides the controls
+    And it fades away on its own, or as soon as they click the photo
+    When they open another photo later
+    Then the hint is not shown again
 
   Scenario: Choosing the corner of the title
     Given a photo whose title would be lost over a bright corner
