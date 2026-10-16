@@ -343,3 +343,17 @@ from `GET /comments/pending`: each comment with its author, date and a link to i
 photo, to **Approve** (`POST /comments/:id/approve`) or **Delete** (which is how a
 comment is rejected). The page is offered to the administrator alone; the API enforces
 it on every request.
+
+## Collection management
+
+`/collections` is the admin catalog editor, reached from `/upload`. `EditCatalog`
+uses `CatalogRepository` and `ApiCatalogRepository`; components do not fetch directly.
+`GET /catalog` carries collection entries, categories, work variants and photo category
+assignments without image URLs. Existing photo use cases supply the renditions.
+`selectCatalog` applies category/collection filters and groups each work into one tile.
+`CollectionMosaic` shares its four-column, proportionally scaled composition between
+the editor preview and the public gallery, with no breakpoint rearrangement.
+Each tile can select a variant while retaining the collection's dimensions. Photos
+keep their own viewer links and comments. Admin edits preserve their fields on failed
+writes, deletion confirms removal of the grouping, and only the API decides access.
+See README for endpoints and the required API migration.

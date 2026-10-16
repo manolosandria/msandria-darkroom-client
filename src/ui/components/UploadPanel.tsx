@@ -186,6 +186,7 @@ export default function UploadPanel({
         <Link href="/moderate" className="upload-link">
           Review comments →
         </Link>
+          <Link href="/collections" className="upload-link">Manage collections →</Link>
       </div>
       <div
         className={`upload-dropzone ${dragging ? "is-dragging" : ""}`}
