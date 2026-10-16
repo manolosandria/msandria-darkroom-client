@@ -6,6 +6,7 @@ import { AccountDeletionError } from "@/src/domain/errors/AccountDeletionError";
 import {
   deleteAccount,
   getAccountDeletionPreview,
+  updatePublicName,
 } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import { SessionProvider, useSessionValue } from "../SessionProvider";
@@ -14,6 +15,7 @@ import AccountSettings from "../AccountSettings";
 vi.mock("@/src/infrastructure/sessionServices", () => ({
   deleteAccount: { execute: vi.fn() },
   getAccountDeletionPreview: { execute: vi.fn() },
+  updatePublicName: { execute: vi.fn() },
 }));
 vi.mock("@/src/infrastructure/googleIdentity", () => ({
   disableGoogleAutoSelect: vi.fn(),
@@ -185,5 +187,29 @@ describe("AccountSettings", () => {
     expect(
       await screen.findByRole("button", { name: "Delete my account" }),
     ).toBeInTheDocument();
+  });
+  it("lets the account choose its public name and adopts the saved account", async () => {
+    const named = (current: string) =>
+      new User({
+        id: "admin",
+        email: "admin@example.com",
+        role: "ADMIN",
+        publicName: {
+          style: current === "Slow Lens" ? "ALIAS" : "FULL_NAME",
+          alias: current === "Slow Lens" ? current : null,
+          choices: { FULL_NAME: "Manolo Sandria", ...(current === "Slow Lens" ? { ALIAS: current } : {}) },
+          current,
+        },
+      });
+    ports.getCurrentUser.mockResolvedValue(named("Manolo Sandria"));
+    vi.mocked(updatePublicName.execute).mockResolvedValue(named("Slow Lens"));
+    show();
+
+    await userEvent.click(await screen.findByRole("radio", { name: /alias of your own/ }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Alias" }), "Slow Lens");
+    await userEvent.click(screen.getByRole("button", { name: "Save public name" }));
+
+    expect(await screen.findByText("Public name saved.")).toBeInTheDocument();
+    expect(ports.getCurrentUser).toHaveBeenCalledTimes(1);
   });
 });

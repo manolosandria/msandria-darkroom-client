@@ -154,7 +154,7 @@ a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) 
 renditions are ever requested, which favours browser and CDN caches. The choice is
 kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads and
 writes are guarded and fall back to memory), and it applies to every photo opened.
-Ratings and comments are not part of the viewer yet.
+Ratings are not part of the viewer yet; comments are (see "Comments").
 
 The **info panel** (`PhotoInfoPanel`) is a white column of its own, in the manner of a
 social photo post: beside the photo on wide screens and below it on phones, never over
@@ -164,7 +164,8 @@ Escape close it too, and Escape closes the panel before it leaves the photo. Top
 bottom it shows the title, the description and the details the API recorded from the
 file's EXIF: capture date (in the project's time zone), camera, lens, focal length,
 aperture, shutter speed and ISO, written in photographers' notation by `photoDetails`
-and left out when missing. Ratings and comments will go below them. The panel stays
+and left out when missing. The photo's comments follow them (see "Comments"),
+and ratings will go between the two. The panel stays
 open when a click hides the controls, since hiding it would resize the photo, and
 clicking, selecting or dragging inside it neither hides the controls nor swipes.
 
@@ -201,7 +202,8 @@ message. Sign-in and upload requests are never automatically replayed.
 On an upload rate limit, the current photo remains failed with its edits intact,
 remaining queued photos return to draft, and publishing pauses. A manual retry sends
 only failed/draft photos, preserving photos already published. Default API quotas
-are 10 sign-in attempts/minute per IP and 30 upload attempts/minute per admin account.
+are 10 sign-in attempts/minute per IP, 30 upload attempts/minute per admin account and
+5 comments/minute per account.
 
 ## Photo maintenance
 
@@ -235,4 +237,34 @@ the current UI session; conflicts require reviewing the warning and acknowledgin
 again, without automatically replaying a destructive request. Every server session
 is invalidated, while published gallery photographs and the Google account remain.
 Signing in again creates a new viewer account without restoring administrator access.
+The account's comments stay, without its name, as written by a deleted user.
 The privacy notice remains a separate pending task.
+
+## Comments
+
+The info panel ends with the photo's comments (`PhotoComments`), oldest first. Anyone
+can read approved comments; a signed-in visitor also sees their own while they wait
+for moderation, marked **Awaiting moderation**, and can delete their own at any time.
+A comment whose author deleted their account keeps its text and is shown as written by
+a **Deleted user**: the API sends no name, and the words come from this site.
+
+Only signed-in visitors with a public name can write. The form shows which name the
+comment will carry and links to `/account` to change it. Comments go through
+`POST /photos/:id/comments` and start pending: nothing appears publicly until the
+administrator approves it. The API rejects links, hidden control characters and more
+than 1000 characters, and allows 5 comments per minute per account; the panel explains
+each refusal and keeps the text so nothing is lost. Requests are never replayed.
+
+On `/account`, **Public name** (`PublicNameSettings`) chooses how comments are signed:
+first name and initial (the default, e.g. "Ana G."), the full name from Google, or an
+alias of 2 to 40 characters. Only the forms the API can build from the account are
+offered; an alias can always be written. The name is fixed on each comment when it is
+sent, so a change applies to new comments only. The save goes through
+`PATCH /auth/me/public-name` and its answer replaces the session's user
+(`replaceUser`) without asking `/auth/me` again.
+
+`/moderate` (`CommentModeration`), linked from `/upload`, is the administrator's queue
+from `GET /comments/pending`: each comment with its author, date and a link to its
+photo, to **Approve** (`POST /comments/:id/approve`) or **Delete** (which is how a
+comment is rejected). The page is offered to the administrator alone; the API enforces
+it on every request.

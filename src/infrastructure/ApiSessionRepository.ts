@@ -2,6 +2,8 @@ import { AccountDeletionError } from "../domain/errors/AccountDeletionError";
 import { AccountRepository, AccountDeletionPreview } from "../domain/repositories/AccountRepository";
 import { rateLimitError } from "./rateLimitError";
 import { User, UserRole } from "../domain/entities/User";
+import { PublicName, PublicNameStyle } from "../domain/entities/PublicName";
+import { PublicNameError } from "../domain/errors/PublicNameError";
 import { SessionRepository } from "../domain/repositories/SessionRepository";
 
 // What the API answers about an account. There is no token here on purpose: the
@@ -12,6 +14,7 @@ type ApiUser = {
   email: string;
   name: string | null;
   role: UserRole;
+  publicName?: PublicName;
 };
 
 export class ApiSessionRepository implements SessionRepository, AccountRepository {
@@ -52,6 +55,12 @@ export class ApiSessionRepository implements SessionRepository, AccountRepositor
     this.ensureOk(response);
   }
 
+  async updatePublicName(style: PublicNameStyle, alias?: string | null): Promise<User> {
+    const response = await this.send("PATCH", "/auth/me/public-name", alias === undefined ? { style } : { style, alias });
+    if (response.status === 400) throw new PublicNameError();
+    return this.toDomainUser((await this.ensureOk(response).json()) as ApiUser);
+  }
+
   // `credentials: "include"` is what makes the browser attach the session cookie to
   // a cross-origin call and accept the one that comes back. Without it the API would
   // never see the session, and the API has to answer with
@@ -83,6 +92,7 @@ export class ApiSessionRepository implements SessionRepository, AccountRepositor
       email: entry.email,
       name: entry.name ?? undefined,
       role: entry.role,
+      publicName: entry.publicName,
     });
   }
 }

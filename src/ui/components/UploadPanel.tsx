@@ -179,9 +179,14 @@ export default function UploadPanel({
   const completed = items.filter((item) => item.status === "published").length;
   return (
     <Shell>
-      <Link href="/manage" className="upload-link">
-        Manage published photos →
-      </Link>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        <Link href="/manage" className="upload-link">
+          Manage published photos →
+        </Link>
+        <Link href="/moderate" className="upload-link">
+          Review comments →
+        </Link>
+      </div>
       <div
         className={`upload-dropzone ${dragging ? "is-dragging" : ""}`}
         onDragEnter={(event) => {

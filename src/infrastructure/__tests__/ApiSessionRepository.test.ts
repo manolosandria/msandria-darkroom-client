@@ -159,4 +159,44 @@ describe("ApiSessionRepository", () => {
       ).rejects.toThrow("The API answered 500");
     });
   });
+
+  describe("public name", () => {
+    const publicName = {
+      style: "ALIAS",
+      alias: "Slow Lens",
+      choices: { FULL_NAME: "Manolo Sandria", ALIAS: "Slow Lens" },
+      current: "Slow Lens",
+    };
+
+    it("keeps the public name the API reports with the account", async () => {
+      const fetchFn = respondWith(apiUser({ publicName }));
+      const user = await new ApiSessionRepository(API_URL, fetchFn).currentUser();
+      expect(user?.getPublicName()).toEqual(publicName);
+    });
+
+    it("sends only the style and alias, and returns the updated account", async () => {
+      const fetchFn = respondWith(apiUser({ publicName }));
+      const user = await new ApiSessionRepository(API_URL, fetchFn).updatePublicName("ALIAS", "Slow Lens");
+      expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/auth/me/public-name`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ style: "ALIAS", alias: "Slow Lens" }),
+      });
+      expect(user.getPublicName()?.current).toBe("Slow Lens");
+    });
+
+    it("leaves the alias out when it should stay as stored", async () => {
+      const fetchFn = respondWith(apiUser({ publicName }));
+      await new ApiSessionRepository(API_URL, fetchFn).updatePublicName("FULL_NAME");
+      expect(optionsOf(fetchFn).body).toBe(JSON.stringify({ style: "FULL_NAME" }));
+    });
+
+    it("reports a rejected alias", async () => {
+      const fetchFn = respondWith({ code: "ALIAS_REQUIRED" }, 400);
+      await expect(
+        new ApiSessionRepository(API_URL, fetchFn).updatePublicName("ALIAS", null),
+      ).rejects.toMatchObject({ name: "PublicNameError" });
+    });
+  });
 });

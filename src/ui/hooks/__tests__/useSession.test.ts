@@ -160,4 +160,15 @@ describe("useSession stability", () => {
 
     expect(getCurrentUser).toHaveBeenCalledTimes(1);
   });
+
+  it("adopts an updated account without asking the API again", async () => {
+    const getCurrentUser = vi.fn().mockResolvedValue(viewer);
+    const { result } = renderHook(() => useSession(ports({ getCurrentUser })));
+    await waitFor(() => expect(result.current.user).toBe(viewer));
+
+    act(() => result.current.replaceUser(admin));
+
+    expect(result.current.user).toBe(admin);
+    expect(getCurrentUser).toHaveBeenCalledTimes(1);
+  });
 });
