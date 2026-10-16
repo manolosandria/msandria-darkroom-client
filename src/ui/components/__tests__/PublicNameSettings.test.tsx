@@ -31,7 +31,8 @@ describe("PublicNameSettings", () => {
     render(<PublicNameSettings publicName={fullChoices} onSaved={vi.fn()} />);
 
     expect(screen.getByRole("radio", { name: /First name and initial/ })).toBeChecked();
-    expect(screen.getByText("Ana G.")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Ana G\./ })).toBeChecked();
+    expect(screen.getByText("Your comments will read").nextSibling).toHaveTextContent("Ana G.");
     expect(screen.getByRole("radio", { name: /Full name from Google/ })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: /alias of your own/ })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Alias" })).not.toBeInTheDocument();
