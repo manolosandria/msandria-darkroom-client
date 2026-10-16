@@ -22,6 +22,7 @@ Feature: Comments on photos
     Given a signed-in visitor whose public name is "Ana G."
     When they write "Lovely" and press Enter
     Then the box is emptied and the comment waits a few seconds before it is sent
+    And the waiting card says a moderator will review it before it appears
     When the wait is over
     Then the comment appears under the others marked "Awaiting moderation"
     And they are told it will appear once it is approved
@@ -37,6 +38,21 @@ Feature: Comments on photos
     Then the text returns to the box and nothing is sent
     When they press Enter again and choose "Cancel"
     Then the comment is discarded and nothing is sent
+
+  Scenario: A comment can be sent without waiting
+    Given a signed-in visitor has just pressed Enter on a comment
+    When they choose "Send now"
+    Then the comment is sent at once
+
+  Scenario: A draft is kept while moving between photos
+    Given a signed-in visitor has typed a comment without sending it
+    When they move to another photo and come back
+    Then their text is still in the box
+
+  Scenario: An author cancels a comment awaiting moderation
+    Given a signed-in visitor sees one of their comments awaiting moderation
+    When they choose "Cancel" on it
+    Then it disappears from the panel
 
   Scenario: A comment waiting to go is sent when the panel closes
     Given a signed-in visitor has just pressed Enter on a comment

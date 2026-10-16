@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PhotoViewer from "../PhotoViewer";
 import { Photo } from "@/src/domain/entities/Photo";
+import { resetViewerHintForTests } from "@/src/ui/viewerHint";
+import { setViewerPanelOpen } from "@/src/ui/viewerPanelState";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -45,6 +47,58 @@ describe("PhotoViewer", () => {
   beforeEach(() => {
     push.mockReset();
     window.localStorage.clear();
+    resetViewerHintForTests();
+    setViewerPanelOpen(false);
+  });
+
+  it("tells a first-time visitor once that a click hides the controls", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByAltText("Photo b");
+
+    expect(await screen.findByText(/Click the photo to hide the controls/)).toBeInTheDocument();
+    expect(window.localStorage.getItem("viewerHintSeen")).toBe("1");
+    await user.click(screen.getByAltText("Photo b"));
+    expect(screen.queryByText(/Click the photo to hide the controls/)).not.toBeInTheDocument();
+  });
+
+  it("does not repeat the hint on a later visit", async () => {
+    window.localStorage.setItem("viewerHintSeen", "1");
+    setup();
+    await screen.findByAltText("Photo b");
+    expect(screen.queryByText(/hide the controls/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the info panel open when moving to another photo", async () => {
+    const user = userEvent.setup();
+    const getPhoto = { execute: vi.fn((id: string) => Promise.resolve(makePhoto(id))) };
+    const getAllPhotos = {
+      execute: vi.fn().mockResolvedValue([makePhoto("a"), makePhoto("b"), makePhoto("c")]),
+    };
+    // The route remounts the viewer for every photo, as a keyed element does.
+    const { rerender } = render(
+      <PhotoViewer key="b" photoId="b" getPhoto={getPhoto} getAllPhotos={getAllPhotos} />,
+    );
+    await screen.findByAltText("Photo b");
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+
+    rerender(
+      <PhotoViewer key="c" photoId="c" getPhoto={getPhoto} getAllPhotos={getAllPhotos} />,
+    );
+
+    expect(screen.getByRole("complementary", { name: "Photo information" })).toBeInTheDocument();
+    await screen.findByAltText("Photo c");
+    const panel = screen.getByRole("complementary", { name: "Photo information" });
+    expect(panel).toHaveTextContent("The story of c");
+  });
+
+  it("draws each quality with sharper pixel blocks", async () => {
+    setup();
+    await screen.findByAltText("Photo b");
+    const blocks = ["Data saver", "Standard", "Maximum"].map((name) =>
+      screen.getByRole("button", { name }).querySelector("svg")?.getAttribute("data-blocks"),
+    );
+    expect(blocks).toEqual(["3", "6", "12"]);
   });
 
   it("shows the requested photo at the standard quality by default", async () => {

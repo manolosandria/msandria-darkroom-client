@@ -154,6 +154,30 @@ body {
   width: clamp(3rem, 12vw, 8rem);
 }
 
+/* Shown once to a first-time visitor: plain words over the photo, no box, gone on
+   their own after a few seconds. */
+.photo-viewer__hint {
+  position: absolute;
+  top: 1.35rem;
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: calc(100% - 8rem);
+  transform: translateX(-50%);
+  pointer-events: none;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgb(255 255 255 / 0.9);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8), 0 0 12px rgb(0 0 0 / 0.5);
+  animation: photo-viewer-hint 7s ease forwards;
+}
+
+@keyframes photo-viewer-hint {
+  0% { opacity: 0; }
+  8%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* The info panel, a white column of its own in the manner of a social photo post:
    beside the photo on wide screens, below it on phones. Never over the photo. */
 .photo-viewer__panel {
@@ -245,8 +269,18 @@ body {
 .photo-comments__author { font-size: 0.85rem; font-weight: 600; color: #171717; }
 .photo-comments__author.is-deleted { font-weight: 400; font-style: italic; color: #737373; }
 .photo-comments__body { white-space: pre-line; overflow-wrap: anywhere; font-size: 0.9rem; line-height: 1.5; color: #262626; }
-.photo-comments__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin-top: 0.15rem; font-size: 0.75rem; color: #737373; }
+.photo-comments__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.25rem; font-size: 0.75rem; color: #737373; }
 .photo-comments__badge { padding: 0.15rem 0.5rem; border-radius: 9999px; background: #f2f2f2; color: #616161; }
+.photo-comments__hint { font-size: 0.75rem; color: #737373; }
+.photo-comments__button { padding: 0.3rem 0.8rem; border: 1px solid transparent; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; line-height: 1.2; cursor: pointer; transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.photo-comments__button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 8px rgb(0 0 0 / 0.15); }
+.photo-comments__button:disabled { cursor: default; opacity: 0.6; }
+.photo-comments__button.is-light { color: #171717; background: #fff; border-color: #d4d4d4; }
+.photo-comments__button.is-light:hover:not(:disabled) { border-color: #737373; }
+.photo-comments__button.is-dark { color: #fff; background: #171717; }
+.photo-comments__button.is-dark:hover:not(:disabled) { background: #000; }
+.photo-comments__button.is-go { margin-left: auto; color: #fff; background: #3f7d3a; }
+.photo-comments__button.is-go:hover:not(:disabled) { background: #336a2f; }
 .photo-comments__link { color: #525252; text-decoration: underline; text-decoration-color: #c4c4c4; text-underline-offset: 3px; cursor: pointer; transition: color 0.15s, text-decoration-color 0.15s; }
 .photo-comments__link:hover { color: #171717; text-decoration-color: currentColor; }
 .photo-comments__link:disabled { cursor: default; opacity: 0.6; }
