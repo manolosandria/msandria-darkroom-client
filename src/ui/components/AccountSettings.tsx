@@ -43,13 +43,13 @@ export default function AccountSettings() {
           <div className="space-y-8">
             {publicName && (
               <PublicNameSettings
-                key={session.user.getId()}
+                key={`public-name:${session.user.getId()}`}
                 publicName={publicName}
                 onSaved={session.replaceUser}
               />
             )}
             <DeletionPanel
-              key={session.user.getId()}
+              key={`deletion:${session.user.getId()}`}
               onDeleted={() => {
                 session.clearSession();
                 setDeleted(true);

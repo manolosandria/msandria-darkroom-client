@@ -20,6 +20,12 @@ const STYLE_LABELS: Record<PublicNameStyle, string> = {
   ALIAS: "An alias of your own",
 };
 
+const STYLE_HINTS: Record<PublicNameStyle, string> = {
+  GIVEN_NAME_INITIAL: "Recognisable without giving away your surname.",
+  FULL_NAME: "Exactly as it appears on your Google account.",
+  ALIAS: `Any name you like, ${ALIAS_MIN_LENGTH} to ${ALIAS_MAX_LENGTH} characters, without links.`,
+};
+
 interface PublicNameSettingsProps {
   publicName: PublicName;
   onSaved: (user: User) => void;
@@ -41,6 +47,7 @@ export function PublicNameSettings({ publicName, onSaved }: PublicNameSettingsPr
   const styles = PUBLIC_NAME_STYLES.filter(
     (candidate) => candidate === "ALIAS" || publicName.choices[candidate],
   );
+  const preview = style === "ALIAS" ? alias.trim() : (publicName.choices[style] ?? "");
 
   return (
     <section className="upload-card p-6 md:p-8 max-w-3xl space-y-5">
@@ -51,7 +58,7 @@ export function PublicNameSettings({ publicName, onSaved }: PublicNameSettingsPr
       </p>
       <form
         aria-label="Public name"
-        className="upload-fields"
+        className="public-name-form"
         onSubmit={async (event) => {
           event.preventDefault();
           if (saving) return;
@@ -80,42 +87,49 @@ export function PublicNameSettings({ publicName, onSaved }: PublicNameSettingsPr
           }
         }}
       >
-        <fieldset disabled={saving} className="min-w-0 flex flex-col gap-3">
+        <fieldset disabled={saving} className="public-name-options">
           <legend className="sr-only">Sign comments as</legend>
           {styles.map((candidate) => (
-            <label key={candidate} className="flex items-start gap-3 text-sm">
+            <label key={candidate} className="public-name-option">
               <input
                 type="radio"
                 name="public-name-style"
-                className="mt-1 size-4 shrink-0 accent-[#536d44]"
                 checked={style === candidate}
                 onChange={() => setStyle(candidate)}
               />
-              <span>
-                {STYLE_LABELS[candidate]}
+              <span className="public-name-option__text">
+                <span className="public-name-option__label">{STYLE_LABELS[candidate]}</span>
                 {candidate !== "ALIAS" && (
-                  <strong className="ml-2 font-medium">{publicName.choices[candidate]}</strong>
+                  <strong className="public-name-option__name">
+                    {publicName.choices[candidate]}
+                  </strong>
                 )}
+                <span className="public-name-option__hint">{STYLE_HINTS[candidate]}</span>
               </span>
             </label>
           ))}
           {style === "ALIAS" && (
-            <label>
+            <label className="public-name-alias">
               Alias
               <input
                 value={alias}
                 minLength={ALIAS_MIN_LENGTH}
                 maxLength={ALIAS_MAX_LENGTH}
                 required
+                placeholder="e.g. Slow Lens"
                 onChange={(event) => setAlias(event.target.value)}
               />
             </label>
           )}
         </fieldset>
+        <p className="public-name-preview" aria-live="polite">
+          <span>Your comments will read</span>
+          <strong>{preview || "—"}</strong>
+        </p>
         {message && (
           <p
             role={message.kind === "error" ? "alert" : "status"}
-            className={message.kind === "error" ? "upload-error" : "text-sm"}
+            className={message.kind === "error" ? "upload-error" : "public-name-saved"}
           >
             {message.text}
           </p>
