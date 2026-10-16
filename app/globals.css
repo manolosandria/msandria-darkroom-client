@@ -396,3 +396,26 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
 .manage-thumbnail { width: 64px; height: 64px; position: relative; overflow: hidden; flex-shrink: 0; }
 .manage-editor { padding: 24px; }
 @media (max-width: 700px) { .manage-layout { grid-template-columns: 1fr; } .manage-library { display: flex; overflow-x: auto; } .manage-library button { min-width: 190px; } }
+
+/* A fixed four-column composition scales as a whole, including on phones. */
+.collection-canvas { container-type: inline-size; }
+.collection-mosaic { --mosaic-gap: clamp(3px, 1cqw, 16px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: calc((100cqw - 3 * var(--mosaic-gap)) / 4); gap: var(--mosaic-gap); }
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.catalog-tile { position: relative; min-width: 0; background: #101010; overflow: hidden; }
+.catalog-grid .catalog-tile { aspect-ratio: 1; }
+.catalog-tile__image { position: absolute; inset: 0; }
+.catalog-variants { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; color: #111; font-size: .75rem; display: flex; gap: .25rem; padding: .25rem; }
+.catalog-variants select { min-width: 0; flex: 1; }
+.catalog-filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+.catalog-filters select, .catalog-editor input:not([type=checkbox]), .catalog-editor select { border: 1px solid #aaa; padding: .5rem; max-width: 100%; background: white; color: #111; border-radius: .25rem; }
+.catalog-editor { display: grid; gap: 1.5rem; }
+.catalog-editor section { border: 1px solid #555; border-radius: .5rem; padding: 1rem; display: grid; gap: 1rem; }
+.catalog-editor h2 { font-size: 1.5rem; }
+.catalog-editor button { padding: .4rem .7rem; border: 1px solid #888; border-radius: .25rem; }
+.catalog-editor button:disabled { opacity: .4; }
+.catalog-editor fieldset { display: grid; gap: .75rem; min-width: 0; }
+.catalog-editor legend { font-weight: bold; margin-bottom: .5rem; }
+.catalog-editor label { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.catalog-editor__row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.catalog-editor__entries { display: grid; gap: .75rem; }
+.catalog-editor__entries li { padding: .75rem; border: 1px solid #666; }

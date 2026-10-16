@@ -289,3 +289,31 @@ from `GET /comments/pending`: each comment with its author, date and a link to i
 photo, to **Approve** (`POST /comments/:id/approve`) or **Delete** (which is how a
 comment is rejected). The page is offered to the administrator alone; the API enforces
 it on every request.
+
+## Collections and variants
+
+`/collections`, linked from `/upload`, is the administrator's catalog editor. It
+creates and edits categories, assigns categories to standalone photos, builds
+collections, orders their photos, and sets each tile's width and height from one
+to four cells. A live preview uses the same four-column canvas as the gallery;
+the entire composition scales down on phones without changing the arrangement.
+Photos remain uncropped inside each tile. Empty collections are allowed.
+
+The gallery reads the public `GET /catalog` alongside the existing photo listing.
+Category filters include directly classified photos and photos in classified
+collections; selecting a collection uses its saved order and sizes. An empty
+selection is explicit. Catalog loading failures offer a retry while the ordinary
+photo gallery remains usable.
+
+The editor also groups two or more files as variants of one work. Each file keeps
+its viewer URL and comments. The gallery shows one tile per work with a selector
+that changes both its image and link. In a collection, the first entry for that
+work determines its initial variant and tile dimensions. Unavailable files are
+omitted. Deleting a grouping never deletes photographs.
+
+`EditCatalog` uses the `CatalogRepository` interface; `ApiCatalogRepository` sends
+session credentials for all calls. Writes use `POST`, `PATCH`, and `DELETE` on
+`/collections`, `/categories`, and `/works`, plus `PATCH /photos/:id/categories`.
+The API enforces administrator permissions. Failed saves keep the edited fields
+and are never replayed automatically; deletion requires confirmation.
+Apply the API's `20261018000000_collections` migration before using this feature.
