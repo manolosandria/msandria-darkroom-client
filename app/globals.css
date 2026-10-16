@@ -221,6 +221,18 @@ body {
 .photo-viewer__details dt { color: #737373; }
 .photo-viewer__details dd { text-align: right; }
 
+.photo-comments__list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
+.photo-comments__item { display: flex; flex-direction: column; gap: 0.35rem; }
+.photo-comments__meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; font-size: 0.8rem; color: #737373; }
+.photo-comments__link { color: #404040; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.photo-comments__link:disabled { cursor: default; opacity: 0.6; }
+.photo-comments__note { font-size: 0.875rem; color: #525252; }
+.photo-comments__error { font-size: 0.85rem; color: #963c26; }
+.photo-comments__form { display: flex; flex-direction: column; gap: 0.5rem; }
+.photo-comments__form textarea { width: 100%; resize: vertical; border: 1px solid #d4d4d4; border-radius: 6px; padding: 0.6rem 0.75rem; font-size: 0.9rem; color: #171717; background: #fff; }
+.photo-comments__submit { align-self: flex-start; border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; color: #fff; background: #171717; cursor: pointer; }
+.photo-comments__submit:disabled { cursor: default; opacity: 0.5; }
+
 /* The upload workspace uses its own paper-and-ink palette in both color schemes. */
 .upload-workspace { background: #f3f2ef; color: #262923; min-height: 100vh; padding: 64px 24px 96px; }
 .upload-container { max-width: 1180px; margin: auto; }

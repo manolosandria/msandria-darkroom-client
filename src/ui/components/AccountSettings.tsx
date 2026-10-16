@@ -10,6 +10,7 @@ import {
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import { usePhotoFetch } from "../hooks/usePhotoFetch";
 import { ErrorMessage } from "./ErrorMessage";
+import { PublicNameSettings } from "./PublicNameSettings";
 import { useSessionValue } from "./SessionProvider";
 
 const loadPreview = () => getAccountDeletionPreview.execute();
@@ -17,6 +18,7 @@ const loadPreview = () => getAccountDeletionPreview.execute();
 export default function AccountSettings() {
   const session = useSessionValue();
   const [deleted, setDeleted] = useState(false);
+  const publicName = session.user?.getPublicName();
   return (
     <main className="upload-workspace">
       <div className="upload-container">
@@ -38,14 +40,23 @@ export default function AccountSettings() {
         ) : session.error ? (
           <ErrorMessage message={session.error} onRetry={session.reload} />
         ) : session.user ? (
-          <DeletionPanel
-            key={session.user.getId()}
-            onDeleted={() => {
-              session.clearSession();
-              setDeleted(true);
-              disableGoogleAutoSelect();
-            }}
-          />
+          <div className="space-y-8">
+            {publicName && (
+              <PublicNameSettings
+                key={session.user.getId()}
+                publicName={publicName}
+                onSaved={session.replaceUser}
+              />
+            )}
+            <DeletionPanel
+              key={session.user.getId()}
+              onDeleted={() => {
+                session.clearSession();
+                setDeleted(true);
+                disableGoogleAutoSelect();
+              }}
+            />
+          </div>
         ) : (
           <p>Sign in to manage your account.</p>
         )}
@@ -76,7 +87,8 @@ function DeletionPanel({ onDeleted }: { onDeleted: () => void }) {
       <p className="text-sm leading-relaxed text-gray-700">
         This permanently deletes your gallery account and ends all your
         sessions. It does not delete your Google account or the gallery&apos;s
-        published photographs. Signing in with Google again creates a new viewer
+        published photographs. Your comments stay, shown as written by a deleted
+        user; delete them from each photo first if you want them gone. Signing in with Google again creates a new viewer
         account without administrator access.
       </p>
       {!confirming ? (

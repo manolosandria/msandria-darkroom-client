@@ -1,3 +1,5 @@
+import { PublicName } from "./PublicName";
+
 // Who the visitor is, as the API reports it. The role travels so the interface can
 // decide what to offer; it never decides what is allowed, which the API settles on
 // every request by reading the role from its own database.
@@ -8,6 +10,7 @@ export type UserParams = {
   email: string;
   role: UserRole;
   name?: string;
+  publicName?: PublicName;
 };
 
 export class User {
@@ -15,12 +18,14 @@ export class User {
   private readonly email: string;
   private readonly name?: string;
   private readonly role: UserRole;
+  private readonly publicName?: PublicName;
 
   constructor(params: UserParams) {
     this.id = params.id;
     this.email = params.email.trim();
     this.name = params.name?.trim() || undefined;
     this.role = params.role;
+    this.publicName = params.publicName;
     this.validate();
   }
 
@@ -43,6 +48,9 @@ export class User {
   }
   getRole() {
     return this.role;
+  }
+  getPublicName() {
+    return this.publicName;
   }
 
   // Only decides what the interface shows. The API enforces it independently.

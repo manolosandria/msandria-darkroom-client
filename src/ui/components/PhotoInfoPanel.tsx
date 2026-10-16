@@ -1,6 +1,7 @@
 "use client";
 import { Photo } from "@/src/domain/entities/Photo";
 import { photoDetails } from "@/src/ui/photoDetails";
+import { PhotoComments } from "./PhotoComments";
 
 interface PhotoInfoPanelProps {
   photo: Photo;
@@ -8,8 +9,8 @@ interface PhotoInfoPanelProps {
 }
 
 // The viewer's side panel, a white column of its own beside the photo, top to bottom:
-// title, description and the details recorded when the photo was taken. Ratings and
-// comments will follow below them, each in its own section.
+// title, description, the details recorded when the photo was taken and the comments.
+// Ratings will go between the details and the comments when they exist.
 export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
   const description = photo.getDescription();
   const details = photoDetails(photo.getMetadata());
@@ -51,6 +52,8 @@ export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
           <p className="text-sm text-neutral-500">No camera details were recorded for this photo.</p>
         )}
       </section>
+
+      <PhotoComments key={photo.getId()} photoId={photo.getId()} />
     </aside>
   );
 }

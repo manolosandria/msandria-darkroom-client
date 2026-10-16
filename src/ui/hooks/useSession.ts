@@ -75,5 +75,11 @@ export function useSession(ports: SessionPorts) {
     setState({ user: null, loading: false, error: null });
   }, []);
 
-  return { clearSession, ...state, signIn: startSession, signOut: endSession, reload: load };
+  // The API answers an account change with the updated account; adopting it spares
+  // another round trip to `/auth/me`.
+  const replaceUser = useCallback((user: User) => {
+    setState({ user, loading: false, error: null });
+  }, []);
+
+  return { clearSession, replaceUser, ...state, signIn: startSession, signOut: endSession, reload: load };
 }

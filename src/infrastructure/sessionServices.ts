@@ -3,6 +3,7 @@ import { DeleteAccount } from "../application/use-cases/DeleteAccount";
 import { GetCurrentUser } from "../application/use-cases/GetCurrentUser";
 import { SignIn } from "../application/use-cases/SignIn";
 import { SignOut } from "../application/use-cases/SignOut";
+import { UpdatePublicName } from "../application/use-cases/UpdatePublicName";
 import { ApiSessionRepository } from "./ApiSessionRepository";
 
 // Next.js inlines NEXT_PUBLIC_* at build time, so both must be set before building.
@@ -18,3 +19,4 @@ export const signOut = new SignOut(sessionRepository);
 
 export const getAccountDeletionPreview = new GetAccountDeletionPreview(sessionRepository);
 export const deleteAccount = new DeleteAccount(sessionRepository);
+export const updatePublicName = new UpdatePublicName(sessionRepository);
