@@ -129,6 +129,17 @@ body {
   color: #fff;
   background: rgb(0 0 0 / 0.45);
   backdrop-filter: blur(4px);
+  /* Opacity is listed too: this rule outranks Tailwind's transition-opacity, which the
+     controls use to fade in and out. */
+  transition: opacity 0.3s, background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+/* Lights up under the pointer. An edge link lights its arrow from anywhere along it. */
+.photo-viewer__control:hover,
+.photo-viewer__edge:hover .photo-viewer__control {
+  background: rgb(0 0 0 / 0.72);
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.55), 0 6px 18px rgb(0 0 0 / 0.35);
 }
 
 /* Each side edge of the window is one tall link, so the whole border moves to the
@@ -221,17 +232,46 @@ body {
 .photo-viewer__details dt { color: #737373; }
 .photo-viewer__details dd { text-align: right; }
 
-.photo-comments__list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
-.photo-comments__item { display: flex; flex-direction: column; gap: 0.35rem; }
-.photo-comments__meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; font-size: 0.8rem; color: #737373; }
-.photo-comments__link { color: #404040; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* Comments: cards stacked oldest first, with the box docked at the bottom of the panel
+   so it stays in reach however long the conversation gets. */
+.photo-viewer__panel { display: flex; flex-direction: column; }
+.photo-comments { flex: 1 0 auto; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 0; border-bottom: 0; }
+.photo-comments__list { display: flex; flex-direction: column; gap: 0.625rem; }
+.photo-comments__card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.3rem; padding: 0.75rem 0.9rem; border: 1px solid #ececec; border-radius: 14px; background: #fafafa; transition: border-color 0.2s, box-shadow 0.2s; }
+.photo-comments__card:hover { border-color: #e0e0e0; box-shadow: 0 2px 10px rgb(0 0 0 / 0.05); }
+.photo-comments__card.is-pending { border-style: dashed; border-color: #d9d9d9; background: #fff; }
+.photo-comments__card.is-queued { border-color: #d4d4d4; background: #fff; }
+.photo-comments__meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 0.75rem; font-size: 0.75rem; color: #8a8a8a; }
+.photo-comments__author { font-size: 0.85rem; font-weight: 600; color: #171717; }
+.photo-comments__author.is-deleted { font-weight: 400; font-style: italic; color: #737373; }
+.photo-comments__body { white-space: pre-line; overflow-wrap: anywhere; font-size: 0.9rem; line-height: 1.5; color: #262626; }
+.photo-comments__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin-top: 0.15rem; font-size: 0.75rem; color: #737373; }
+.photo-comments__badge { padding: 0.15rem 0.5rem; border-radius: 9999px; background: #f2f2f2; color: #616161; }
+.photo-comments__link { color: #525252; text-decoration: underline; text-decoration-color: #c4c4c4; text-underline-offset: 3px; cursor: pointer; transition: color 0.15s, text-decoration-color 0.15s; }
+.photo-comments__link:hover { color: #171717; text-decoration-color: currentColor; }
 .photo-comments__link:disabled { cursor: default; opacity: 0.6; }
-.photo-comments__note { font-size: 0.875rem; color: #525252; }
+.photo-comments__countdown { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: #171717; transform-origin: left; animation: photo-comments-countdown linear forwards; }
+@keyframes photo-comments-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.photo-comments__note { font-size: 0.85rem; color: #616161; }
 .photo-comments__error { font-size: 0.85rem; color: #963c26; }
-.photo-comments__form { display: flex; flex-direction: column; gap: 0.5rem; }
-.photo-comments__form textarea { width: 100%; resize: vertical; border: 1px solid #d4d4d4; border-radius: 6px; padding: 0.6rem 0.75rem; font-size: 0.9rem; color: #171717; background: #fff; }
-.photo-comments__submit { align-self: flex-start; border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; color: #fff; background: #171717; cursor: pointer; }
-.photo-comments__submit:disabled { cursor: default; opacity: 0.5; }
+.photo-comments__dock { position: sticky; bottom: 0; margin: auto -1.5rem 0; padding: 0.75rem 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; background: #fff; box-shadow: 0 -10px 12px -12px rgb(0 0 0 / 0.12); }
+.photo-comments__form { display: flex; flex-direction: column; gap: 0.4rem; }
+.photo-comments__field { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.4rem 0.4rem 0.4rem 0.95rem; border: 1px solid #dcdcdc; border-radius: 22px; background: #fafafa; transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s; }
+.photo-comments__field:hover { border-color: #a3a3a3; background: #fff; box-shadow: 0 0 0 3px rgb(23 23 23 / 0.05); }
+.photo-comments__field:focus-within { border-color: #171717; background: #fff; box-shadow: 0 0 0 3px rgb(23 23 23 / 0.1); }
+.photo-comments__field textarea { flex: 1; min-width: 0; resize: none; overflow-y: auto; border: 0; outline: none; background: transparent; padding: 0.4rem 0; font-size: 0.9rem; line-height: 1.4; color: #171717; }
+.photo-comments__field textarea::placeholder { color: #a3a3a3; transition: color 0.2s; }
+.photo-comments__field:hover textarea::placeholder { color: #737373; }
+.photo-comments__send { flex: none; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 9999px; color: #fff; background: #171717; cursor: pointer; transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s; }
+.photo-comments__send svg { width: 1.1rem; height: 1.1rem; }
+.photo-comments__send:hover:not(:disabled) { background: #000; transform: translateY(-1px) scale(1.06); box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
+.photo-comments__send:disabled { cursor: default; background: #d4d4d4; }
+.photo-comments__signature { padding: 0 0.5rem; font-size: 0.75rem; line-height: 1.6; color: #8a8a8a; }
+.photo-comments__signature strong { font-weight: 600; color: #404040; }
+.photo-comments__edit { display: inline-grid; place-items: center; margin-left: 0.15rem; vertical-align: middle; width: 1.6rem; height: 1.6rem; border-radius: 9999px; color: #8a8a8a; transition: color 0.15s, background-color 0.15s; }
+.photo-comments__edit svg { width: 0.9rem; height: 0.9rem; }
+.photo-comments__edit:hover { color: #171717; background: #f0f0f0; }
+.photo-comments__counter { float: right; margin-left: 0.75rem; font-variant-numeric: tabular-nums; }
 
 /* The upload workspace uses its own paper-and-ink palette in both color schemes. */
 .upload-workspace { background: #f3f2ef; color: #262923; min-height: 100vh; padding: 64px 24px 96px; }

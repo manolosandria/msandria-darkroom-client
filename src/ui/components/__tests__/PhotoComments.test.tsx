@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PhotoComment } from "@/src/domain/entities/PhotoComment";
 import { User } from "@/src/domain/entities/User";
@@ -12,7 +12,7 @@ import {
 } from "@/src/infrastructure/commentServices";
 import { SessionPorts } from "@/src/ui/hooks/useSession";
 import { SessionProvider } from "../SessionProvider";
-import { PhotoComments } from "../PhotoComments";
+import { COMMENT_PROMPTS, PhotoComments, SEND_DELAY_MS } from "../PhotoComments";
 
 vi.mock("@/src/infrastructure/commentServices", () => ({
   getPhotoComments: { execute: vi.fn() },
@@ -81,55 +81,156 @@ describe("PhotoComments", () => {
     expect(await screen.findByText("Deleted user")).toBeInTheDocument();
   });
 
-  it("says when there are no comments yet", async () => {
+  it("shows nothing but the invitation when there are no comments yet", async () => {
     show(null);
-    expect(await screen.findByText("No comments yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in to leave a comment.")).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
   it("offers to retry when the comments cannot load", async () => {
     vi.mocked(getPhotoComments.execute).mockRejectedValueOnce(new Error("down"));
+    vi.mocked(getPhotoComments.execute).mockResolvedValueOnce([comment()]);
     show(null);
 
     await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
 
-    expect(await screen.findByText("No comments yet.")).toBeInTheDocument();
+    expect(await screen.findByText("What light")).toBeInTheDocument();
     expect(getPhotoComments.execute).toHaveBeenCalledTimes(2);
   });
 
-  it("sends a comment, shows it pending and explains moderation", async () => {
-    vi.mocked(postComment.execute).mockResolvedValue(
-      comment({ id: "cmt_2", authorName: "Ana G.", body: "Lovely", status: "PENDING", mine: true }),
-    );
-    show(viewer());
+  describe("writing", () => {
+    let user: ReturnType<typeof userEvent.setup>;
 
-    expect(await screen.findByText("Ana G.")).toBeInTheDocument();
-    const box = screen.getByRole("textbox", { name: "Comment" });
-    expect(screen.getByRole("button", { name: "Post comment" })).toBeDisabled();
-    await userEvent.type(box, "Lovely");
-    expect(screen.getByText("6/1000")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Post comment" }));
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.mocked(postComment.execute).mockResolvedValue(
+        comment({ id: "cmt_2", authorName: "Ana G.", body: "Lovely", status: "PENDING", mine: true }),
+      );
+    });
 
-    expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
-    expect(await screen.findByText("Lovely")).toBeInTheDocument();
-    expect(screen.getByText("Awaiting moderation")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("once it is approved");
-    expect(box).toHaveValue("");
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const wait = (ms: number) => act(async () => void vi.advanceTimersByTime(ms));
+
+    it("sends on Enter after a moment, shows it pending and explains moderation", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      expect(screen.getByText("Ana G.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Post comment" })).toBeDisabled();
+      await user.type(box, "Lovely{Enter}");
+
+      expect(box).toHaveValue("");
+      expect(screen.getByText("Sending…")).toBeInTheDocument();
+      expect(postComment.execute).not.toHaveBeenCalled();
+      await wait(SEND_DELAY_MS);
+
+      expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
+      expect(await screen.findByText("Awaiting moderation")).toBeInTheDocument();
+      expect(screen.getByText("Lovely")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("once it is approved");
+    });
+
+    it("sends with the arrow button too", async () => {
+      show(viewer());
+
+      await user.type(await screen.findByRole("textbox", { name: "Comment" }), "Lovely");
+      await user.click(screen.getByRole("button", { name: "Post comment" }));
+      await wait(SEND_DELAY_MS);
+
+      expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
+    });
+
+    it("breaks the line on Shift+Enter instead of sending", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      await user.type(box, "Soft{Shift>}{Enter}{/Shift}light");
+
+      expect(box).toHaveValue("Soft\nlight");
+      expect(screen.queryByText("Sending…")).not.toBeInTheDocument();
+    });
+
+    it("gives the text back to correct it before it is sent", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      await user.type(box, "Lovley{Enter}");
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      await wait(SEND_DELAY_MS);
+
+      expect(box).toHaveValue("Lovley");
+      expect(postComment.execute).not.toHaveBeenCalled();
+    });
+
+    it("cancels a comment before it is sent", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      await user.type(box, "Never mind{Enter}");
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      await wait(SEND_DELAY_MS);
+
+      expect(box).toHaveValue("");
+      expect(screen.queryByText("Never mind")).not.toBeInTheDocument();
+      expect(postComment.execute).not.toHaveBeenCalled();
+    });
+
+    it("still sends a comment waiting to go when the panel closes", async () => {
+      show(viewer());
+
+      await user.type(await screen.findByRole("textbox", { name: "Comment" }), "Lovely{Enter}");
+      cleanup();
+
+      expect(postComment.execute).toHaveBeenCalledWith("pho_1", "Lovely");
+    });
+
+    it.each([
+      [new CommentError("rejected"), "cannot include links"],
+      [new RateLimitError(20), "Try again in 20 seconds"],
+      [new Error("down"), "Could not reach the API"],
+    ])("keeps the text and explains a refusal (%s)", async (failure, message) => {
+      vi.mocked(postComment.execute).mockRejectedValue(failure);
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      await user.type(box, "see www.spam{Enter}");
+      await wait(SEND_DELAY_MS);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      expect(box).toHaveValue("see www.spam");
+    });
+
+    it("rotates its invitation while the box is empty", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      expect(box).toHaveAttribute("placeholder", COMMENT_PROMPTS[0]);
+      await wait(4000);
+      expect(box).toHaveAttribute("placeholder", COMMENT_PROMPTS[1]);
+    });
+
+    it("counts characters only when the limit is near", async () => {
+      show(viewer());
+
+      const box = await screen.findByRole("textbox", { name: "Comment" });
+      fireEvent.change(box, { target: { value: "a".repeat(10) } });
+      expect(screen.queryByText("10/1000")).not.toBeInTheDocument();
+      fireEvent.change(box, { target: { value: "a".repeat(900) } });
+      expect(screen.getByText("900/1000")).toBeInTheDocument();
+    });
   });
 
-  it.each([
-    [new CommentError("rejected"), "cannot include links"],
-    [new RateLimitError(20), "Try again in 20 seconds"],
-    [new Error("down"), "Could not reach the API"],
-  ])("keeps the text and explains a refusal (%s)", async (failure, message) => {
-    vi.mocked(postComment.execute).mockRejectedValue(failure);
+  it("links the pencil to the account to change the public name", async () => {
     show(viewer());
-
-    const box = await screen.findByRole("textbox", { name: "Comment" });
-    await userEvent.type(box, "see www.spam");
-    await userEvent.click(screen.getByRole("button", { name: "Post comment" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(message);
-    expect(box).toHaveValue("see www.spam");
+    expect(await screen.findByRole("link", { name: "Change public name" })).toHaveAttribute(
+      "href",
+      "/account",
+    );
   });
 
   it("asks for a public name before offering the form", async () => {

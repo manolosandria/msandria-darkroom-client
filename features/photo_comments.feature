@@ -20,10 +20,28 @@ Feature: Comments on photos
 
   Scenario: A signed-in visitor posts a comment that waits for moderation
     Given a signed-in visitor whose public name is "Ana G."
-    When they write "Lovely" and post it
+    When they write "Lovely" and press Enter
+    Then the box is emptied and the comment waits a few seconds before it is sent
+    When the wait is over
     Then the comment appears under the others marked "Awaiting moderation"
     And they are told it will appear once it is approved
-    And the box is emptied
+
+  Scenario: Shift+Enter breaks the line
+    Given a signed-in visitor writing a comment
+    When they press Shift+Enter
+    Then the box gets a new line and nothing is sent
+
+  Scenario: A comment can be corrected or cancelled before it is sent
+    Given a signed-in visitor has just pressed Enter on a comment
+    When they choose "Edit" before it is sent
+    Then the text returns to the box and nothing is sent
+    When they press Enter again and choose "Cancel"
+    Then the comment is discarded and nothing is sent
+
+  Scenario: A comment waiting to go is sent when the panel closes
+    Given a signed-in visitor has just pressed Enter on a comment
+    When they close the panel or move to another photo before the wait is over
+    Then the comment is sent anyway
 
   Scenario: A refused comment keeps its text
     Given a signed-in visitor writes a comment with a link
@@ -33,7 +51,7 @@ Feature: Comments on photos
 
   Scenario: Posting too often asks the visitor to wait
     Given a signed-in visitor has reached the comment limit
-    When they post another comment
+    When their next comment is sent
     Then the panel says how many seconds to wait
     And the comment is not sent again on its own
 
