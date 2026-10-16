@@ -319,8 +319,8 @@ Only signed-in visitors with a public name can write. The form shows which name 
 comment will carry, with a pencil linking to `/account` to change it. The box grows
 with its text, and its placeholder rotates through a few invitations while it is
 empty. **Enter** sends (from the box or the arrow button) and **Shift+Enter** breaks
-the line. A sent comment first waits 5 seconds as a card with **Edit** (the text goes
-back to the box), **Cancel** and **Send now**, and a note that a moderator will review
+the line. A sent comment first waits 5 seconds as a card with **Cancel and edit** (the
+send stops and the text goes back to the box) and **Send now**, and a note that a moderator will review
 it; closing the panel or changing photo during that wait sends it anyway. Unsent text
 is kept per photo while the page is open (`commentDrafts`, in memory only), so moving
 to another photo and back does not lose it. An own comment awaiting moderation offers
