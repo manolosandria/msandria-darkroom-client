@@ -242,14 +242,21 @@ The privacy notice remains a separate pending task.
 
 ## Comments
 
-The info panel ends with the photo's comments (`PhotoComments`), oldest first. Anyone
+The info panel ends with the photo's comments (`PhotoComments`): small cards stacked
+oldest first, under the divider and without a heading, with the box docked at the
+bottom of the panel. Nothing is said when there are none yet. Anyone
 can read approved comments; a signed-in visitor also sees their own while they wait
 for moderation, marked **Awaiting moderation**, and can delete their own at any time.
 A comment whose author deleted their account keeps its text and is shown as written by
 a **Deleted user**: the API sends no name, and the words come from this site.
 
 Only signed-in visitors with a public name can write. The form shows which name the
-comment will carry and links to `/account` to change it. Comments go through
+comment will carry, with a pencil linking to `/account` to change it. The box grows
+with its text, and its placeholder rotates through a few invitations while it is
+empty. **Enter** sends (from the box or the arrow button) and **Shift+Enter** breaks
+the line. A sent comment first waits 5 seconds as a card with **Edit** (the text goes
+back to the box) and **Cancel**; closing the panel or changing photo during that wait
+sends it anyway. Comments go through
 `POST /photos/:id/comments` and start pending: nothing appears publicly until the
 administrator approves it. The API rejects links, hidden control characters and more
 than 1000 characters, and allows 5 comments per minute per account; the panel explains
