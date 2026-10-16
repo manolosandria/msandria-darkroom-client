@@ -32,12 +32,10 @@ Feature: Comments on photos
     When they press Shift+Enter
     Then the box gets a new line and nothing is sent
 
-  Scenario: A comment can be corrected or cancelled before it is sent
+  Scenario: A comment can be taken back before it is sent
     Given a signed-in visitor has just pressed Enter on a comment
-    When they choose "Edit" before it is sent
-    Then the text returns to the box and nothing is sent
-    When they press Enter again and choose "Cancel"
-    Then the comment is discarded and nothing is sent
+    When they choose "Cancel and edit" before it is sent
+    Then nothing is sent and the text returns to the box to be corrected or cleared
 
   Scenario: A comment can be sent without waiting
     Given a signed-in visitor has just pressed Enter on a comment

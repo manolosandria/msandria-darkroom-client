@@ -281,13 +281,14 @@ function CommentForm({
     if (timer.current) clearTimeout(timer.current);
     if (queued) void send(queued);
   };
-  const takeBack = (keepText: boolean) => {
+  // Stops the send and gives the text back to the box to be corrected or cleared.
+  const takeBack = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     pending.current = null;
-    if (keepText && queued) setBody(queued);
+    if (queued) setBody(queued);
     setQueued(null);
-    if (keepText) box.current?.focus();
+    box.current?.focus();
   };
 
   return (
@@ -303,19 +304,8 @@ function CommentForm({
             A moderator will review it before it appears.
           </p>
           <p className="photo-comments__footer">
-            <button
-              type="button"
-              className="photo-comments__button is-light"
-              onClick={() => takeBack(true)}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="photo-comments__button is-dark"
-              onClick={() => takeBack(false)}
-            >
-              Cancel
+            <button type="button" className="photo-comments__button is-light" onClick={takeBack}>
+              Cancel and edit
             </button>
             <button type="button" className="photo-comments__button is-go" onClick={sendNow}>
               Send now

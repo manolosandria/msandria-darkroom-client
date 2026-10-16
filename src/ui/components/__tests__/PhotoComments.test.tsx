@@ -181,28 +181,18 @@ describe("PhotoComments", () => {
       expect(screen.queryByText("Sending…")).not.toBeInTheDocument();
     });
 
-    it("gives the text back to correct it before it is sent", async () => {
+    it("cancels the send and gives the text back to correct it", async () => {
       show(viewer());
 
       const box = await screen.findByRole("textbox", { name: "Comment" });
       await user.type(box, "Lovley{Enter}");
-      await user.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Cancel and edit" }));
       await wait(SEND_DELAY_MS);
 
       expect(box).toHaveValue("Lovley");
-      expect(postComment.execute).not.toHaveBeenCalled();
-    });
-
-    it("cancels a comment before it is sent", async () => {
-      show(viewer());
-
-      const box = await screen.findByRole("textbox", { name: "Comment" });
-      await user.type(box, "Never mind{Enter}");
-      await user.click(screen.getByRole("button", { name: "Cancel" }));
-      await wait(SEND_DELAY_MS);
-
-      expect(box).toHaveValue("");
-      expect(screen.queryByText("Never mind")).not.toBeInTheDocument();
+      expect(box).toHaveFocus();
+      expect(screen.queryByText("Sending…")).not.toBeInTheDocument();
       expect(postComment.execute).not.toHaveBeenCalled();
     });
 
