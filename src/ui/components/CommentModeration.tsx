@@ -96,6 +96,7 @@ function PendingItem({ comment, onSettled }: { comment: PendingComment; onSettle
     setError("");
     try {
       await action();
+      window.dispatchEvent(new Event('curator:refresh'));
       onSettled();
     } catch (failure) {
       setError(commentFailureMessage(failure));

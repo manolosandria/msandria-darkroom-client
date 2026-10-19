@@ -8,8 +8,9 @@ import {
 } from "@/src/domain/entities/Catalog";
 import { Photo } from "@/src/domain/entities/Photo";
 import { selectCatalog } from "@/src/domain/catalogSelection";
-import { editCatalog } from "@/src/infrastructure/catalogServices";
-import { getAllPhotos } from "@/src/infrastructure/photoServices";
+import { manageCatalog as editCatalog } from "@/src/infrastructure/catalogServices";
+import { getManagedPhotos as getAllPhotos } from "@/src/infrastructure/photoServices";
+import { PhotoImage } from "./PhotoImage";
 import { useSessionValue } from "./SessionProvider";
 import { ErrorMessage } from "./ErrorMessage";
 import { CollectionMosaic } from "./CollectionMosaic";
@@ -61,6 +62,7 @@ export function CatalogEditor() {
   const [busy, setBusy] = useState(false);
   const [collectionId, setCollectionId] = useState("");
   const [draft, setDraft] = useState<CollectionDraft>(emptyCollection);
+  const [excluded, setExcluded] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [photoId, setPhotoId] = useState("");
@@ -143,6 +145,28 @@ export function CatalogEditor() {
     ];
     setDraft({ ...draft, entries });
   }
+  function chooseCollection(id: string) {
+    setCollectionId(id);
+    setExcluded([]);
+    const selected = catalog?.collections.find((item) => item.id === id);
+    setDraft(
+      selected
+        ? {
+            title: selected.title,
+            coverPhotoId: selected.coverPhotoId,
+            categoryIds: selected.categories.map((category) => category.id),
+            entries: selected.entries.map(({ photoId, columns, rows }) => ({
+              photoId,
+              columns,
+              rows,
+            })),
+          }
+        : emptyCollection(),
+    );
+  }
+  const includedEntries = draft.entries.filter(
+    (entry) => !excluded.includes(entry.photoId),
+  );
   const preview = catalog
     ? {
         ...catalog,
@@ -151,7 +175,7 @@ export function CatalogEditor() {
             id: "preview",
             title: draft.title,
             categories: [],
-            entries: draft.entries,
+            entries: includedEntries,
           },
         ],
       }
@@ -173,6 +197,37 @@ export function CatalogEditor() {
         <fieldset disabled={busy}>
           <section>
             <h2>Collections</h2>
+            <div className="collection-cards">
+              {catalog.collections.map((collection) => {
+                const cover = photos.find(
+                  (photo) =>
+                    photo.getId() ===
+                    (collection.coverPhotoId ?? collection.entries[0]?.photoId),
+                );
+                return (
+                  <button
+                    type="button"
+                    key={collection.id}
+                    aria-pressed={collectionId === collection.id}
+                    onClick={() => chooseCollection(collection.id)}
+                  >
+                    <span className="collection-card-cover">
+                      {cover ? (
+                        <PhotoImage
+                          photo={cover}
+                          className="object-cover"
+                          fallbackSizes="280px"
+                        />
+                      ) : (
+                        <span>No cover yet</span>
+                      )}
+                    </span>
+                    <strong>{collection.title}</strong>
+                    <small>{collection.entries.length} photos</small>
+                  </button>
+                );
+              })}
+            </div>
             <label>
               Edit collection
               <select
@@ -180,6 +235,7 @@ export function CatalogEditor() {
                 onChange={(event) => {
                   const id = event.target.value;
                   setCollectionId(id);
+                  setExcluded([]);
                   const selected = catalog.collections.find(
                     (item) => item.id === id,
                   );
@@ -187,6 +243,7 @@ export function CatalogEditor() {
                     selected
                       ? {
                           title: selected.title,
+                          coverPhotoId: selected.coverPhotoId,
                           categoryIds: selected.categories.map(
                             (category) => category.id,
                           ),
@@ -216,12 +273,21 @@ export function CatalogEditor() {
                 void save(
                   () =>
                     editCatalog.saveCollection(
-                      draft,
+                      {
+                        ...draft,
+                        entries: includedEntries,
+                        coverPhotoId: includedEntries.some(
+                          (entry) => entry.photoId === draft.coverPhotoId,
+                        )
+                          ? draft.coverPhotoId
+                          : null,
+                      },
                       collectionId || undefined,
                     ),
                   () => {
                     setCollectionId("");
                     setDraft(emptyCollection());
+                    setExcluded([]);
                   },
                 );
               }}
@@ -241,6 +307,27 @@ export function CatalogEditor() {
                 {categories(draft.categoryIds, (categoryIds) =>
                   setDraft({ ...draft, categoryIds }),
                 )}
+                <label>
+                  Cover photo
+                  <select
+                    value={draft.coverPhotoId ?? ""}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        coverPhotoId: event.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">First included photo</option>
+                    {includedEntries.map((entry) => (
+                      <option key={entry.photoId} value={entry.photoId}>
+                        {photos
+                          .find((photo) => photo.getId() === entry.photoId)
+                          ?.getTitle() ?? "Photo"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   Add photo
                   <select
@@ -335,19 +422,21 @@ export function CatalogEditor() {
                             </select>
                           </label>
                         ))}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDraft({
-                              ...draft,
-                              entries: draft.entries.filter(
-                                (item) => item.photoId !== entry.photoId,
-                              ),
-                            })
-                          }
-                        >
-                          Remove photo
-                        </button>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={!excluded.includes(entry.photoId)}
+                            onChange={() =>
+                              setExcluded(toggle(excluded, entry.photoId))
+                            }
+                          />
+                          Include photo {index + 1}
+                        </label>
+                        {excluded.includes(entry.photoId) && (
+                          <span className="upload-muted">
+                            Will be removed when you save
+                          </span>
+                        )}
                       </div>
                     </li>
                   ))}

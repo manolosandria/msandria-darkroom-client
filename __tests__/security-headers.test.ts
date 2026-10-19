@@ -79,8 +79,16 @@ describe("contentSecurityPolicy", () => {
     expect(directive("connect-src")).toContain("https://accounts.google.com/gsi/");
   });
 
-  it("allows photos from the image host alone", () => {
+  // Private photos never leave Cloudinary's authenticated delivery: the API fetches
+  // them and serves them itself, so its origin is the only other image source.
+  it("allows photos from the image host and the API alone", () => {
     expect(directive("img-src")).toBe(
+      "img-src 'self' data: blob: https://res.cloudinary.com https://api.galeria.example",
+    );
+  });
+
+  it("allows photos from the image host alone when no API is configured", () => {
+    expect(directive("img-src", "")).toBe(
       "img-src 'self' data: blob: https://res.cloudinary.com",
     );
   });

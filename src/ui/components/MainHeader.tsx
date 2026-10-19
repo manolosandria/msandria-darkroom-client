@@ -4,9 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import SessionMenu from "./SessionMenu";
 import { useSessionValue } from "./SessionProvider";
+import { useCuratorNotifications } from "./CuratorNotifications";
 
 export default function MainHeader() {
   const { user } = useSessionValue();
+  const notifications = useCuratorNotifications();
+  const pending = (notifications?.comments ?? 0) + (notifications?.inbox ?? 0);
   // Offered to the administrator only, and only as a shortcut: the API turns down a
   // publish from anyone else, whatever the header chose to show.
   const canPublish = user?.isAdmin() ?? false;
@@ -21,8 +24,20 @@ export default function MainHeader() {
           <nav className="flex flex-wrap justify-center gap-6 flex-col sm:flex-row items-center text-lg font-semibold text-gray-700">
             <Link href="/">Home</Link>
             <Link href="/gallery">Gallery</Link>
-            {canPublish && <Link href="/upload">Upload</Link>}
-            <a href="#">Contact</a>
+            {canPublish && (
+              <Link href="/curator">
+                Curator
+                {pending > 0 && (
+                  <span
+                    className="curator-badge"
+                    aria-label={`${pending} pending notifications`}
+                  >
+                    {pending}
+                  </span>
+                )}
+              </Link>
+            )}
+            <Link href="/contact">Contact</Link>
           </nav>
           <SessionMenu />
         </div>

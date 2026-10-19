@@ -30,6 +30,30 @@ function respondWith(body: unknown, status = 200) {
 }
 
 describe("ApiPhotoRepository", () => {
+  it("replaces only the file and version when no metadata was edited", async () => {
+    const detail = { ...apiPhoto("private"), version: 7, visibility: "PRIVATE", categoryNames: ["Sea"], collections: [{ id: "sea", position: 2 }] };
+    const photo = await new ApiPhotoRepository(API_URL, respondWith(detail)).findById("private");
+    const fetchFn = respondWith({ ...detail, version: 8, optimizationIssues: [] });
+    const result = await new ApiPhotoRepository(API_URL, fetchFn).replace(photo!, new File(["image"], "new.jpg"), photo!);
+    const form = fetchFn.mock.calls[0][1].body as FormData;
+    expect(Array.from(form.keys()).sort()).toEqual(["file", "version"]);
+    expect(form.get("version")).toBe("7");
+    expect(result.photo.getVersion()).toBe(8);
+    expect(result.photo.getClassification()).toEqual(photo!.getClassification());
+  });
+
+  it("patches only metadata that differs from the loaded photo", async () => {
+    const original = new Photo({ id: "private", version: 7, title: "Before", visibility: "PRIVATE", categoryNames: ["Sea"], width: 640, height: 480, renditions: [{ width: 640, url: "https://cdn/p.jpg" }] });
+    const edited = new Photo({ id: "private", version: 7, title: "After", ...original.getClassification(), width: 640, height: 480, renditions: original.getRenditions() });
+    const fetchFn = respondWith({});
+    await new ApiPhotoRepository(API_URL, fetchFn).save(edited, original);
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ version: 7, title: "After" });
+  });
+
+  it("distinguishes stale edits from validation errors", async () => {
+    const photo = new Photo({ id: "private", title: "Photo", width: 640, height: 480, renditions: [{ width: 640, url: "https://cdn/p.jpg" }] });
+    await expect(new ApiPhotoRepository(API_URL, respondWith({}, 409)).save(photo)).rejects.toMatchObject({ failure: "conflict" });
+  });
   it("reports upload throttling with its retry interval without retrying the request", async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "25" } }));
     const repository = new ApiPhotoRepository(API_URL, fetchFn);
@@ -342,10 +366,14 @@ describe("ApiPhotoRepository save", () => {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          version: 1,
           title: "Photo crop",
           description: "Evening walk",
           highlights: { square: crop },
           titlePosition: "BOTTOM_LEFT",
+          visibility: "PUBLIC",
+          categoryNames: [],
+          collections: [],
         }),
       }),
     );

@@ -9,9 +9,12 @@ export class ApiCatalogRepository implements CatalogRepository {
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
+    private readonly admin = false,
   ) {}
   async load(): Promise<Catalog> {
-    return (await this.request("GET", "/catalog")).json();
+    return (
+      await this.request("GET", this.admin ? "/catalog/manage" : "/catalog")
+    ).json();
   }
   async saveCollection(draft: CollectionDraft, id?: string) {
     await this.save("collections", draft, id);

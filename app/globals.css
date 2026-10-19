@@ -419,3 +419,30 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
 .catalog-editor__row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .catalog-editor__entries { display: grid; gap: .75rem; }
 .catalog-editor__entries li { padding: .75rem; border: 1px solid #666; }
+
+.curator-tabs { display: flex; flex-wrap: wrap; gap: .5rem; padding: 1rem clamp(1rem, 4vw, 4rem); border-bottom: 1px solid #ddd; background: #fff; }
+.curator-tabs button { padding: .65rem 1.2rem; border-radius: .35rem; color: #3d4934; }
+.curator-tabs button[aria-current=page] { background: #e7ecdf; font-weight: 700; }
+.upload-card-actions { display: flex; justify-content: flex-end; padding: 0 1.5rem 1.5rem; }
+.upload-toolbar--bottom { justify-content: flex-end; }
+.curator-workspace > div[hidden] { display: none; }
+.photo-classification { display: grid; gap: 1rem; margin-top: 1.25rem; font-size: .85rem; }
+.photo-classification label { display: grid; gap: .4rem; }
+.photo-classification input, .photo-classification select { width: 100%; min-width: 0; padding: .6rem; border: 1px solid #d3d7cb; background: #fff; border-radius: .25rem; }
+.category-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.category-chips button { padding: .3rem .6rem; background: #e7ecdf; border-radius: 1rem; }
+.photo-collection-assignment { display: flex; gap: .6rem; align-items: center; }
+.photo-collection-assignment > span { flex: 1; }
+.photo-collection-assignment input { width: 5rem; }
+.collection-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+.collection-cards button { display: grid; gap: .5rem; text-align: left; }
+.collection-cards button[aria-pressed=true] { outline: 2px solid #65724a; }
+.collection-card-cover { display: block; position: relative; aspect-ratio: 3 / 2; background: #e9e9e5; overflow: hidden; }
+.curator-badge { display: inline-block; margin-left: .35rem; padding: .1rem .45rem; border-radius: 1rem; background: #71834c; color: white; font-size: .7rem; vertical-align: middle; }
+.contact-container { max-width: 48rem; }
+.contact-container .upload-card { padding: 2rem; }
+.contact-consent { display: flex !important; flex-direction: row !important; align-items: center; gap: .65rem; }
+.contact-consent input { width: auto !important; }
+.inbox-messages { display: grid; gap: 1rem; }
+.inbox-messages > li { padding: 1.5rem; display: grid; gap: .85rem; }
+.curator-workspace .upload-container > .upload-link, .curator-workspace .upload-container > .flex.flex-wrap.gap-x-6 { display: none; }

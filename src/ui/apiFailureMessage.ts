@@ -13,6 +13,7 @@ const FAILURE_MESSAGES: Record<PhotoUploadFailure, string> = {
   forbidden: "This account is not allowed to publish photos.",
   tooLarge: "That file is too large for the API. Export it smaller and try again.",
   rejected: "The API rejected the photo",
+  conflict: "This photo changed while you were editing it. Reload its state before saving.",
   unreachable: "Could not reach the API",
 };
 

@@ -47,7 +47,7 @@ export function contentSecurityPolicy(
     // Tailwind ships a stylesheet, but a component still sets a custom property inline
     // to keep each photo's proportion, and a style attribute counts as an inline style.
     `style-src 'self' 'unsafe-inline' ${GOOGLE_IDENTITY_STYLE}`,
-    `img-src 'self' data: blob: ${IMAGE_HOST}`,
+    `img-src 'self' data: blob: ${IMAGE_HOST}${api ? ` ${api}` : ""}`,
     // next/font downloads Geist at build time and serves it from this origin.
     "font-src 'self'",
     // In development the extra scheme is the socket `next dev` pushes reloads through.

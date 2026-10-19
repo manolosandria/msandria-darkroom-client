@@ -1,11 +1,11 @@
-import { Photo } from './../entities/Photo';
+import { Photo, PhotoClassification } from './../entities/Photo';
 import { PhotoOptimizationIssue } from './../entities/PhotoOptimizationIssue';
 import { PhotoHighlights } from '../entities/PhotoHighlights';
 
 // What the photographer hands in to publish a photo. The file travels as it came off
 // the disk: the API's upload pipeline is what resizes it and strips its metadata, and
 // doing any of that here would only remove the evidence it reports back.
-export type PhotoDraft = {
+export type PhotoDraft = Partial<PhotoClassification> & {
   file: File;
   title: string;
   description?: string;
@@ -26,6 +26,7 @@ export type PhotoUploadFailure =
   | "forbidden"
   | "tooLarge"
   | "rejected"
+  | "conflict"
   | "unreachable";
 
 export class PhotoUploadError extends Error {
@@ -41,7 +42,7 @@ export class PhotoUploadError extends Error {
 export interface PhotoRepository {
     findById(id: string): Promise<Photo | null>;
     upload(draft: PhotoDraft): Promise<PublishedPhoto>;
-    save(photo: Photo): Promise<void>;
+    save(photo: Photo, original?: Photo): Promise<void>;
     delete(id: string): Promise<void>;
     findAll(): Promise<Photo[] | null>;
     findCollection(id: string): Promise<Photo[] | null>;
@@ -49,5 +50,5 @@ export interface PhotoRepository {
 
 export interface PhotoMaintenanceRepository {
   findUnoptimized(): Promise<PublishedPhoto[]>;
-  replace(photo: Photo, file: File): Promise<PublishedPhoto>;
+  replace(photo: Photo, file: File, original?: Photo): Promise<PublishedPhoto>;
 }
