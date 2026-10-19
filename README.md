@@ -1,51 +1,78 @@
 # msandria-darkroom-client
 
-Web client of my photography gallery. The API that stores the catalogue lives in a separate repository, `msandria-darkroom-api`.
+Web client of my photography gallery: the public gallery, the photo viewer with comments, the contact form and the administrator's workspace (`/curator`). The API that stores the catalogue lives in a separate repository, `msandria-darkroom-api`; this site only ever talks to it, never to the image host's credentials.
 
-## What's this?
+It is also where I practise clean architecture: `src/` is split into `domain` (entities and repository interfaces), `application` (use cases), `infrastructure` (the API repositories) and `ui` (components and hooks).
 
-Essentially, this project is the frontend for my photographer's web gallery (work in progress). 
+## Running
 
-At this moment, there's only an initial structure with some domain entities and repository interfaces. 
+Day to day, with everything already installed (the first time on a machine, start with [Installation](#installation)).
 
-## Why?
+1. **Start the API first.** In another terminal, from `msandria-darkroom-api`, run `npm run start:dev` and wait for `Nest application successfully started` (see that repository's README). Without it the gallery has nothing to show and sign-in fails.
+2. **Move into this folder.** `npm` commands run inside `msandria-darkroom-client`, not in the folder that holds both repositories, which has no `package.json`.
+3. If you use `nvm`, switch to the version in `.nvmrc` (`nvm use` in bash; with `nvm-windows`, `nvm use 20.20.2`, since it does not read `.nvmrc`).
+4. Start the development server:
 
-In the short term, my goal is to learn and practice good architectural methodologies. For that reason, I'm using clean architecture. 
+   ```bash
+   npm run dev
+   ```
 
-In the future, I hope to have created a site with well designed architecture and UI, with good scalability and modularity. So it can be replicated on other sites with high functionality and personalization. 
+5. Open [http://localhost:3000](http://localhost:3000). Pages reload as you edit.
 
-But one step at a time :) 
+Keep the site on port 3000: it is the origin the API allows in `CORS_ORIGINS` and the one registered with Google for sign-in. If Next says *Another next dev server is already running*, one is already serving this folder; use it, or stop it before starting another.
 
-## Tech Stack
-
-- Next.js (React) 
-- TypeScript 
-- Node.js 
-
-Planned:
-- Tailwind CSS
-- Cloudinary
-
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
+### Checks before a pull request
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+CI runs the same on Linux with the Node version in `.nvmrc`.
 
-Copy `.env.example` to `.env.local` and fill it in first: `NEXT_PUBLIC_API_URL` points at msandria-darkroom-api, and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` holds the same OAuth client id the API has in `GOOGLE_CLIENT_ID`. Both are inlined at build time, so they must be set before building for production.
+## Installation
+
+Once per machine.
+
+### Tools
+
+- **Node 20.20.2**, the version in `.nvmrc` and the one CI uses. The easy way is `nvm` (WSL, Linux, macOS) or `nvm-windows`. Other versions usually run, but they are not what CI checks.
+- **Git**.
+- **`msandria-darkroom-api`** installed and running locally, following its own README (Postgres or a Neon development branch, Cloudinary and Google credentials).
+- A **Google OAuth client id** of type "Web application", the same one the API uses, with `http://localhost:3000` under "Authorized JavaScript origins".
+
+### Steps
+
+1. Install the Node version and the dependencies. With `nvm` in WSL, Linux or macOS:
+
+   ```bash
+   nvm install
+   nvm use
+   npm ci
+   ```
+
+   With `nvm-windows`, pass the version, since it does not read `.nvmrc`:
+
+   ```powershell
+   nvm install 20.20.2
+   nvm use 20.20.2
+   npm ci
+   ```
+
+2. Create `.env.local` from the template (`cp .env.example .env.local` in bash; `Copy-Item .env.example .env.local` in PowerShell) and fill it in: `NEXT_PUBLIC_API_URL` points at msandria-darkroom-api (`http://localhost:3001` in development), and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` holds the same OAuth client id the API has in `GOOGLE_CLIENT_ID`. Both are inlined when the bundle is built, so restart `npm run dev` after changing them, and set them before building for production.
+3. Continue with [Running](#running).
+
+## Tech stack
+
+- Next.js 16 (App Router, Turbopack) and React 19
+- TypeScript
+- Tailwind CSS 4
+- Vitest and Testing Library for the tests; Gherkin scenarios in `features/`
+- Images come from the API as rendition URLs; there is no image-host SDK in this repository
+
+This version of Next.js has breaking changes from older ones: read the guides in `node_modules/next/dist/docs/` before writing Next.js code (see `AGENTS.md`).
 
 ## Security headers
 
@@ -57,14 +84,14 @@ The one with substance is the `Content-Security-Policy`, which lists the only pl
 |---|---|---|
 | `script-src` | this origin, inline, `accounts.google.com/gsi/client` | Next writes its bootstrap script into the HTML, and Google's script draws the sign-in button |
 | `style-src` | this origin, inline, `accounts.google.com/gsi/style` | `PhotoGrid` sets each photo's proportion as a style attribute, which counts as inline |
-| `img-src` | this origin, `data:`, `blob:`, `res.cloudinary.com` | Photos come from the API's image host |
+| `img-src` | this origin, `data:`, `blob:`, `res.cloudinary.com`, `NEXT_PUBLIC_API_URL` | Photos come from the API's image host; private ones, from the API itself |
 | `connect-src` | this origin, `NEXT_PUBLIC_API_URL`, `accounts.google.com/gsi/` | The page is useless if it cannot call the API, which is on another origin |
 | `frame-src` | `accounts.google.com/gsi/` | Google draws its button inside its own frame |
 | everything else | nothing | `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'` |
 
 Alongside it: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` in production.
 
-**No nonce, on purpose.** A nonce has to be new on every request, which would mean rendering every page on every request; all four pages are static today, and that trade buys little for a public gallery. The price of staying static is `'unsafe-inline'` for scripts. The day these pages need rendering per request, the nonce goes in a `proxy.ts` — Next's name for middleware in this version — and `'unsafe-inline'` comes straight out.
+**No nonce, on purpose.** A nonce has to be new on every request, which would mean rendering every page on every request; every page fetches its data in the browser, so none needs it today, and that trade buys little for a public gallery. The price of staying static is `'unsafe-inline'` for scripts. The day these pages need rendering per request, the nonce goes in a `proxy.ts` — Next's name for middleware in this version — and `'unsafe-inline'` comes straight out.
 
 While developing, the policy also allows `'unsafe-eval'` (React rebuilds error stacks with it) and the socket `next dev` pushes reloads through. `upgrade-insecure-requests` is left out whenever the API itself is served over plain http, or it would rewrite those calls to https and nothing would answer.
 
@@ -76,23 +103,32 @@ The header offers a "Sign in with Google" button. Google Identity Services hands
 
 That cookie is deliberately out of this code's reach, so the page cannot tell whether a session exists by looking at it: it asks `GET /auth/me` instead, and every call to the API carries `credentials: "include"` so the browser attaches the cookie. The API has to allow this site's origin in `CORS_ORIGINS` and answer with `Access-Control-Allow-Credentials`.
 
-**The role only decides what the interface offers.** `User.isAdmin()` drives the "Admin" mark and, later, which panels appear — it never decides what is allowed. The API settles that on every request by reading the role from its own database, so editing anything in the browser changes nothing but the view.
+**The role only decides what the interface offers.** `User.isAdmin()` drives the "Admin" mark and whether the **Curator** link and its screens are offered — it never decides what is allowed. The API settles that on every request by reading the role from its own database, so editing anything in the browser changes nothing but the view.
 
 There is no client secret and no redirect URI in this flow. In the Google console, this site's origin goes under "Authorized JavaScript origins" (`http://localhost:3000` in development); the redirect URI fields stay empty.
 
+## Editing the current photo version
+
+Photo details carry a `version`. Saves and replacements send that version and only
+metadata that differs from the loaded photo. A stale edit receives a conflict and
+the card says: “This photo changed while you were editing it. Reload its state before
+saving.” Edits remain available until the administrator chooses **Reload state**.
+Successful replacements return the full classification and new version, so reopening
+a private photo preserves its visibility, categories and collection placements.
+
+**Order** in Photos is a placement within an assigned collection, not a global photo
+order. Moving or removing a photo renumbers that collection consecutively; oversized
+positions append at the end. Collections continues to save its entire composition.
+
 ## Publishing a photo
 
-`/upload` is the administrator's form, and the header only offers the "Upload" link to an administrator. Both are conveniences: the API answers `POST /photos` with a refusal for anyone else, so nothing here is what keeps the gallery closed.
+`/upload` is the administrator's form, also the **Upload** tab of `/curator` (see [Curator](#curator)), and the header only offers the "Curator" link to an administrator. Both are conveniences: the API answers `POST /photos` with a refusal for anyone else, so nothing here is what keeps the gallery closed.
 
 The file is sent as `multipart/form-data` exactly as it came off the disk, with no `Content-Type` header of our own — only the browser knows the boundary that separates the parts. Nothing is resized or stripped in the browser: the API's upload pipeline resizes the photo, converts it to sRGB and removes every tag, the GPS location included, before the file ever reaches the image host. Doing any of that here would only destroy the evidence the API reports back.
 
 That report is the `optimizationIssues` the answer carries, and the page splits it in two. Issues marked `FIXED_ON_UPLOAD` are a log of how the export came in — the stored file is already fine — while `NEEDS_REUPLOAD` and `NEEDS_REEXPORT` are shown as something still worth doing.
 
 Each issue arrives as a measurement and the unit it was measured in, never as a sentence: a whole number of `BYTES`, `PIXELS` or `TAG_COUNT`, or the code the API read off the file for `FILE_FORMAT` and `COLOR_SPACE`. `OptimizationIssueList` is what turns that into English — bytes into megabytes, a count into "2 tags", and a label and a line of advice per kind. A unit or a kind this build has never heard of is printed as it came rather than hidden.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## The upload workspace and highlights
 
@@ -101,21 +137,6 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 Highlights are optional crops, placed by hand: square (1:1), landscape (3:2) and portrait (2:3). Drag the frame or use the sliders, which are the keyboard way in. Nothing is cropped automatically, and any of the three may be left out. They are stored as fractions of the oriented photo, so the same numbers hold against the original and against every rendition.
 
 `/manage` edits what is already published — title, description and crops — with `PATCH /photos/:id`, and never uploads a file again. Its square thumbnails crop a normal rendition with the square highlight when there is one, and centre it when there is not. Like every other screen, it only ever shows renditions the API handed it.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 ## Public photo responses
 
@@ -213,8 +234,8 @@ message. Sign-in and upload requests are never automatically replayed.
 On an upload rate limit, the current photo remains failed with its edits intact,
 remaining queued photos return to draft, and publishing pauses. A manual retry sends
 only failed/draft photos, preserving photos already published. Default API quotas
-are 10 sign-in attempts/minute per IP, 30 upload attempts/minute per admin account and
-5 comments/minute per account.
+are 10 sign-in attempts/minute per IP, 30 upload attempts/minute per admin account,
+5 comments/minute per account and 3 contact messages/minute per IP.
 
 ## Photo maintenance
 
@@ -289,6 +310,48 @@ from `GET /comments/pending`: each comment with its author, date and a link to i
 photo, to **Approve** (`POST /comments/:id/approve`) or **Delete** (which is how a
 comment is rejected). The page is offered to the administrator alone; the API enforces
 it on every request.
+
+## Curator
+
+`/curator` (`Curator`) is the administrator's workspace, offered in the header as
+**Curator** with a badge counting comments awaiting moderation and unread contact
+messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
+`SessionProvider`) asks `GET /curator/notifications` for the administrator only,
+every minute, when the window regains focus, and whenever a curator action dispatches
+a `curator:refresh` event.
+
+Its tabs are **Upload**, **Photos**, **Collections**, **Moderation** and **Inbox**: the
+screens of `/upload`, `/manage`, `/collections` and `/moderate`, plus the contact
+inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs
+does not lose unsaved edits. The older routes still work on their own.
+
+- **Upload**: every card has its own **Upload** button at its bottom right, and the
+  list has **Upload All (n)** above and below the cards.
+- **Classification** (`PhotoClassificationFields`), on each upload card and in the
+  Photos editor: visibility (**Public** by default, **Private**, **Select** — reserved
+  for special accounts and, until they exist, private — and **Collections only**),
+  categories typed by name with the existing ones suggested and a comma closing each
+  one as a chip, and collections chosen from a list, each with the photo's position
+  (from 1; new ones default to the end). It reads the full catalog from
+  `GET /catalog/manage`.
+- **Collections**: collections are cards with their title and cover photo (the
+  chosen cover, or the first photo). Unticking a photo only marks it for removal; the
+  whole collection, cover included, is saved at once.
+- **Inbox** (`ContactInbox`): messages from `/contact`, newest first, unread ones
+  marked, to mark as read or delete.
+
+**Private photos.** The API keeps private and select photos in the image host's
+authenticated delivery and serves their renditions itself, as paths on its own origin
+(`/photos/:id/renditions/:width`). `ApiPhotoRepository` turns those paths into full
+URLs, and the API's origin is in `img-src` for that reason. The public gallery never
+receives them; the visibility filter is the API's, not this site's.
+
+## Contact
+
+`/contact` (`ContactForm`) is linked from the header for everyone. It sends name,
+email, message and an explicit consent to `POST /contact`, which keeps the message in
+the administrator's inbox; **no email is sent**. Links are refused, and the API allows
+3 messages per minute per IP. A refusal keeps the message in the form.
 
 ## Collections and variants
 

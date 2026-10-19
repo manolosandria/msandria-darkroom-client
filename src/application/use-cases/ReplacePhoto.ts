@@ -4,7 +4,7 @@ export class ReplacePhoto {
   constructor(
     private repository: Pick<PhotoMaintenanceRepository, "replace">,
   ) {}
-  execute(photo: Photo, file: File) {
-    return this.repository.replace(photo, file);
+  execute(photo: Photo, file: File, original?: Photo) {
+    return original ? this.repository.replace(photo, file, original) : this.repository.replace(photo, file);
   }
 }

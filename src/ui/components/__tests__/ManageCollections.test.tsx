@@ -3,12 +3,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CatalogEditor } from "../ManageCollections";
 import { CollectionMosaic } from "../CollectionMosaic";
-import { editCatalog } from "@/src/infrastructure/catalogServices";
-import { getAllPhotos } from "@/src/infrastructure/photoServices";
+import { manageCatalog } from "@/src/infrastructure/catalogServices";
+import { getManagedPhotos } from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
 
 vi.mock("@/src/infrastructure/catalogServices", () => ({
-  editCatalog: {
+  manageCatalog: {
     load: vi.fn(),
     saveCollection: vi.fn(),
     saveCategory: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
   },
 }));
 vi.mock("@/src/infrastructure/photoServices", () => ({
-  getAllPhotos: { execute: vi.fn() },
+  getManagedPhotos: { execute: vi.fn() },
 }));
 const photos = ["Color", "Monochrome"].map(
   (title) =>
@@ -32,18 +32,18 @@ const photos = ["Color", "Monochrome"].map(
 );
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(editCatalog.load).mockResolvedValue({
+  vi.mocked(manageCatalog.load).mockResolvedValue({
     categories: [{ id: "cat", name: "Street" }],
     collections: [],
     works: [],
     photos: [],
   });
-  vi.mocked(getAllPhotos.execute).mockResolvedValue(photos);
+  vi.mocked(getManagedPhotos.execute).mockResolvedValue(photos);
 });
 
 describe("collection editor", () => {
   it("keeps the composition after a failed save and retries only on request", async () => {
-    vi.mocked(editCatalog.saveCollection)
+    vi.mocked(manageCatalog.saveCollection)
       .mockRejectedValueOnce(new Error("Offline"))
       .mockResolvedValueOnce();
     const user = userEvent.setup();
@@ -55,12 +55,13 @@ describe("collection editor", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Offline");
     expect(screen.getByLabelText("Collection title")).toHaveValue("City");
     expect(screen.getByLabelText("Width")).toHaveValue("2");
-    expect(editCatalog.saveCollection).toHaveBeenCalledTimes(1);
+    expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: "Save collection" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
-    expect(editCatalog.saveCollection).toHaveBeenLastCalledWith(
+    expect(manageCatalog.saveCollection).toHaveBeenLastCalledWith(
       {
         title: "City",
+        coverPhotoId: null,
         categoryIds: [],
         entries: [{ photoId: "Color", columns: 2, rows: 1 }],
       },
@@ -75,13 +76,12 @@ describe("collection editor", () => {
     await user.selectOptions(screen.getByLabelText("Add photo"), "Color");
     await user.selectOptions(screen.getByLabelText("Add photo"), "Monochrome");
     await user.click(screen.getByRole("button", { name: "Move photo 2 up" }));
-    await user.click(
-      screen.getAllByRole("button", { name: "Remove photo" })[1],
-    );
+    await user.click(screen.getByRole("checkbox", { name: "Include photo 2" }));
     await user.click(screen.getByRole("button", { name: "Save collection" }));
-    expect(editCatalog.saveCollection).toHaveBeenCalledWith(
+    expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
       {
         title: "City",
+        coverPhotoId: null,
         categoryIds: [],
         entries: [{ photoId: "Monochrome", columns: 1, rows: 1 }],
       },

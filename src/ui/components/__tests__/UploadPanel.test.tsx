@@ -12,6 +12,7 @@ import { Photo } from "@/src/domain/entities/Photo";
 import { User } from "@/src/domain/entities/User";
 import { SessionProvider } from "../SessionProvider";
 import UploadPanel from "../UploadPanel";
+vi.mock('@/src/infrastructure/catalogServices', () => ({ manageCatalog: { load: vi.fn().mockResolvedValue({ categories: [], collections: [], works: [], photos: [] }) } }));
 
 const execute = vi.fn();
 const getCurrentUser = vi.fn();
@@ -110,10 +111,10 @@ describe("Upload workspace", () => {
     renderPanel();
     await select([file(), file("second.jpg")]);
     await userEvent.click(
-      screen.getByRole("button", { name: "Publish 2 photos" }),
+      screen.getAllByRole("button", { name: "Upload All (2)" })[0],
     );
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Publishing…" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Uploading…" })[0]).toBeDisabled();
     finish({ photo, optimizationIssues: [] });
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
     await waitFor(() =>
@@ -127,17 +128,17 @@ describe("Upload workspace", () => {
     await select([file(), file("second.jpg")]);
     await userEvent.type(screen.getAllByLabelText(/Description/)[0], "A story");
     await userEvent.click(
-      screen.getByRole("button", { name: "Publish 2 photos" }),
+      screen.getAllByRole("button", { name: "Upload All (2)" })[0],
     );
     await screen.findByText(/Your edits are kept/);
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Publish 1 photo" }),
+        screen.getAllByRole("button", { name: "Upload All (1)" })[0],
       ).toBeEnabled(),
     );
     expect(screen.getAllByLabelText(/Description/)[0]).toHaveValue("A story");
     await userEvent.click(
-      screen.getByRole("button", { name: "Publish 1 photo" }),
+      screen.getAllByRole("button", { name: "Upload All (1)" })[0],
     );
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(3));
     expect(execute.mock.calls[2][0]).toMatchObject({
@@ -150,13 +151,13 @@ describe("Upload workspace", () => {
     renderPanel();
     await select([file(), file("second.jpg"), file("third.jpg")]);
     await userEvent.type(screen.getAllByLabelText(/Description/)[1], "Keep this story");
-    await userEvent.click(screen.getByRole("button", { name: "Publish 3 photos" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Upload All (3)" })[0]);
     await screen.findByText(/Publishing paused/);
     expect(screen.getByText("Too many attempts. Try again in 42 seconds.")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Publish 2 photos" })).toBeEnabled());
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Upload All (2)" })[0]).toBeEnabled());
     expect(execute).toHaveBeenCalledTimes(2);
     expect(screen.getAllByLabelText(/Description/)[1]).toHaveValue("Keep this story");
-    await userEvent.click(screen.getByRole("button", { name: "Publish 2 photos" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Upload All (2)" })[0]);
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(4));
     expect(execute.mock.calls[2][0]).toMatchObject({ description: "Keep this story", file: expect.objectContaining({ name: "second.jpg" }) });
     expect(execute.mock.calls[3][0].file.name).toBe("third.jpg");
@@ -175,7 +176,7 @@ describe("Upload workspace", () => {
     );
     expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "Publish 1 photo" }),
+      screen.getAllByRole("button", { name: "Upload All (1)" })[0],
     );
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(

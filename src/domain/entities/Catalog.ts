@@ -5,11 +5,13 @@ export type CollectionEntry = {
   rows: number;
 };
 export type CollectionDraft = {
+  coverPhotoId?: string | null;
   title: string;
   categoryIds: string[];
   entries: CollectionEntry[];
 };
 export type CatalogCollection = {
+  coverPhotoId?: string | null;
   id: string;
   title: string;
   categories: CatalogCategory[];

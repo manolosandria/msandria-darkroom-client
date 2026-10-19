@@ -50,8 +50,8 @@ Linux shows up in the pull request.
 
 | Path | What it holds |
 |---|---|
-| `app/` | Routes: `/` (home), `/gallery`, `/photo/[id]`, `/upload`, `/manage`, `/moderate`, `/account` |
-| `src/domain/` | Entities (`Photo`, `User`, `PhotoComment`, `PublicName`) and repository interfaces |
+| `app/` | Routes: `/` (home), `/gallery`, `/photo/[id]`, `/curator`, `/upload`, `/manage`, `/moderate`, `/collections`, `/contact`, `/account` |
+| `src/domain/` | Entities (`Photo`, `User`, `PhotoComment`, `PublicName`, `Catalog`) and repository interfaces, `ContactRepository` included |
 | `src/application/` | Use cases, one class each |
 | `src/infrastructure/` | Repository implementations, the HTTP client, service wiring |
 | `src/ui/` | Components and hooks |
@@ -61,9 +61,11 @@ Dependencies point inwards: `domain` knows nothing of the others, `application` 
 only on `domain` interfaces, and `infrastructure` supplies the implementations. A
 component reaches the API through a use case, never with its own `fetch`.
 
-`/upload` publishes through the API's `POST /photos` and is offered in the header to
-the administrator alone. `/manage` edits what is already published, through `PATCH
-/photos/:id`, and is reached from a link on `/upload` rather than from the header.
+`/curator` gathers the administrator's screens as tabs and is what the header offers
+the administrator, as **Curator** with a count of pending comments and unread
+messages; see "Curator" below. `/upload` publishes through the API's `POST /photos`.
+`/manage` edits what is already published, through `PATCH /photos/:id`, and is
+reached from a link on `/upload` or the Photos tab rather than from the header.
 
 ## Upload and management
 
@@ -343,6 +345,48 @@ from `GET /comments/pending`: each comment with its author, date and a link to i
 photo, to **Approve** (`POST /comments/:id/approve`) or **Delete** (which is how a
 comment is rejected). The page is offered to the administrator alone; the API enforces
 it on every request.
+
+## Curator
+
+`/curator` (`Curator`) is the administrator's workspace, offered in the header as
+**Curator** with a badge counting comments awaiting moderation and unread contact
+messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
+`SessionProvider`) asks `GET /curator/notifications` for the administrator only,
+every minute, when the window regains focus, and whenever a curator action dispatches
+a `curator:refresh` event.
+
+Its tabs are **Upload**, **Photos**, **Collections**, **Moderation** and **Inbox**: the
+screens of `/upload`, `/manage`, `/collections` and `/moderate`, plus the contact
+inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs
+does not lose unsaved edits. The older routes still work on their own.
+
+- **Upload**: every card has its own **Upload** button at its bottom right, and the
+  list has **Upload All (n)** above and below the cards.
+- **Classification** (`PhotoClassificationFields`), on each upload card and in the
+  Photos editor: visibility (**Public** by default, **Private**, **Select** — reserved
+  for special accounts and, until they exist, private — and **Collections only**),
+  categories typed by name with the existing ones suggested and a comma closing each
+  one as a chip, and collections chosen from a list, each with the photo's position
+  (from 1; new ones default to the end). It reads the full catalog from
+  `GET /catalog/manage`.
+- **Collections**: collections are cards with their title and cover photo (the
+  chosen cover, or the first photo). Unticking a photo only marks it for removal; the
+  whole collection, cover included, is saved at once.
+- **Inbox** (`ContactInbox`): messages from `/contact`, newest first, unread ones
+  marked, to mark as read or delete.
+
+**Private photos.** The API keeps private and select photos in the image host's
+authenticated delivery and serves their renditions itself, as paths on its own origin
+(`/photos/:id/renditions/:width`). `ApiPhotoRepository` turns those paths into full
+URLs, and the API's origin is in `img-src` for that reason. The public gallery never
+receives them; the visibility filter is the API's, not this site's.
+
+## Contact form
+
+`/contact` (`ContactForm`) is linked from the header for everyone. It sends name,
+email, message and an explicit consent to `POST /contact`, which keeps the message in
+the administrator's inbox; **no email is sent**. Links are refused, and the API allows
+3 messages per minute per IP. A refusal keeps the message in the form.
 
 ## Collection management
 

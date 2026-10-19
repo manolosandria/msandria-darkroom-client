@@ -61,9 +61,9 @@ describe("MainHeader", () => {
     renderHeader();
 
     await waitFor(() =>
-      expect(screen.getByRole("link", { name: "Upload" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Curator" })).toHaveAttribute(
         "href",
-        "/upload",
+        "/curator",
       ),
     );
   });
@@ -76,7 +76,7 @@ describe("MainHeader", () => {
     renderHeader();
 
     await screen.findByText("manolo@example.com");
-    expect(screen.queryByRole("link", { name: "Upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Curator" })).not.toBeInTheDocument();
   });
 
   it("does not offer it to a visitor without a session", async () => {
@@ -87,6 +87,6 @@ describe("MainHeader", () => {
     await waitFor(() =>
       expect(screen.getByTestId("google-signin-button")).toBeInTheDocument(),
     );
-    expect(screen.queryByRole("link", { name: "Upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Curator" })).not.toBeInTheDocument();
   });
 });

@@ -9,6 +9,7 @@ import { getAllPhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoS
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoGrid } from "./PhotoGrid";
+import { getCollectionPhotos } from "@/src/infrastructure/photoServices";
 
 interface GalleryProps {
   getAllPhotos?: Pick<GetAllPhotos, "execute">;
@@ -17,9 +18,13 @@ interface GalleryProps {
 export default function Gallery({
   getAllPhotos = defaultGetAllPhotos,
 }: GalleryProps) {
+  const [collectionId, setCollectionId] = useState("");
   const fetchAllPhotos = useCallback(
-    () => getAllPhotos.execute(),
-    [getAllPhotos],
+    () =>
+      collectionId
+        ? getCollectionPhotos(collectionId).execute()
+        : getAllPhotos.execute(),
+    [getAllPhotos, collectionId],
   );
   const {
     data: photos,
@@ -30,7 +35,6 @@ export default function Gallery({
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState(false);
   const [categoryId, setCategoryId] = useState("");
-  const [collectionId, setCollectionId] = useState("");
   const loadCatalog = useCallback(async () => {
     try {
       setCatalog(await editCatalog.load());

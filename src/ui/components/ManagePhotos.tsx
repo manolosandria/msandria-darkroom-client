@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { PublishedPhoto } from "@/src/domain/repositories/PhotoRepository";
+import { PublishedPhoto, PhotoUploadError } from "@/src/domain/repositories/PhotoRepository";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { OptimizationIssueList } from "./OptimizationIssueList";
 import { Photo } from "@/src/domain/entities/Photo";
 import {
-  getAllPhotos,
+  getManagedPhotos,
   getPhotoById,
   savePhoto,
   getUnoptimizedPhotos,
@@ -30,6 +30,7 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   TOP_RIGHT: "Top right",
 };
 import { useSessionValue } from "./SessionProvider";
+import { PhotoClassificationFields } from "./PhotoClassificationFields";
 
 export default function ManagePhotos() {
   const session = useSessionValue();
@@ -80,7 +81,7 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
     async () => ({
       entries: pendingOnly
         ? await getUnoptimizedPhotos.execute()
-        : ((await getAllPhotos.execute()) ?? []).map((photo) => ({
+        : ((await getManagedPhotos.execute()) ?? []).map((photo) => ({
             photo,
             optimizationIssues: [],
           })),
@@ -181,6 +182,7 @@ function PhotoDetailEditor({
   onSaved: (photo: Photo, issues?: PhotoOptimizationIssue[]) => void;
 }) {
   const id = photo.getId();
+  const [freshDetail, setFreshDetail] = useState(false);
   const loadDetail = useCallback(() => getPhotoById.execute(id), [id]);
   const { data, loading, error, retry } = usePhotoFetch(
     loadDetail,
@@ -190,9 +192,18 @@ function PhotoDetailEditor({
   if (error) return <ErrorMessage message={error} onRetry={retry} />;
   return data ? (
     <PhotoEditor
-      photo={revised ? photo : data}
+      key={`${(revised && !freshDetail ? photo : data).getId()}:${(revised && !freshDetail ? photo : data).getVersion()}`}
+      photo={revised && !freshDetail ? photo : data}
+      initialSaved={revised && !freshDetail}
       issues={issues}
-      onSaved={onSaved}
+      onSaved={(updated, nextIssues) => {
+        setFreshDetail(false);
+        onSaved(updated, nextIssues);
+      }}
+      onReload={() => {
+        setFreshDetail(true);
+        retry();
+      }}
     />
   ) : null;
 }
@@ -222,10 +233,14 @@ function PhotoEditor({
   photo,
   onSaved,
   issues,
+  onReload,
+  initialSaved,
 }: {
   photo: Photo;
   issues: PhotoOptimizationIssue[];
   onSaved: (photo: Photo, issues?: PhotoOptimizationIssue[]) => void;
+  onReload: () => void;
+  initialSaved: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState(issues);
@@ -233,9 +248,13 @@ function PhotoEditor({
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
   const [titlePosition, setTitlePosition] = useState(photo.getTitlePosition());
+  const [classification, setClassification] = useState(
+    photo.getClassification(),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
   return (
     <form
       className="upload-card manage-editor"
@@ -248,10 +267,13 @@ function PhotoEditor({
         }
         setSaving(true);
         setError("");
+        setConflict(false);
         setSaved(false);
         try {
           const updated = new Photo({
+            ...classification,
             id: photo.getId(),
+            version: photo.getVersion(),
             title,
             description,
             highlights,
@@ -264,16 +286,17 @@ function PhotoEditor({
             createdAt: photo.getCreatedAt(),
           });
           if (file) {
-            const result = await replacePhoto.execute(updated, file);
+            const result = await replacePhoto.execute(updated, file, photo);
             setFile(null);
             setReport(result.optimizationIssues);
             onSaved(result.photo, result.optimizationIssues);
           } else {
-            await savePhoto.execute(updated);
-            onSaved(updated);
+            await savePhoto.execute(updated, photo);
+            onSaved((await getPhotoById.execute(updated.getId())) ?? updated);
           }
           setSaved(true);
         } catch (failure) {
+          setConflict(failure instanceof PhotoUploadError && failure.failure === "conflict");
           setError(apiFailureMessage(failure));
         } finally {
           setSaving(false);
@@ -281,6 +304,14 @@ function PhotoEditor({
       }}
     >
       <fieldset className="upload-fields" disabled={saving}>
+        <PhotoClassificationFields
+          value={classification}
+          onChange={(next) => {
+            setClassification(next);
+            setSaved(false);
+          }}
+          disabled={saving}
+        />
         {report.length > 0 && <OptimizationIssueList issues={report} />}
         <label>
           Replacement file
@@ -355,6 +386,11 @@ function PhotoEditor({
           </p>
         )}
         {saved && <p role="status">Changes saved.</p>}
+        {conflict && (
+          <button type="button" className="upload-secondary" onClick={onReload}>
+            Reload state
+          </button>
+        )}
         <button type="submit" className="upload-primary">
           {saving ? "Saving…" : "Save changes"}
         </button>

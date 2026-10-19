@@ -10,6 +10,21 @@ import { ApiPhotoRepository } from "./ApiPhotoRepository";
 const photoRepository = new ApiPhotoRepository(process.env.NEXT_PUBLIC_API_URL);
 
 export const getAllPhotos = new GetAllPhotos(photoRepository);
+export const getManagedPhotos = new GetAllPhotos(
+  new ApiPhotoRepository(
+    process.env.NEXT_PUBLIC_API_URL,
+    undefined,
+    "/photos/manage",
+  ),
+);
+export const getCollectionPhotos = (id: string) =>
+  new GetAllPhotos(
+    new ApiPhotoRepository(
+      process.env.NEXT_PUBLIC_API_URL,
+      undefined,
+      `/photos?collection=${encodeURIComponent(id)}`,
+    ),
+  );
 export const getPhotoById = new GetPhotoById(photoRepository);
 export const uploadPhoto = new UploadPhoto(photoRepository);
 export const savePhoto = new SavePhoto(photoRepository);

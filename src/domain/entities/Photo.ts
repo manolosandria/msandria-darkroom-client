@@ -28,7 +28,22 @@ export type PhotoRendition = {
   url: string;
 };
 
-export type PhotoParams = {
+// Who may see a photo. Select is reserved for special accounts that do not exist yet,
+// so for now it behaves like private; collections-only photos appear in their
+// collections and nowhere else.
+export type PhotoVisibility = "PUBLIC" | "PRIVATE" | "SELECT" | "COLLECTIONS_ONLY";
+
+// Where a photo sits in a collection, counting from 1.
+export type PhotoCollectionPlacement = { id: string; position: number };
+
+export type PhotoClassification = {
+  visibility: PhotoVisibility;
+  categoryNames: string[];
+  collections: PhotoCollectionPlacement[];
+};
+
+export type PhotoParams = Partial<PhotoClassification> & {
+  version?: number;
   id: string;
   title: string;
   // Pixel size of the original: only its proportion matters to the layout.
@@ -44,6 +59,8 @@ export type PhotoParams = {
 };
 
 export class Photo {
+  private readonly version: number;
+  private readonly classification: PhotoClassification;
   private readonly highlights: PhotoHighlights;
   private readonly frame: PhotoFrame | null;
   private readonly titlePosition: PhotoTitlePosition;
@@ -57,6 +74,12 @@ export class Photo {
   private readonly createdAt: Date;
 
   constructor(params: PhotoParams) {
+    this.version = params.version ?? 1;
+    this.classification = {
+      visibility: params.visibility ?? "PUBLIC",
+      categoryNames: params.categoryNames ?? [],
+      collections: params.collections ?? [],
+    };
     this.highlights = params.highlights ?? {};
     this.frame = params.frame ?? null;
     this.titlePosition = params.titlePosition ?? DEFAULT_TITLE_POSITION;
@@ -95,6 +118,9 @@ export class Photo {
   getId() {
     return this.id;
   }
+  getClassification() {
+    return this.classification;
+  }
   getHighlights() {
     return this.highlights;
   }
@@ -109,6 +135,9 @@ export class Photo {
   }
   getWidth() {
     return this.width;
+  }
+  getVersion() {
+    return this.version;
   }
   getHeight() {
     return this.height;

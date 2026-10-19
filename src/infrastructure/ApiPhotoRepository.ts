@@ -1,5 +1,11 @@
 import { rateLimitError } from "./rateLimitError";
-import { Photo, PhotoCamera, PhotoRendition } from "../domain/entities/Photo";
+import {
+  Photo,
+  PhotoCamera,
+  PhotoCollectionPlacement,
+  PhotoRendition,
+  PhotoVisibility,
+} from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
 import { PhotoTitlePosition } from "../domain/entities/PhotoTitlePosition";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
@@ -34,6 +40,11 @@ type ApiPhotoListItem = {
 };
 
 type ApiPhoto = ApiPhotoListItem & {
+  version?: number;
+  // Only the administrator's detail carries them.
+  visibility?: PhotoVisibility;
+  categoryNames?: string[];
+  collections?: PhotoCollectionPlacement[];
   description: string | null;
   format?: string;
   capturedAt?: string | null;
@@ -62,6 +73,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
+    private readonly listingPath = "/photos",
   ) {}
 
   async findById(id: string): Promise<Photo | null> {
@@ -72,7 +84,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
   }
 
   async findAll(): Promise<Photo[] | null> {
-    const response = await this.get("/photos");
+    const response = await this.get(this.listingPath);
     const entries = (await this.ensureOk(response).json()) as ApiPhotoListItem[];
     const photos = entries
       .filter((entry) => this.isDeliverable(entry))
@@ -87,6 +99,9 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     const form = new FormData();
     form.append("file", draft.file);
     form.append("title", draft.title);
+    if (draft.visibility) form.append("visibility", draft.visibility);
+    if (draft.categoryNames) form.append("categoryNames", JSON.stringify(draft.categoryNames));
+    if (draft.collections) form.append("collections", JSON.stringify(draft.collections));
     if (draft.description) form.append("description", draft.description);
     if (draft.highlights)
       form.append("highlights", JSON.stringify(draft.highlights));
@@ -112,13 +127,12 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       .filter((entry) => entry.optimizationIssues.some((issue) => issue.isPending()));
   }
 
-  async replace(photo: Photo, file: File): Promise<PublishedPhoto> {
+  async replace(photo: Photo, file: File, original?: Photo): Promise<PublishedPhoto> {
     const form = new FormData();
     form.append("file", file);
-    form.append("title", photo.getTitle());
-    form.append("description", photo.getDescription()?.trim() || "");
-    form.append("highlights", JSON.stringify(photo.getHighlights()));
-    form.append("titlePosition", photo.getTitlePosition());
+    for (const [key, value] of Object.entries(this.editFields(photo, original))) {
+      form.append(key, typeof value === "object" && value !== null ? JSON.stringify(value) : value === null ? "" : String(value));
+    }
     const response = await this.send("POST", `/photos/${encodeURIComponent(photo.getId())}/file`, form);
     if (!response.ok) throw await this.toUploadError(response);
     return this.toReviewedPhoto((await response.json()) as ApiReviewedPhoto);
@@ -132,17 +146,11 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     throw new Error(NOT_IMPLEMENTED_MESSAGE);
   }
 
-  async save(photo: Photo): Promise<void> {
+  async save(photo: Photo, original?: Photo): Promise<void> {
     const response = await this.send(
       "PATCH",
       `/photos/${encodeURIComponent(photo.getId())}`,
-      JSON.stringify({
-        title: photo.getTitle(),
-        // The API keeps "no description" as null; an empty string would store one.
-        description: photo.getDescription()?.trim() || null,
-        highlights: photo.getHighlights(),
-        titlePosition: photo.getTitlePosition(),
-      }),
+      JSON.stringify(this.editFields(photo, original)),
     );
     if (!response.ok) throw await this.toUploadError(response);
   }
@@ -153,6 +161,32 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
 
   private get(path: string) {
     return this.send("GET", path);
+  }
+
+  // Send only deliberate edits. Replacing a file alone must preserve its classification.
+  private editFields(photo: Photo, original?: Photo): Record<string, unknown> {
+    const fields = (entry: Photo) => ({
+      title: entry.getTitle(),
+      description: entry.getDescription()?.trim() || null,
+      highlights: entry.getHighlights(),
+      titlePosition: entry.getTitlePosition(),
+      ...entry.getClassification(),
+    });
+    const before = original ? fields(original) : null;
+    return {
+      version: photo.getVersion(),
+      ...Object.fromEntries(Object.entries(fields(photo)).filter(([key, value]) =>
+        !before || JSON.stringify(value) !== JSON.stringify(before[key as keyof typeof before]),
+      )),
+    };
+  }
+
+  // A private photo's renditions are served by the API itself, which answers with
+  // paths relative to its own origin; everything else is already a full URL.
+  private absoluteUrl(url: string) {
+    return url.startsWith("/")
+      ? `${this.baseUrl?.replace(/\/+$/, "") ?? ""}${url}`
+      : url;
   }
 
   // `credentials: "include"` is what makes the browser attach the session cookie to a
@@ -200,7 +234,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       );
     }
     if (response.status === 409) {
-      return new PhotoUploadError("rejected", "The photo changed. Reload before replacing it.");
+      return new PhotoUploadError("conflict", "This photo changed while you were editing it. Reload its state before saving.");
     }
     if (response.status === 413) {
       return new PhotoUploadError(
@@ -241,12 +275,19 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     const detail = "description" in entry ? entry : undefined;
     return new Photo({
       id: entry.id,
+      version: detail?.version,
       title: entry.title,
       description: detail?.description ?? undefined,
       width: entry.width,
       height: entry.height,
       createdAt: new Date(entry.createdAt),
-      renditions: entry.renditions,
+      renditions: entry.renditions.map((rendition) => ({
+        ...rendition,
+        url: this.absoluteUrl(rendition.url),
+      })),
+      visibility: detail?.visibility,
+      categoryNames: detail?.categoryNames,
+      collections: detail?.collections,
       highlights: entry.highlights,
       frame: entry.frame,
       titlePosition: detail?.titlePosition,

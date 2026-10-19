@@ -3,13 +3,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
+import { PhotoUploadError } from "@/src/domain/repositories/PhotoRepository";
 import { User } from "@/src/domain/entities/User";
-import { getAllPhotos, getPhotoById, savePhoto, getUnoptimizedPhotos, replacePhoto } from "@/src/infrastructure/photoServices";
+import { getManagedPhotos, getPhotoById, savePhoto, getUnoptimizedPhotos, replacePhoto } from "@/src/infrastructure/photoServices";
+vi.mock('@/src/infrastructure/catalogServices', () => ({ manageCatalog: { load: vi.fn().mockResolvedValue({ categories: [], collections: [], works: [], photos: [] }) } }));
 import { SessionProvider } from "../SessionProvider";
 import ManagePhotos from "../ManagePhotos";
 
 vi.mock("@/src/infrastructure/photoServices", () => ({
-  getAllPhotos: { execute: vi.fn() },
+  getManagedPhotos: { execute: vi.fn() },
   getUnoptimizedPhotos: { execute: vi.fn() },
   replacePhoto: { execute: vi.fn() },
   savePhoto: { execute: vi.fn() },
@@ -42,12 +44,54 @@ function show() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getAllPhotos.execute).mockResolvedValue([photo]);
-  vi.mocked(savePhoto.execute).mockResolvedValue();
+  vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo]);
+  vi.mocked(savePhoto.execute).mockImplementation(async (updated) => {
+    vi.mocked(getPhotoById.execute).mockResolvedValue(updated);
+  });
   vi.mocked(getPhotoById.execute).mockResolvedValue(photo);
 });
 
 describe("ManagePhotos", () => {
+  it("keeps edits after a conflict and reloads the latest state only on request", async () => {
+    vi.mocked(savePhoto.execute).mockRejectedValueOnce(new PhotoUploadError("conflict", "changed"));
+    show();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    await screen.findByLabelText("Description");
+    await userEvent.type(screen.getByLabelText("Description"), "My unsaved story");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This photo changed while you were editing it. Reload its state before saving.");
+    expect(screen.getByLabelText("Description")).toHaveValue("My unsaved story");
+    const current = new Photo({ id: "photo", version: 2, title: "Latest coast", description: "Saved elsewhere", width: 1800, height: 1200, visibility: "PRIVATE", categoryNames: ["Sea"], renditions: [{ width: 640, url: "https://cdn/latest.jpg" }] });
+    vi.mocked(getPhotoById.execute).mockResolvedValue(current);
+    await userEvent.click(screen.getByRole("button", { name: "Reload state" }));
+    expect(await screen.findByLabelText("Description")).toHaveValue("Saved elsewhere");
+    expect(screen.getByLabelText("Visibility")).toHaveValue("PRIVATE");
+    expect(screen.queryByRole("button", { name: "Reload state" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Changes saved.");
+    expect(vi.mocked(savePhoto.execute).mock.lastCall?.[0].getVersion()).toBe(2);
+  });
+
+  it("retains private classification and the new version after replacing and reopening a photo", async () => {
+    const updated = new Photo({ id: "photo", version: 2, title: "The coast", width: 2400, height: 1600, visibility: "PRIVATE", categoryNames: ["Sea"], collections: [{ id: "sea", position: 2 }], renditions: [{ width: 640, url: "https://cdn/new.jpg" }] });
+    const other = new Photo({ id: "other", title: "Other photo", width: 640, height: 480, renditions: [{ width: 640, url: "https://cdn/other.jpg" }] });
+    vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo, other]);
+    vi.mocked(replacePhoto.execute).mockResolvedValue({ photo: updated, optimizationIssues: [] });
+    show();
+    await userEvent.click(await screen.findByRole("button", { name: "The coast" }));
+    await userEvent.upload(await screen.findByLabelText("Replacement file"), new File(["image"], "new.jpg", { type: "image/jpeg" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Changes saved.");
+    await userEvent.click(screen.getByRole("button", { name: "Other photo" }));
+    await screen.findByLabelText("Description");
+    await userEvent.click(screen.getByRole("button", { name: "The coast" }));
+    expect(await screen.findByLabelText("Visibility")).toHaveValue("PRIVATE");
+    expect(screen.getByRole("button", { name: "Remove category Sea" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Changes saved.");
+    expect(vi.mocked(savePhoto.execute).mock.lastCall?.[0].getClassification()).toEqual(updated.getClassification());
+    expect(vi.mocked(savePhoto.execute).mock.lastCall?.[0].getVersion()).toBe(2);
+  });
   it("shows only outstanding photos and removes a resolved replacement from the pending list", async () => {
     const issue = new PhotoOptimizationIssue({ kind: "LOCATION", resolution: "NEEDS_REUPLOAD", unit: "TAG_COUNT", currentValue: "2", recommendedValue: "0" });
     vi.mocked(getUnoptimizedPhotos.execute).mockResolvedValue([{ photo, optimizationIssues: [issue] }]);
@@ -61,7 +105,7 @@ describe("ManagePhotos", () => {
     await userEvent.upload(screen.getByLabelText("Replacement file"), file);
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("No photos need optimization.");
-    expect(replacePhoto.execute).toHaveBeenCalledWith(expect.any(Photo), file);
+    expect(replacePhoto.execute).toHaveBeenCalledWith(expect.any(Photo), file, photo);
     expect(savePhoto.execute).not.toHaveBeenCalled();
   });
   it("keeps the chosen file and edits available after replacement fails", async () => {

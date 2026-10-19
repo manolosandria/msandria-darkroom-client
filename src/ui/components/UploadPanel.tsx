@@ -13,6 +13,11 @@ import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { OptimizationIssueList } from "./OptimizationIssueList";
 import { useSessionValue } from "./SessionProvider";
+import {
+  PhotoClassification,
+  PhotoClassificationFields,
+  publicClassification,
+} from "./PhotoClassificationFields";
 
 const ACCEPTED_TYPES = [
   "image/jpeg",
@@ -23,6 +28,7 @@ const ACCEPTED_TYPES = [
 ];
 const MAX_BYTES = 10 * 1024 * 1024;
 type UploadItem = {
+  classification: PhotoClassification;
   id: number;
   file: File;
   preview: string;
@@ -86,6 +92,7 @@ export default function UploadPanel({
       const preview = URL.createObjectURL(file);
       urls.current.add(preview);
       additions.push({
+        classification: publicClassification(),
         id: nextId.current++,
         file,
         preview,
@@ -103,10 +110,12 @@ export default function UploadPanel({
     urls.current.delete(item.preview);
     setItems((previous) => previous.filter((entry) => entry.id !== item.id));
   };
-  const publish = async () => {
+  const publish = async (onlyId?: number) => {
     if (active.current) return;
     const batch = items.filter(
-      (item) => item.status === "draft" || item.status === "failed",
+      (item) =>
+        (item.status === "draft" || item.status === "failed") &&
+        (onlyId === undefined || item.id === onlyId),
     );
     if (!batch.length) return;
     if (batch.some((item) => !item.title.trim())) {
@@ -133,6 +142,7 @@ export default function UploadPanel({
             title: item.title.trim(),
             description: item.description.trim() || undefined,
             highlights: item.highlights,
+            ...item.classification,
           });
           patch(item.id, { status: "published", published });
         } catch (failure) {
@@ -177,8 +187,22 @@ export default function UploadPanel({
     (item) => item.status === "draft" || item.status === "failed",
   ).length;
   const completed = items.filter((item) => item.status === "published").length;
+  // Offered above and below the cards, so a long batch can be sent from either end.
+  const uploadAll = (modifier = "") => (
+    <div className={`upload-toolbar ${modifier}`.trim()}>
+      <button
+        type="button"
+        className="upload-primary"
+        disabled={running || !pending}
+        onClick={() => publish()}
+      >
+        {running ? "Uploading…" : `Upload All (${pending})`}
+      </button>
+    </div>
+  );
   return (
     <Shell>
+      {items.length > 0 && uploadAll()}
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <Link href="/manage" className="upload-link">
           Manage published photos →
@@ -258,16 +282,6 @@ export default function UploadPanel({
                 {running ? " · Uploading one at a time…" : ""}
               </span>
             </div>
-            <button
-              type="button"
-              className="upload-primary"
-              disabled={running || !pending}
-              onClick={publish}
-            >
-              {running
-                ? "Publishing…"
-                : `Publish ${pending} ${pending === 1 ? "photo" : "photos"}`}
-            </button>
           </div>
           <div className="upload-items">
             {items.map((item, index) => (
@@ -277,9 +291,12 @@ export default function UploadPanel({
                 index={index}
                 onChange={(fields) => patch(item.id, fields)}
                 onRemove={() => remove(item)}
+                onUpload={() => publish(item.id)}
+                running={running}
               />
             ))}
           </div>
+          {uploadAll("upload-toolbar--bottom")}
         </>
       )}
       {!items.length && (
@@ -298,11 +315,15 @@ function UploadCard({
   index,
   onChange,
   onRemove,
+  onUpload,
+  running,
 }: {
   item: UploadItem;
   index: number;
   onChange: (fields: Partial<UploadItem>) => void;
   onRemove: () => void;
+  onUpload: () => void;
+  running: boolean;
 }) {
   const locked = ["queued", "uploading", "published"].includes(item.status);
   const metadata = item.published?.photo.getMetadata();
@@ -420,6 +441,11 @@ function UploadCard({
               )}
             </dl>
           </details>
+          <PhotoClassificationFields
+            value={item.classification}
+            disabled={locked}
+            onChange={(classification) => onChange({ classification })}
+          />
         </div>
         <div className="upload-fields">
           <label htmlFor={`title-${item.id}`}>
@@ -486,6 +512,20 @@ function UploadCard({
           )}
         </div>
       </div>
+      <footer className="upload-card-actions">
+        <button
+          type="button"
+          className="upload-primary"
+          disabled={running || locked}
+          onClick={onUpload}
+        >
+          {item.status === "published"
+            ? "Uploaded"
+            : item.status === "uploading"
+              ? "Uploading…"
+              : "Upload"}
+        </button>
+      </footer>
     </article>
   );
 }
