@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./EditorFeedback.module.css";
+
 import {
   createContext,
   useCallback,
@@ -10,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 
 type Editor = {
@@ -194,13 +197,18 @@ export function EditingWorkspace({
       >
         {children}
       </div>
-      {(question || leaving) && (
-        <div className="editor-dialog-backdrop">
+      {(question || leaving) && createPortal(
+        <div className={styles.backdrop} onClick={(event) => {
+          if (event.target === event.currentTarget && !busy) {
+            if (question) answer(false);
+            else setLeaving(null);
+          }
+        }}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="editor-dialog-title"
-            className="editor-dialog"
+            className={styles.dialog}
             onKeyDown={(event) => {
               if (event.key === "Escape" && !busy) {
                 event.preventDefault();
@@ -233,7 +241,7 @@ export function EditingWorkspace({
                 "You have unsaved photo or collection changes. Save all before leaving, keep editing, or leave without saving."}
             </p>
             {error && <p role="alert">{error}</p>}
-            <div className="editor-actions">
+            <div className={styles.actions}>
               {question ? (
                 <button
                   type="button"
@@ -299,7 +307,8 @@ export function EditingWorkspace({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </Context.Provider>
   );

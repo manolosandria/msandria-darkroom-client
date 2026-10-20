@@ -78,7 +78,11 @@ function CatalogEditorContent() {
     };
     refresh();
     window.addEventListener("curator:catalog-changed", refresh);
-    return () => window.removeEventListener("curator:catalog-changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("curator:catalog-changed", refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [load]);
   async function save(action: () => Promise<void>, reset?: () => void) {
     setBusy(true);

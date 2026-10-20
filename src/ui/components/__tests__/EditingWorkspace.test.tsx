@@ -57,6 +57,20 @@ function show(
 }
 
 describe("EditingWorkspace", () => {
+  it("portals confirmations outside inert content and cancels on backdrop click", async () => {
+    show();
+    await userEvent.type(screen.getByLabelText("First draft"), "pending");
+    await userEvent.click(screen.getByRole("button", { name: "Discard First draft" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.closest("[inert]")).toBeNull();
+    await userEvent.click(screen.getByText("Discard your edits?"));
+    expect(dialog).toBeInTheDocument();
+    fireEvent.click(dialog.parentElement!);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("First draft")).toHaveValue("pending");
+    expect(screen.getByLabelText("First draft").closest("[inert]")).toBeNull();
+  });
+
   it("keeps drafts when leaving is cancelled and guards a reload", async () => {
     const { navigate } = show();
     await userEvent.type(screen.getByLabelText("First draft"), "unsaved");

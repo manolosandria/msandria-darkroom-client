@@ -42,6 +42,18 @@ beforeEach(() => {
 });
 
 describe("collection editor", () => {
+  it("refreshes privacy changed in another window without losing collection edits", async () => {
+    render(<CatalogEditor />);
+    await userEvent.type(await screen.findByLabelText("Collection title"), "Pending collection");
+    await userEvent.selectOptions(screen.getByLabelText("Add photo"), "Color");
+    vi.mocked(getManagedPhotos.execute).mockResolvedValue([
+      new Photo({ id: "Color", title: "Color", visibility: "PRIVATE", width: 100, height: 100, renditions: [{ width: 100, url: "https://cdn/Color" }] }),
+    ]);
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Color");
+    expect(screen.getByLabelText("Collection title")).toHaveValue("Pending collection");
+  });
+
   it("refreshes photo visibility without replacing a collection draft", async () => {
     render(<CatalogEditor />);
     await userEvent.type(await screen.findByLabelText("Collection title"), "Unsaved collection");

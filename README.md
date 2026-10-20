@@ -112,7 +112,8 @@ There is no client secret and no redirect URI in this flow. In the Google consol
 Photos keeps an independent in-memory draft for each visited photo, including a
 replacement file. Switching photos, filters or Curator tabs preserves it. Save and
 Cancel changes controls appear above and below the editor and ask for confirmation;
-Accept also works with Enter. Each collection likewise keeps its own draft and
+Accept also works with Enter. Confirmations appear in a centered overlay; clicking
+outside it or pressing Escape cancels and preserves the draft. Each collection likewise keeps its own draft and
 removal selections; saving one never submits other collections.
 
 Leaving an editor through a link or browser history with pending edits offers

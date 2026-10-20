@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./EditorFeedback.module.css";
+
 import { useState } from "react";
 import {
   Catalog,
@@ -338,7 +340,7 @@ function CollectionEditor({
             </select>
           </label>
           {privatePhotos.length > 0 && (
-            <p role="alert" className="privacy-warning">
+            <p role="alert" className={styles.warning}>
               Private or reserved photos will not appear in the public
               collection, regardless of their position:{" "}
               {privatePhotos.join(", ")}.
@@ -418,7 +420,7 @@ function CollectionEditor({
               </li>
             ))}
           </ol>
-          <div className="editor-actions">
+          <div className={styles.actions}>
             <button type="submit" className="upload-primary">
               {busy ? "Saving…" : "Save collection"}
             </button>

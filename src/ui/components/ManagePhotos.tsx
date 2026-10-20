@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./EditorFeedback.module.css";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -357,7 +359,7 @@ function PhotoEditor({
   }
   useUnsavedEditor(dirty, { label: photo.getTitle(), save: persist, discard });
   const actions = () => (
-    <div className="editor-actions">
+    <div className={styles.actions}>
       <button type="submit" className="upload-primary" disabled={saving}>
         {saving ? "Saving…" : "Save changes"}
       </button>

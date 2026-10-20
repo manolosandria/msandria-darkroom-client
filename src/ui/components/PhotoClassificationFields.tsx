@@ -1,4 +1,6 @@
 "use client";
+
+import styles from "./EditorFeedback.module.css";
 import { useEffect, useId, useState } from "react";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { PhotoClassification } from "@/src/domain/entities/Photo";
@@ -76,7 +78,7 @@ export function PhotoClassificationFields({
       </label>
       {(value.visibility === "PRIVATE" || value.visibility === "SELECT") &&
         value.collections.length > 0 && (
-          <p role="alert" className="privacy-warning">
+          <p role="alert" className={styles.warning}>
             This photo is{" "}
             {value.visibility === "PRIVATE" ? "private" : "reserved"}. It will
             not appear in the public collection, regardless of its position.
