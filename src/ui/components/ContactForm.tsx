@@ -27,10 +27,36 @@ export default function ContactForm() {
           </p>
         ) : (
           <form
+            noValidate
             className="upload-card"
             onSubmit={async (event) => {
               event.preventDefault();
               if (busy) return;
+              const fields = Array.from(event.currentTarget.elements).filter(
+                (element): element is HTMLInputElement | HTMLTextAreaElement =>
+                  element instanceof HTMLInputElement ||
+                  element instanceof HTMLTextAreaElement,
+              );
+              const invalid = fields.find(
+                (field) =>
+                  !field.validity.valid ||
+                  (field.required &&
+                    field.type !== "checkbox" &&
+                    field.value.trim().length < field.minLength),
+              );
+              if (invalid) {
+                setError(
+                  invalid.type === "email"
+                    ? "Enter a valid email address."
+                    : invalid.type === "checkbox"
+                      ? "Please agree to use your details to handle this inquiry."
+                      : invalid instanceof HTMLTextAreaElement
+                        ? "Enter a message of at least 10 characters."
+                        : "Enter your name (at least 2 characters).",
+                );
+                invalid.focus();
+                return;
+              }
               setBusy(true);
               setError("");
               try {

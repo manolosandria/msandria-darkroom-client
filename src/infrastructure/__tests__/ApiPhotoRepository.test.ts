@@ -30,6 +30,10 @@ function respondWith(body: unknown, status = 200) {
 }
 
 describe("ApiPhotoRepository", () => {
+  it("preserves visibility from the compact administrator listing", async () => {
+    const photos = await new ApiPhotoRepository(API_URL, respondWith([{ ...apiPhoto("private"), visibility: "PRIVATE" }]), "/photos/manage").findAll();
+    expect(photos?.[0].getClassification().visibility).toBe("PRIVATE");
+  });
   it("replaces only the file and version when no metadata was edited", async () => {
     const detail = { ...apiPhoto("private"), version: 7, visibility: "PRIVATE", categoryNames: ["Sea"], collections: [{ id: "sea", position: 2 }] };
     const photo = await new ApiPhotoRepository(API_URL, respondWith(detail)).findById("private");

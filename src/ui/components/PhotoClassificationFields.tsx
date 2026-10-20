@@ -74,6 +74,14 @@ export function PhotoClassificationFields({
           <option value="COLLECTIONS_ONLY">Collections only</option>
         </select>
       </label>
+      {(value.visibility === "PRIVATE" || value.visibility === "SELECT") &&
+        value.collections.length > 0 && (
+          <p role="alert" className="privacy-warning">
+            This photo is{" "}
+            {value.visibility === "PRIVATE" ? "private" : "reserved"}. It will
+            not appear in the public collection, regardless of its position.
+          </p>
+        )}
       {value.visibility === "SELECT" && (
         <p className="upload-muted">
           Only the administrator can view this until special accounts are

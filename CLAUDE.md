@@ -348,6 +348,20 @@ it on every request.
 
 ## Curator
 
+`EditingWorkspace` (inside the root session provider) registers dirty photo and
+collection editors, confirms save/discard actions, guards links and history, and
+installs a native `beforeunload` guard. `EditingBoundary` reuses it or supplies a
+local provider for standalone editors. Visited photo editors and collection editors
+retain their state while rendering no form when inactive; do not discard these
+instances on selection or filter changes. Individual saves never flush other drafts.
+Curator remembers only its selected tab in `sessionStorage` (`curatorSection`), not
+form data. Drafts and replacement files remain in memory only.
+
+`CollectionWorkspace` owns the collection forms; `ManageCollections` retains the
+category and variant tools. The admin photo listing includes visibility for collection
+warnings, while the public compact listing does not. Contact's `noValidate` form
+checks validity and shows English errors itself; email ownership is still unverified.
+
 `/curator` (`Curator`) is the administrator's workspace, offered in the header as
 **Curator** with a badge counting comments awaiting moderation and unread contact
 messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside

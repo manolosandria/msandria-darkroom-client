@@ -1,25 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Catalog,
-  CollectionDraft,
-  WorkDraft,
-} from "@/src/domain/entities/Catalog";
+import { Catalog, WorkDraft } from "@/src/domain/entities/Catalog";
 import { Photo } from "@/src/domain/entities/Photo";
-import { selectCatalog } from "@/src/domain/catalogSelection";
 import { manageCatalog as editCatalog } from "@/src/infrastructure/catalogServices";
 import { getManagedPhotos as getAllPhotos } from "@/src/infrastructure/photoServices";
-import { PhotoImage } from "./PhotoImage";
+import { CollectionWorkspace } from "./CollectionWorkspace";
+import { EditingBoundary } from "./EditingWorkspace";
 import { useSessionValue } from "./SessionProvider";
 import { ErrorMessage } from "./ErrorMessage";
-import { CollectionMosaic } from "./CollectionMosaic";
 
-const emptyCollection = (): CollectionDraft => ({
-  title: "",
-  categoryIds: [],
-  entries: [],
-});
 const toggle = (ids: string[], id: string) =>
   ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 
@@ -55,14 +45,19 @@ export default function ManageCollections() {
 }
 
 export function CatalogEditor() {
+  return (
+    <EditingBoundary>
+      <CatalogEditorContent />
+    </EditingBoundary>
+  );
+}
+
+function CatalogEditorContent() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [collectionId, setCollectionId] = useState("");
-  const [draft, setDraft] = useState<CollectionDraft>(emptyCollection);
-  const [excluded, setExcluded] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [photoId, setPhotoId] = useState("");
@@ -78,7 +73,12 @@ export function CatalogEditor() {
     setPhotos(nextPhotos ?? []);
   }, []);
   useEffect(() => {
-    void load().catch(() => setError("The catalog could not be loaded."));
+    const refresh = () => {
+      void load().catch(() => setError("The catalog could not be loaded."));
+    };
+    refresh();
+    window.addEventListener("curator:catalog-changed", refresh);
+    return () => window.removeEventListener("curator:catalog-changed", refresh);
   }, [load]);
   async function save(action: () => Promise<void>, reset?: () => void) {
     setBusy(true);
@@ -137,49 +137,6 @@ export function CatalogEditor() {
       </fieldset>
     );
   }
-  function move(index: number, offset: number) {
-    const entries = [...draft.entries];
-    [entries[index], entries[index + offset]] = [
-      entries[index + offset],
-      entries[index],
-    ];
-    setDraft({ ...draft, entries });
-  }
-  function chooseCollection(id: string) {
-    setCollectionId(id);
-    setExcluded([]);
-    const selected = catalog?.collections.find((item) => item.id === id);
-    setDraft(
-      selected
-        ? {
-            title: selected.title,
-            coverPhotoId: selected.coverPhotoId,
-            categoryIds: selected.categories.map((category) => category.id),
-            entries: selected.entries.map(({ photoId, columns, rows }) => ({
-              photoId,
-              columns,
-              rows,
-            })),
-          }
-        : emptyCollection(),
-    );
-  }
-  const includedEntries = draft.entries.filter(
-    (entry) => !excluded.includes(entry.photoId),
-  );
-  const preview = catalog
-    ? {
-        ...catalog,
-        collections: [
-          {
-            id: "preview",
-            title: draft.title,
-            categories: [],
-            entries: includedEntries,
-          },
-        ],
-      }
-    : null;
   return (
     <div className="catalog-editor">
       {error && (
@@ -195,277 +152,11 @@ export function CatalogEditor() {
         <p>Loading catalog…</p>
       ) : (
         <fieldset disabled={busy}>
-          <section>
-            <h2>Collections</h2>
-            <div className="collection-cards">
-              {catalog.collections.map((collection) => {
-                const cover = photos.find(
-                  (photo) =>
-                    photo.getId() ===
-                    (collection.coverPhotoId ?? collection.entries[0]?.photoId),
-                );
-                return (
-                  <button
-                    type="button"
-                    key={collection.id}
-                    aria-pressed={collectionId === collection.id}
-                    onClick={() => chooseCollection(collection.id)}
-                  >
-                    <span className="collection-card-cover">
-                      {cover ? (
-                        <PhotoImage
-                          photo={cover}
-                          className="object-cover"
-                          fallbackSizes="280px"
-                        />
-                      ) : (
-                        <span>No cover yet</span>
-                      )}
-                    </span>
-                    <strong>{collection.title}</strong>
-                    <small>{collection.entries.length} photos</small>
-                  </button>
-                );
-              })}
-            </div>
-            <label>
-              Edit collection
-              <select
-                value={collectionId}
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setCollectionId(id);
-                  setExcluded([]);
-                  const selected = catalog.collections.find(
-                    (item) => item.id === id,
-                  );
-                  setDraft(
-                    selected
-                      ? {
-                          title: selected.title,
-                          coverPhotoId: selected.coverPhotoId,
-                          categoryIds: selected.categories.map(
-                            (category) => category.id,
-                          ),
-                          entries: selected.entries.map(
-                            ({ photoId, columns, rows }) => ({
-                              photoId,
-                              columns,
-                              rows,
-                            }),
-                          ),
-                        }
-                      : emptyCollection(),
-                  );
-                }}
-              >
-                <option value="">New collection</option>
-                {catalog.collections.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void save(
-                  () =>
-                    editCatalog.saveCollection(
-                      {
-                        ...draft,
-                        entries: includedEntries,
-                        coverPhotoId: includedEntries.some(
-                          (entry) => entry.photoId === draft.coverPhotoId,
-                        )
-                          ? draft.coverPhotoId
-                          : null,
-                      },
-                      collectionId || undefined,
-                    ),
-                  () => {
-                    setCollectionId("");
-                    setDraft(emptyCollection());
-                    setExcluded([]);
-                  },
-                );
-              }}
-            >
-              <fieldset>
-                <label>
-                  Collection title
-                  <input
-                    required
-                    maxLength={160}
-                    value={draft.title}
-                    onChange={(event) =>
-                      setDraft({ ...draft, title: event.target.value })
-                    }
-                  />
-                </label>
-                {categories(draft.categoryIds, (categoryIds) =>
-                  setDraft({ ...draft, categoryIds }),
-                )}
-                <label>
-                  Cover photo
-                  <select
-                    value={draft.coverPhotoId ?? ""}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        coverPhotoId: event.target.value || null,
-                      })
-                    }
-                  >
-                    <option value="">First included photo</option>
-                    {includedEntries.map((entry) => (
-                      <option key={entry.photoId} value={entry.photoId}>
-                        {photos
-                          .find((photo) => photo.getId() === entry.photoId)
-                          ?.getTitle() ?? "Photo"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Add photo
-                  <select
-                    value=""
-                    onChange={(event) => {
-                      if (event.target.value)
-                        setDraft({
-                          ...draft,
-                          entries: [
-                            ...draft.entries,
-                            {
-                              photoId: event.target.value,
-                              columns: 1,
-                              rows: 1,
-                            },
-                          ],
-                        });
-                    }}
-                  >
-                    <option value="">Choose a photo</option>
-                    {photos
-                      .filter(
-                        (photo) =>
-                          !draft.entries.some(
-                            (entry) => entry.photoId === photo.getId(),
-                          ),
-                      )
-                      .map((photo) => (
-                        <option key={photo.getId()} value={photo.getId()}>
-                          {photo.getTitle()}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <p>
-                  Move photos to set their priority. Width and height use a
-                  four-column canvas that keeps the same composition on phones.
-                  When variants share a work, its first entry sets the displayed
-                  variant and size.
-                </p>
-                <ol className="catalog-editor__entries">
-                  {draft.entries.map((entry, index) => (
-                    <li key={entry.photoId}>
-                      <div className="catalog-editor__row">
-                        <span>
-                          {index + 1}.{" "}
-                          {photos
-                            .find((photo) => photo.getId() === entry.photoId)
-                            ?.getTitle() ?? "Unavailable photo"}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={`Move photo ${index + 1} up`}
-                          disabled={!index}
-                          onClick={() => move(index, -1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Move photo ${index + 1} down`}
-                          disabled={index === draft.entries.length - 1}
-                          onClick={() => move(index, 1)}
-                        >
-                          ↓
-                        </button>
-                        {(["columns", "rows"] as const).map((dimension) => (
-                          <label key={dimension}>
-                            {dimension === "columns" ? "Width" : "Height"}
-                            <select
-                              value={entry[dimension]}
-                              onChange={(event) =>
-                                setDraft({
-                                  ...draft,
-                                  entries: draft.entries.map(
-                                    (item, position) =>
-                                      position === index
-                                        ? {
-                                            ...item,
-                                            [dimension]: Number(
-                                              event.target.value,
-                                            ),
-                                          }
-                                        : item,
-                                  ),
-                                })
-                              }
-                            >
-                              {[1, 2, 3, 4].map((value) => (
-                                <option key={value}>{value}</option>
-                              ))}
-                            </select>
-                          </label>
-                        ))}
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={!excluded.includes(entry.photoId)}
-                            onChange={() =>
-                              setExcluded(toggle(excluded, entry.photoId))
-                            }
-                          />
-                          Include photo {index + 1}
-                        </label>
-                        {excluded.includes(entry.photoId) && (
-                          <span className="upload-muted">
-                            Will be removed when you save
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <button type="submit">Save collection</button>
-              </fieldset>
-            </form>
-            {collectionId && (
-              <button
-                onClick={() =>
-                  remove("collections", collectionId, () => {
-                    setCollectionId("");
-                    setDraft(emptyCollection());
-                  })
-                }
-              >
-                Delete collection
-              </button>
-            )}
-            {preview && draft.entries.length > 0 && (
-              <div>
-                <h3>Composition preview</h3>
-                <CollectionMosaic
-                  tiles={selectCatalog(photos, preview, "", "preview")}
-                  mosaic
-                />
-              </div>
-            )}
-          </section>
+          <CollectionWorkspace
+            catalog={catalog}
+            photos={photos}
+            refresh={load}
+          />
           <section>
             <h2>Categories</h2>
             <label>
@@ -524,12 +215,6 @@ export function CatalogEditor() {
                   remove("categories", categoryId, () => {
                     setCategoryId("");
                     setCategoryName("");
-                    setDraft({
-                      ...draft,
-                      categoryIds: draft.categoryIds.filter(
-                        (id) => id !== categoryId,
-                      ),
-                    });
                     setPhotoCategories(
                       photoCategories.filter((id) => id !== categoryId),
                     );

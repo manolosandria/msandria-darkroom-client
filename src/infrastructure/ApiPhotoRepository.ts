@@ -29,6 +29,7 @@ const NOT_IMPLEMENTED_MESSAGE =
 // The subset of the API's photo response the gallery uses. Image URLs come
 // ready-made from the API: the client never talks to the image host directly.
 type ApiPhotoListItem = {
+  visibility?: PhotoVisibility;
   id: string;
   title: string;
   width: number;
@@ -285,7 +286,7 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
         ...rendition,
         url: this.absoluteUrl(rendition.url),
       })),
-      visibility: detail?.visibility,
+      visibility: entry.visibility,
       categoryNames: detail?.categoryNames,
       collections: detail?.collections,
       highlights: entry.highlights,

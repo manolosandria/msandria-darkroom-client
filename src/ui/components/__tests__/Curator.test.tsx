@@ -13,15 +13,27 @@ import {
 
 vi.mock("../UploadPanel", () => ({ default: () => <p>Upload workshop</p> }));
 vi.mock("../ManagePhotos", () => ({ default: () => <p>Photo library</p> }));
-vi.mock("../ManageCollections", () => ({ default: () => <p>Collection editor</p> }));
-vi.mock("../CommentModeration", () => ({ default: () => <p>Moderation queue</p> }));
+vi.mock("../ManageCollections", () => ({
+  default: () => <p>Collection editor</p>,
+}));
+vi.mock("../CommentModeration", () => ({
+  default: () => <p>Moderation queue</p>,
+}));
 vi.mock("../ContactInbox", () => ({ default: () => <p>Contact inbox</p> }));
 vi.mock("@/src/infrastructure/contactServices", () => ({
   manageContact: { notifications: vi.fn() },
 }));
 
-const admin = new User({ id: "usr_admin", email: "admin@example.com", role: "ADMIN" });
-const viewer = new User({ id: "usr_1", email: "ana@example.com", role: "VIEWER" });
+const admin = new User({
+  id: "usr_admin",
+  email: "admin@example.com",
+  role: "ADMIN",
+});
+const viewer = new User({
+  id: "usr_1",
+  email: "ana@example.com",
+  role: "VIEWER",
+});
 
 function show(user: User | null, children = <Curator />) {
   const ports: SessionPorts = {
@@ -42,11 +54,35 @@ function Counts() {
 }
 
 beforeEach(() => {
-  vi.mocked(manageContact.notifications).mockResolvedValue({ comments: 2, inbox: 1 });
+  sessionStorage.clear();
+  vi.mocked(manageContact.notifications).mockResolvedValue({
+    comments: 2,
+    inbox: 1,
+  });
 });
 afterEach(() => vi.clearAllMocks());
 
 describe("Curator", () => {
+  it("restores the last tab after a remount", async () => {
+    sessionStorage.setItem("curatorSection", "Collections");
+    show(admin);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Collections" }),
+      ).toHaveAttribute("aria-current", "page"),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Photos" }));
+    expect(sessionStorage.getItem("curatorSection")).toBe("Photos");
+  });
+
+  it("falls back to Upload when the stored tab is invalid", () => {
+    sessionStorage.setItem("curatorSection", "unknown");
+    show(admin);
+    expect(screen.getByRole("button", { name: "Upload" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
   it("opens on Upload and switches between its sections", async () => {
     show(admin);
     expect(screen.getByRole("button", { name: "Upload" })).toHaveAttribute(
@@ -67,7 +103,9 @@ describe("Curator", () => {
 
   it("badges the moderation queue and the inbox with what is pending", async () => {
     show(admin);
-    expect(await screen.findByRole("button", { name: "Moderation2" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Moderation2" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Inbox1" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Inbox1" }));
     expect(screen.getByText("Contact inbox")).toBeInTheDocument();
@@ -87,13 +125,18 @@ describe("CuratorNotificationsProvider", () => {
     show(admin, <Counts />);
     expect(await screen.findByText("2/1")).toBeInTheDocument();
 
-    vi.mocked(manageContact.notifications).mockResolvedValueOnce({ comments: 0, inbox: 1 });
+    vi.mocked(manageContact.notifications).mockResolvedValueOnce({
+      comments: 0,
+      inbox: 1,
+    });
     act(() => {
       window.dispatchEvent(new Event("curator:refresh"));
     });
     expect(await screen.findByText("0/1")).toBeInTheDocument();
 
-    vi.mocked(manageContact.notifications).mockRejectedValueOnce(new Error("down"));
+    vi.mocked(manageContact.notifications).mockRejectedValueOnce(
+      new Error("down"),
+    );
     act(() => {
       window.dispatchEvent(new Event("focus"));
     });

@@ -109,6 +109,24 @@ There is no client secret and no redirect URI in this flow. In the Google consol
 
 ## Editing the current photo version
 
+Photos keeps an independent in-memory draft for each visited photo, including a
+replacement file. Switching photos, filters or Curator tabs preserves it. Save and
+Cancel changes controls appear above and below the editor and ask for confirmation;
+Accept also works with Enter. Each collection likewise keeps its own draft and
+removal selections; saving one never submits other collections.
+
+Leaving an editor through a link or browser history with pending edits offers
+**Save all and leave**, **Cancel**, or **Leave without saving**. A failed save keeps
+the page and remaining drafts. Closing or reloading the tab uses the browser's own
+unsaved-change warning; browsers do not allow a custom three-button dialog there.
+Drafts live only in memory and do not survive an accepted reload or departure.
+The selected Curator tab is restored from `sessionStorage` after reloading.
+
+Private or reserved photos assigned to collections show a warning: their order
+does not make them visible in public collections. Contact uses its own English
+validation messages rather than browser-localized tooltips. Email format is checked;
+ownership verification is not implemented yet.
+
 Photo details carry a `version`. Saves and replacements send that version and only
 metadata that differs from the loaded photo. A stale edit receives a conflict and
 the card says: “This photo changed while you were editing it. Reload its state before
