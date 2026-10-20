@@ -19,6 +19,16 @@ async function fill() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("ContactForm", () => {
+  it("uses English validation messages instead of browser-localized tooltips", async () => {
+    render(<ContactForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Enter your name");
+    await userEvent.type(screen.getByLabelText("Your name"), "Ana");
+    await userEvent.type(screen.getByLabelText("Email"), "not-an-email");
+    await userEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid email address.");
+    expect(manageContact.send).not.toHaveBeenCalled();
+  });
   it("sends the message with consent and thanks the visitor", async () => {
     vi.mocked(manageContact.send).mockResolvedValue();
     render(<ContactForm />);

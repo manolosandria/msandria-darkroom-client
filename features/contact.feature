@@ -1,4 +1,10 @@
 Feature: Contact
+  Scenario: Browser language differs from the site
+    Given my browser uses a different language
+    When required fields or the email format are invalid
+    Then the form shows its own English validation message
+    And no message is submitted
+
   Scenario: Send a message to the photographer
     Given I open Contact from the header
     When I write my name, email and message and agree to how my details are used

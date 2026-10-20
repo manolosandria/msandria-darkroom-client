@@ -6,9 +6,11 @@ import { googleClientId } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { useSessionValue } from "./SessionProvider";
+import { useOptionalEditingWorkspace } from "./EditingWorkspace";
 
 export default function SessionMenu() {
   const session = useSessionValue();
+  const editing = useOptionalEditingWorkspace();
 
   const endSession = useCallback(async () => {
     await session.signOut();
@@ -49,7 +51,7 @@ export default function SessionMenu() {
           Admin
         </span>
       )}
-      <button type="button" onClick={endSession} className="underline">
+      <button type="button" onClick={() => editing ? editing.requestExit(() => { void endSession(); }) : void endSession()} className="underline">
         Sign out
       </button>
     </div>
