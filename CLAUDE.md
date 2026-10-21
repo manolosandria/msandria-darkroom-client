@@ -301,7 +301,7 @@ logo, navigation and session controls, including the Google sign-in button.
 
 ## Account deletion
 
-The account icon opens a disclosure with the signed-in name, email, role, a link to `/account` and sign-out. Escape closes it and returns focus to the icon. The account page loads
+The account icon opens a disclosure with the signed-in name, email, role, a link to `/account` and sign-out. Escape closes it and returns focus to the icon. A press outside it or tabbing away closes it too; pressing its own text (name, email, the Admin label) leaves it open, since collapsing a disclosure under that press crashes Chromium tabs. The account page loads
 `GET /auth/me/deletion-preview` before offering deletion and requires an explicit
 confirmation. The last administrator sees a warning that restoring administrative
 access requires contacting the database administrator; deletion remains available

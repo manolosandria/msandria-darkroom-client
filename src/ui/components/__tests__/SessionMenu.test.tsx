@@ -136,6 +136,39 @@ describe("SessionMenu", () => {
 
   // Flashing a sign-in button at someone who is already signed in reads as having
   // been logged out.
+  // Collapsing the menu under a press on its own text crashed Chromium tabs.
+  it("stays open when its plain text, such as the Admin label, is pressed", async () => {
+    getCurrentUser.mockResolvedValue(admin);
+    renderMenu();
+    await userEvent.click(await screen.findByLabelText("Your account"));
+    const menu = screen.getByText("Admin").closest("details")!;
+
+    await userEvent.click(screen.getByText("Admin"));
+    await userEvent.click(screen.getByText("manolo@example.com"));
+
+    expect(menu.open).toBe(true);
+  });
+
+  it("closes when pressing outside it or tabbing away", async () => {
+    getCurrentUser.mockResolvedValue(admin);
+    render(
+      <SessionProvider>
+        <SessionMenu />
+        <button type="button">Elsewhere</button>
+      </SessionProvider>,
+    );
+    await userEvent.click(await screen.findByLabelText("Your account"));
+    const menu = screen.getByText("Admin").closest("details")!;
+
+    await userEvent.click(document.body);
+    expect(menu.open).toBe(false);
+
+    await userEvent.click(screen.getByLabelText("Your account"));
+    expect(menu.open).toBe(true);
+    screen.getByRole("button", { name: "Elsewhere" }).focus();
+    expect(menu.open).toBe(false);
+  });
+
   it("shows nothing while the first answer is on its way", () => {
     getCurrentUser.mockReturnValue(new Promise(() => {}));
 
