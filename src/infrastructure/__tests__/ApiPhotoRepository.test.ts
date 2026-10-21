@@ -98,6 +98,50 @@ describe("ApiPhotoRepository", () => {
     expect(options.body.get("titlePosition")).toBe("BOTTOM_LEFT");
     expect(result.photo.getId()).toBe("a/b");
   });
+  describe("frames", () => {
+    const frame = { color: "#f2efe6", leftRight: 4, topBottom: 6 };
+    const base = { id: "f", version: 3, title: "Framed", width: 640, height: 480, renditions: [{ width: 640, url: "https://cdn/f.jpg" }] };
+
+    it("uploads a chosen frame as its three fields", async () => {
+      const fetchFn = respondWith({ ...apiPhoto("new"), optimizationIssues: [] }, 201);
+      await new ApiPhotoRepository(API_URL, fetchFn).upload({ file: new File(["x"], "x.jpg"), title: "Framed", frame });
+      const form = fetchFn.mock.calls[0][1].body as FormData;
+      expect([form.get("frameColor"), form.get("frameLeftRight"), form.get("frameTopBottom")]).toEqual(["#f2efe6", "4", "6"]);
+    });
+
+    it("uploads no frame fields when the photo has no frame", async () => {
+      const fetchFn = respondWith({ ...apiPhoto("new"), optimizationIssues: [] }, 201);
+      await new ApiPhotoRepository(API_URL, fetchFn).upload({ file: new File(["x"], "x.jpg"), title: "Bare", frame: null });
+      expect((fetchFn.mock.calls[0][1].body as FormData).has("frameColor")).toBe(false);
+    });
+
+    it("patches only the frame when only the frame changed", async () => {
+      const fetchFn = respondWith({});
+      await new ApiPhotoRepository(API_URL, fetchFn).save(new Photo({ ...base, frame }), new Photo(base));
+      expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ version: 3, frameColor: "#f2efe6", frameLeftRight: 4, frameTopBottom: 6 });
+    });
+
+    it("removes a frame with a null colour and no thickness", async () => {
+      const fetchFn = respondWith({});
+      await new ApiPhotoRepository(API_URL, fetchFn).save(new Photo(base), new Photo({ ...base, frame }));
+      expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ version: 3, frameColor: null, frameLeftRight: 0, frameTopBottom: 0 });
+    });
+
+    it("removes a frame during a replacement without sending an empty colour", async () => {
+      const fetchFn = respondWith({ ...apiPhoto("f"), optimizationIssues: [] });
+      await new ApiPhotoRepository(API_URL, fetchFn).replace(new Photo(base), new File(["x"], "x.jpg"), new Photo({ ...base, frame }));
+      const form = fetchFn.mock.calls[0][1].body as FormData;
+      expect(form.has("frameColor")).toBe(false);
+      expect([form.get("frameLeftRight"), form.get("frameTopBottom")]).toEqual(["0", "0"]);
+    });
+
+    it("reads a frame without thickness as no frame", async () => {
+      const read = (value: unknown) => new ApiPhotoRepository(API_URL, respondWith({ ...apiPhoto("f"), frame: value })).findById("f");
+      expect((await read({ color: "#ffffff", leftRight: 0, topBottom: 0 }))?.getFrame()).toBeNull();
+      expect((await read(frame))?.getFrame()).toEqual(frame);
+    });
+  });
+
   it.each([401, 403, 409, 413, 429, 500])("does not replay a rejected replacement (%i)", async (status) => {
     const fetchFn = respondWith({}, status);
     const photo = new Photo({ ...apiPhoto("a"), description: undefined, createdAt: new Date() });
@@ -382,6 +426,9 @@ describe("ApiPhotoRepository save", () => {
           visibility: "PUBLIC",
           categoryNames: [],
           collections: [],
+          frameColor: null,
+          frameLeftRight: 0,
+          frameTopBottom: 0,
         }),
       }),
     );

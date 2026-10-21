@@ -191,6 +191,30 @@ describe("Upload workspace", () => {
       ),
     );
   });
+  it("sends the chosen frame with the photo", async () => {
+    renderPanel();
+    await select();
+    const image = screen.getByAltText("first");
+    Object.defineProperties(image, {
+      naturalWidth: { value: 1800 },
+      naturalHeight: { value: 1200 },
+    });
+    fireEvent.load(image);
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /show a frame/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Black" }));
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Upload All (1)" })[0],
+    );
+    await waitFor(() =>
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          frame: { color: "#1b1b1b", leftRight: 4, topBottom: 4 },
+        }),
+      ),
+    );
+  });
   it("releases the local preview when removing a draft", async () => {
     renderPanel();
     await select();

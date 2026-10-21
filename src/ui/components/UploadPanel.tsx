@@ -14,6 +14,8 @@ import { uploadPhoto as defaultUploadPhoto } from "@/src/infrastructure/photoSer
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
+import { FrameFields } from "./FrameFields";
+import { PhotoFrame } from "@/src/domain/entities/PhotoFrame";
 import { OptimizationIssueList } from "./OptimizationIssueList";
 import { useSessionValue } from "./SessionProvider";
 import {
@@ -39,6 +41,7 @@ type UploadItem = {
   title: string;
   description: string;
   highlights: PhotoHighlights;
+  frame: PhotoFrame | null;
   width?: number;
   height?: number;
   status: "draft" | "queued" | "uploading" | "published" | "failed";
@@ -103,6 +106,7 @@ export default function UploadPanel({
         title: file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
         description: "",
         highlights: {},
+        frame: null,
         status: "draft",
       });
     });
@@ -148,6 +152,7 @@ export default function UploadPanel({
               title: item.title.trim(),
               description: item.description.trim() || undefined,
               highlights: item.highlights,
+              frame: item.frame,
               ...item.classification,
             }));
           // Store the successful upload before linking. A failed link retries only the link.
@@ -514,6 +519,16 @@ function UploadCard({
               }
             />
           </label>
+          {item.width && item.height && (
+            <FrameFields
+              src={src}
+              width={item.width}
+              height={item.height}
+              value={item.frame}
+              disabled={locked}
+              onChange={(frame) => onChange({ frame })}
+            />
+          )}
           {item.width && item.height && (
             <HighlightEditor
               src={src}

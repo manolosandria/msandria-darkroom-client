@@ -205,6 +205,14 @@ The photo sits in its own `frame` from the API (colour and thickness as a percen
 of the short side; `framedLayout` converts that to CSS percentages and fits the framed
 box to the screen height). Photos without a frame are shown bare.
 
+The frame is chosen in **Frame** (`FrameFields`) on every Upload card and in the
+Photos editor: a switch, four swatches and a colour picker, and separate sliders for
+the sides and for top and bottom (0–25 % of the short side). Its preview uses the same
+`framedLayout` as the viewer. Turning it off sends `frameColor: null` with both
+thicknesses at 0; a replacement form cannot carry null, so it sends only the zero
+thicknesses, and a frame without thickness is read back as no frame. The Home
+carousel shows each photo inside its frame too.
+
 A fixed corner control (`QualitySelector`) picks one of three levels, each capped at
 a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) and
 **Maximum** (the widest the detail response offers, 2560 px). Only these few

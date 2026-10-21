@@ -31,3 +31,16 @@ Feature: Editing the current version of a photo
     Given a portrait highlight is selected
     When I duplicate it as a custom highlight and resize its width
     Then the portrait highlight keeps its original proportions
+
+  Scenario: Frame a photo while uploading
+    Given I am preparing a photo on the Upload tab
+    When I turn on its frame, pick a colour and set the sides and the top and bottom apart
+    Then the preview shows the photo inside that frame
+    And publishing sends the colour and both thicknesses with the photo
+
+  Scenario: Change or remove the frame of a published photo
+    Given a published photo with a white frame
+    When I thicken its top and bottom in Photos and save
+    Then the photo keeps its colour and sides with the new top and bottom
+    When I turn its frame off and save
+    Then the photo is shown bare in the viewer and on Home

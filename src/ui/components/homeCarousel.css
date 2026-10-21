@@ -7,6 +7,9 @@
 .home-carousel { min-width:0; }
 .home-carousel__image { display:block; position:relative; height:clamp(300px,55vw,620px); background:#20251e; overflow:hidden; border-radius:2px; animation:photo-arrive .4s ease-out; }
 .home-carousel__image img { object-fit:contain; }
+.home-carousel__stage { position:absolute; inset:clamp(.75rem,2.5vw,2rem); container-type:size; display:grid; place-items:center; }
+.home-carousel__frame { max-width:100%; box-shadow:0 10px 30px #0006; }
+.home-carousel__photo { position:relative; width:100%; }
 .home-carousel__caption { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:space-between; padding:3rem 1.5rem 1.5rem; color:white; background:linear-gradient(transparent,#0009); font-family:Georgia,serif; font-size:1.4rem; }
 .home-carousel__controls { display:flex; align-items:center; gap:.75rem; padding:1rem 0; font-size:.75rem; }
 .home-carousel__controls>button { width:40px; height:40px; border:1px solid #c3c8b9; border-radius:50%; font-size:1.3rem; cursor:pointer; }

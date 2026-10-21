@@ -108,6 +108,11 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     if (draft.description) form.append("description", draft.description);
     if (draft.highlights)
       form.append("highlights", JSON.stringify(draft.highlights));
+    if (draft.frame) {
+      form.append("frameColor", draft.frame.color);
+      form.append("frameLeftRight", String(draft.frame.leftRight));
+      form.append("frameTopBottom", String(draft.frame.topBottom));
+    }
 
     const response = await this.send("POST", "/photos", form);
     if (!response.ok) throw await this.toUploadError(response);
@@ -134,6 +139,9 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     const form = new FormData();
     form.append("file", file);
     for (const [key, value] of Object.entries(this.editFields(photo, original))) {
+      // A form cannot carry null, and an empty colour is refused. Removing the frame
+      // still lands: both thicknesses go as 0, which is read back as no frame.
+      if (key === "frameColor" && value === null) continue;
       form.append(key, typeof value === "object" && value !== null ? JSON.stringify(value) : value === null ? "" : String(value));
     }
     const response = await this.send("POST", `/photos/${encodeURIComponent(photo.getId())}/file`, form);
@@ -173,15 +181,25 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       description: entry.getDescription()?.trim() || null,
       highlights: entry.getHighlights(),
       titlePosition: entry.getTitlePosition(),
+      frame: entry.getFrame(),
       ...entry.getClassification(),
     });
     const before = original ? fields(original) : null;
+    const { frame, ...changed } = Object.fromEntries(Object.entries(fields(photo)).filter(([key, value]) =>
+      !before || JSON.stringify(value) !== JSON.stringify(before[key as keyof typeof before]),
+    ));
     return {
       version: photo.getVersion(),
-      ...Object.fromEntries(Object.entries(fields(photo)).filter(([key, value]) =>
-        !before || JSON.stringify(value) !== JSON.stringify(before[key as keyof typeof before]),
-      )),
+      ...changed,
+      ...(frame !== undefined && this.frameFields(frame as PhotoFrame | null)),
     };
+  }
+
+  // The API stores the frame as three columns; no colour means no frame.
+  private frameFields(frame: PhotoFrame | null) {
+    return frame
+      ? { frameColor: frame.color, frameLeftRight: frame.leftRight, frameTopBottom: frame.topBottom }
+      : { frameColor: null, frameLeftRight: 0, frameTopBottom: 0 };
   }
 
   // A private photo's renditions are served by the API itself, which answers with
@@ -292,7 +310,8 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       categoryNames: detail?.categoryNames,
       collections: detail?.collections,
       highlights: entry.highlights,
-      frame: entry.frame,
+      // A frame with no thickness on any side is no frame (see `replace`).
+      frame: entry.frame && (entry.frame.leftRight > 0 || entry.frame.topBottom > 0) ? entry.frame : null,
       titlePosition: detail?.titlePosition,
       metadata: {
         format: detail?.format,
