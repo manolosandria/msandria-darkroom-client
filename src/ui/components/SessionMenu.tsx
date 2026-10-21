@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import "./navigation.css";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { googleClientId } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import GoogleSignInButton from "./GoogleSignInButton";
@@ -13,6 +13,19 @@ export default function SessionMenu() {
   const disclosure = useRef<HTMLDetailsElement>(null);
   const session = useSessionValue();
   const editing = useOptionalEditingWorkspace();
+
+  // A press outside closes the menu. Closing it on blur instead would also fire when
+  // the press lands on its own plain text (name, email, the Admin label): focus drops
+  // to the body mid-click, and collapsing the disclosure under that click crashes the
+  // tab in Chromium (STATUS_BREAKPOINT).
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      const menu = disclosure.current;
+      if (menu?.open && !menu.contains(event.target as Node)) menu.open = false;
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
 
   const endSession = useCallback(async () => {
     await session.signOut();
@@ -51,7 +64,11 @@ export default function SessionMenu() {
       ref={disclosure}
       className="session-menu"
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget))
+        // Only when focus moves somewhere else, as with Tab; a press is handled above.
+        if (
+          event.relatedTarget &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
           event.currentTarget.open = false;
       }}
       onKeyDown={(event) => {
