@@ -1,10 +1,11 @@
 "use client";
+import "./catalogStudio.css";
 
 import styles from "./EditorFeedback.module.css";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PublishedPhoto,
   PhotoUploadError,
@@ -19,7 +20,10 @@ import {
   getUnoptimizedPhotos,
   replacePhoto,
 } from "@/src/infrastructure/photoServices";
+import { manageCatalog } from "@/src/infrastructure/catalogServices";
+import { Catalog } from "@/src/domain/entities/Catalog";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
+import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
@@ -35,6 +39,7 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   TOP_RIGHT: "Top right",
 };
 import { useSessionValue } from "./SessionProvider";
+import { VariantAssignment } from "./VariantAssignment";
 import { PhotoClassificationFields } from "./PhotoClassificationFields";
 import {
   EditingBoundary,
@@ -109,56 +114,86 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
     {},
   );
   const [visited, setVisited] = useState<Record<string, PublishedPhoto>>({});
-  const entries = (data?.entries ?? [])
+  const [filter, setFilter] = usePhotoFilter();
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  useEffect(() => {
+    // Categories only narrow the list; without them the other filters still work.
+    manageCatalog.load().then(setCatalog, () => setCatalog(null));
+  }, []);
+  const listed = (data?.entries ?? [])
     .map((entry) => revisions[entry.photo.getId()] ?? entry)
     .filter(
       (entry) =>
         !pendingOnly ||
         entry.optimizationIssues.some((issue) => issue.isPending()),
     );
+  const shown = new Set(
+    filterPhotos(
+      listed.map((entry) => entry.photo),
+      filter,
+      catalog,
+    ),
+  );
+  const entries = listed.filter((entry) => shown.has(entry.photo));
   return (
     <div className="manage-layout">
-      <nav className="manage-library" aria-label="Published photos">
-        {loading && <p role="status">Loading photographs…</p>}
-        {error && <ErrorMessage message={error} onRetry={retry} />}
-        {entries.length === 0 && (
-          <p>
-            {pendingOnly
-              ? "No photos need optimization."
-              : "No photos published yet."}
-          </p>
-        )}
-        {entries.map(({ photo, optimizationIssues }) => (
-          <button
-            type="button"
-            key={photo.getId()}
-            aria-pressed={selected?.getId() === photo.getId()}
-            onClick={() => {
-              setSelected(photo);
-              setVisited((previous) => ({
-                ...previous,
-                [photo.getId()]: previous[photo.getId()] ?? {
-                  photo,
-                  optimizationIssues,
-                },
-              }));
-            }}
-          >
-            <span className="manage-thumbnail">
-              <Image
-                src={photo.urlForWidth(320)}
-                alt=""
-                width={photo.getWidth()}
-                height={photo.getHeight()}
-                unoptimized
-                sizes="64px"
-                style={thumbnailStyle(photo)}
-              />
-            </span>
-            <span>{photo.getTitle()}</span>
-          </button>
-        ))}
-      </nav>
+      <div className="studio-card photo-library-card">
+        <PhotoFilters
+          label="Published photos"
+          photos={listed.map((entry) => entry.photo)}
+          catalog={catalog}
+          filter={filter}
+          onChange={setFilter}
+          withCamera
+        />
+        <p className="photo-library-count" aria-live="polite">
+          {entries.length} of {listed.length}{" "}
+          {listed.length === 1 ? "photo" : "photos"}
+        </p>
+        <nav className="manage-library" aria-label="Published photos">
+          {loading && <p role="status">Loading photographs…</p>}
+          {error && <ErrorMessage message={error} onRetry={retry} />}
+          {entries.length === 0 && (
+            <p>
+              {listed.length
+                ? "No photos match these filters."
+                : pendingOnly
+                  ? "No photos need optimization."
+                  : "No photos published yet."}
+            </p>
+          )}
+          {entries.map(({ photo, optimizationIssues }) => (
+            <button
+              type="button"
+              key={photo.getId()}
+              aria-pressed={selected?.getId() === photo.getId()}
+              onClick={() => {
+                setSelected(photo);
+                setVisited((previous) => ({
+                  ...previous,
+                  [photo.getId()]: previous[photo.getId()] ?? {
+                    photo,
+                    optimizationIssues,
+                  },
+                }));
+              }}
+            >
+              <span className="manage-thumbnail">
+                <Image
+                  src={photo.urlForWidth(160)}
+                  alt=""
+                  width={photo.getWidth()}
+                  height={photo.getHeight()}
+                  unoptimized
+                  sizes="64px"
+                  style={thumbnailStyle(photo)}
+                />
+              </span>
+              <span>{photo.getTitle()}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
       {Object.values(visited).map((entry) => {
         const id = entry.photo.getId();
         const current = revisions[id] ?? entry;
@@ -400,6 +435,11 @@ function PhotoEditor({
     >
       <fieldset className="upload-fields" disabled={saving}>
         {actions()}
+        <VariantAssignment
+          photoId={photo.getId()}
+          title={photo.getTitle()}
+          disabled={saving}
+        />
         <PhotoClassificationFields
           value={classification}
           onChange={(next) => {
@@ -466,7 +506,7 @@ function PhotoEditor({
           </select>
         </label>
         <HighlightEditor
-          src={photo.urlForWidth(1280)}
+          src={photo.urlForWidth(960)}
           width={photo.getWidth()}
           height={photo.getHeight()}
           value={highlights}

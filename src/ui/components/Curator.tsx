@@ -13,6 +13,7 @@ const sections = [
   "Upload",
   "Photos",
   "Collections",
+  "Variants",
   "Moderation",
   "Inbox",
 ] as const;
@@ -83,6 +84,11 @@ export default function Curator() {
         {visited.includes("Collections") && (
           <div hidden={section !== "Collections"}>
             <ManageCollections />
+          </div>
+        )}
+        {visited.includes("Variants") && (
+          <div hidden={section !== "Variants"}>
+            <ManageCollections variants />
           </div>
         )}
         {section === "Moderation" && <CommentModeration />}

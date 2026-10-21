@@ -61,16 +61,22 @@ describe("HighlightEditor", () => {
     expect(y).toBeGreaterThanOrEqual(0);
     expect(x + width).toBeLessThanOrEqual(1);
     expect(y + height).toBeLessThanOrEqual(1);
-    expect(
-      screen.getByAltText("square thumbnail preview"),
-    ).toBeInTheDocument();
+    expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
   });
 
   it("marks the shapes that already have a crop", async () => {
-    render(<Harness initial={{ landscape: { x: 0, y: 0, width: 1, height: 0.6 } }} />);
+    render(
+      <Harness
+        initial={{ landscape: { x: 0, y: 0, width: 1, height: 0.6 } }}
+      />,
+    );
 
-    expect(screen.getByRole("button", { name: /Landscape · 3:2 ✓/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Square · 1:1" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Landscape · 3:2 ✓/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Square · 1:1" }),
+    ).toBeInTheDocument();
   });
 
   it("removes only the shape on screen", async () => {
@@ -140,11 +146,91 @@ describe("HighlightEditor", () => {
 
   it("stays put while the photo is being published", async () => {
     render(
-      <Harness disabled initial={{ square: { x: 0, y: 0, width: 0.5, height: 0.5 } }} />,
+      <Harness
+        disabled
+        initial={{ square: { x: 0, y: 0, width: 0.5, height: 0.5 } }}
+      />,
     );
 
     expect(
       screen.getByRole("button", { name: "Remove square highlight" }),
     ).toBeDisabled();
   });
+});
+
+it("keeps independent custom sizes, names and primary crops", async () => {
+  const onChange = vi.fn();
+  render(
+    <Harness
+      initial={{ square: { x: 0, y: 0, width: 0.4, height: 0.6 } }}
+      onChange={onChange}
+    />,
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Add custom highlight" }),
+  );
+  fireEvent.change(screen.getByLabelText("Highlight name"), {
+    target: { value: "Eye detail" },
+  });
+  fireEvent.change(screen.getByLabelText("Crop width (px)"), {
+    target: { value: "300" },
+  });
+  fireEvent.change(screen.getByLabelText("Crop height (px)"), {
+    target: { value: "200" },
+  });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Add custom highlight" }),
+  );
+  let saved = onChange.mock.lastCall![0] as PhotoHighlights;
+  expect(saved.custom).toHaveLength(2);
+  expect(saved.custom![0]).toMatchObject({
+    name: "Eye detail",
+    crop: { width: 300 / 1800, height: 200 / 1200 },
+  });
+  expect(saved.square).toEqual({ x: 0, y: 0, width: 0.4, height: 0.6 });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Remove custom highlight" }),
+  );
+  saved = onChange.mock.lastCall![0];
+  expect(saved.custom).toHaveLength(1);
+  expect(
+    screen.getByAltText("Eye detail thumbnail preview"),
+  ).toBeInTheDocument();
+});
+it("duplicates a primary without replacing it and bounds custom dimensions", async () => {
+  const onChange = vi.fn();
+  render(
+    <Harness
+      initial={{ portrait: { x: 0.8, y: 0.8, width: 0.1, height: 0.2 } }}
+      onChange={onChange}
+    />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: /Portrait/ }));
+  await userEvent.click(
+    screen.getByRole("button", { name: "Duplicate as custom highlight" }),
+  );
+  fireEvent.change(screen.getByLabelText("Crop width (px)"), {
+    target: { value: "9000" },
+  });
+  const saved = onChange.mock.lastCall![0] as PhotoHighlights;
+  expect(saved.portrait).toEqual({ x: 0.8, y: 0.8, width: 0.1, height: 0.2 });
+  expect(saved.custom![0].crop.width).toBe(1);
+  expect(saved.custom![0].crop.x).toBe(0);
+});
+it("caps custom crops and disables additions during saving", () => {
+  render(
+    <Harness
+      disabled
+      initial={{
+        custom: Array.from({ length: 20 }, (_, i) => ({
+          id: `id-${i}`,
+          name: `Detail ${i}`,
+          crop: { x: 0, y: 0, width: 0.5, height: 0.5 },
+        })),
+      }}
+    />,
+  );
+  expect(
+    screen.getByRole("button", { name: "Add custom highlight" }),
+  ).toBeDisabled();
 });

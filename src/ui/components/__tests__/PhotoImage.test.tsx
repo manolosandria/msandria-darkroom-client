@@ -19,6 +19,15 @@ describe("PhotoImage", () => {
     expect(image).toHaveAttribute("srcset", source);
   });
 
+  it("offers only renditions up to the thumbnail cap, or the smallest when none fits", () => {
+    const photo = new Photo({ id: "large", title: "Large", width: 2560, height: 1700,
+      renditions: [320, 640, 1280, 2560].map((width) => ({ width, url: `https://cdn/${width}` })) });
+    const { rerender } = render(<PhotoImage photo={photo} fallbackSizes="72px" maxWidth={640} />);
+    expect(screen.getByRole("img")).toHaveAttribute("srcset", "https://cdn/320 320w, https://cdn/640 640w");
+    rerender(<PhotoImage photo={photo} fallbackSizes="72px" maxWidth={100} />);
+    expect(screen.getByRole("img")).toHaveAttribute("srcset", "https://cdn/320 320w");
+  });
+
   it("does not invent candidates for an image with only one available rendition", () => {
     const photo = new Photo({ id: "tiny", title: "Tiny", width: 240, height: 160,
       renditions: [{ width: 240, url: "https://cdn/240" }] });

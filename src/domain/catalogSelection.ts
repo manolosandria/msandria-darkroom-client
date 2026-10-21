@@ -42,20 +42,28 @@ export function selectCatalog(
     const work = catalog.works.find((item) =>
       item.variants.some((variant) => variant.photoId === photo.getId()),
     );
-    const variants = work
+    const candidates = work
       ? work.variants.flatMap((variant) => {
           const candidate = byId.get(variant.photoId);
           return candidate ? [candidate] : [];
         })
       : [photo];
-    if (
-      categoryId &&
-      !variants.some((candidate) => categoryPhotos.has(candidate.getId()))
-    )
-      return [];
+    const variants = categoryId
+      ? candidates.filter((candidate) => categoryPhotos.has(candidate.getId()))
+      : candidates;
+    if (!variants.length) return [];
     const key = work ? `work:${work.id}` : `photo:${photo.getId()}`;
     if (seen.has(key)) return [];
     seen.add(key);
-    return [{ key, photo, variants, entry }];
+    return [
+      {
+        key,
+        photo:
+          variants.find((candidate) => candidate.getId() === photo.getId()) ??
+          variants[0],
+        variants,
+        entry,
+      },
+    ];
   });
 }

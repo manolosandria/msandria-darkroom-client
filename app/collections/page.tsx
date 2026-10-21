@@ -1,11 +1,11 @@
 import MainHeader from "@/src/ui/components/MainHeader";
-import ManageCollections from "@/src/ui/components/ManageCollections";
+import PublicCollections from "@/src/ui/components/PublicCollections";
 
 export default function CollectionsPage() {
   return (
     <>
       <MainHeader />
-      <ManageCollections />
+      <PublicCollections />
     </>
   );
 }

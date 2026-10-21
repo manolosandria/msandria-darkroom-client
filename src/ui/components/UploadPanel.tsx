@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import { RateLimitError } from "@/src/domain/errors/RateLimitError";
+import { VariantAssignment } from "./VariantAssignment";
+import { assignPhotoVariant } from "@/src/application/use-cases/AssignPhotoVariant";
+import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { UploadPhoto } from "@/src/application/use-cases/UploadPhoto";
@@ -28,6 +31,7 @@ const ACCEPTED_TYPES = [
 ];
 const MAX_BYTES = 10 * 1024 * 1024;
 type UploadItem = {
+  variantTargetId?: string;
   classification: PhotoClassification;
   id: number;
   file: File;
@@ -137,21 +141,42 @@ export default function UploadPanel({
         if (!mounted.current) break;
         patch(item.id, { status: "uploading" });
         try {
-          const published = await publisher.execute({
-            file: item.file,
-            title: item.title.trim(),
-            description: item.description.trim() || undefined,
-            highlights: item.highlights,
-            ...item.classification,
-          });
+          const published =
+            item.published ??
+            (await publisher.execute({
+              file: item.file,
+              title: item.title.trim(),
+              description: item.description.trim() || undefined,
+              highlights: item.highlights,
+              ...item.classification,
+            }));
+          // Store the successful upload before linking. A failed link retries only the link.
+          patch(item.id, { published });
+          if (item.variantTargetId)
+            await assignPhotoVariant(
+              manageCatalog,
+              published.photo.getId(),
+              item.variantTargetId,
+              item.title,
+            );
           patch(item.id, { status: "published", published });
+          window.dispatchEvent(new Event("curator:catalog-changed"));
         } catch (failure) {
-          patch(item.id, { status: "failed", error: apiFailureMessage(failure) });
+          patch(item.id, {
+            status: "failed",
+            error: apiFailureMessage(failure),
+          });
           if (failure instanceof RateLimitError) {
-            setItems((previous) => previous.map((entry) =>
-              entry.status === "queued" ? { ...entry, status: "draft" } : entry,
-            ));
-            setSelectionError("Publishing paused. Wait before retrying; your remaining photos and edits are kept.");
+            setItems((previous) =>
+              previous.map((entry) =>
+                entry.status === "queued"
+                  ? { ...entry, status: "draft" }
+                  : entry,
+              ),
+            );
+            setSelectionError(
+              "Publishing paused. Wait before retrying; your remaining photos and edits are kept.",
+            );
             break;
           }
         }
@@ -210,7 +235,9 @@ export default function UploadPanel({
         <Link href="/moderate" className="upload-link">
           Review comments →
         </Link>
-          <Link href="/collections" className="upload-link">Manage collections →</Link>
+        <Link href="/curator" className="upload-link">
+          Manage collections →
+        </Link>
       </div>
       <div
         className={`upload-dropzone ${dragging ? "is-dragging" : ""}`}
@@ -325,9 +352,9 @@ function UploadCard({
   onUpload: () => void;
   running: boolean;
 }) {
-  const locked = ["queued", "uploading", "published"].includes(item.status);
+  const locked = !!item.published || ["queued", "uploading", "published"].includes(item.status);
   const metadata = item.published?.photo.getMetadata();
-  const src = item.published?.photo.urlForWidth(960) ?? item.preview;
+  const src = item.published?.photo.urlForWidth(640) ?? item.preview;
   return (
     <article
       className="upload-card"
@@ -441,6 +468,22 @@ function UploadCard({
               )}
             </dl>
           </details>
+          <VariantAssignment
+            key={item.published?.photo.getId() ?? "draft"}
+            photoId={
+              item.status === "published"
+                ? item.published?.photo.getId()
+                : undefined
+            }
+            title={item.title}
+            targetId={item.variantTargetId}
+            onTargetChange={
+              item.published
+                ? undefined
+                : (variantTargetId) => onChange({ variantTargetId })
+            }
+            disabled={locked || !!item.published}
+          />
           <PhotoClassificationFields
             value={item.classification}
             disabled={locked}
@@ -502,7 +545,9 @@ function UploadCard({
           )}
           {item.status === "failed" && (
             <p className="upload-muted">
-              Your edits are kept. Publish again to retry this photo.
+              {item.published
+                ? "The file is uploaded. Retry to finish linking its variant; the file will not upload again."
+                : "Your edits are kept. Publish again to retry this photo."}
             </p>
           )}
           {item.published && (
@@ -516,7 +561,7 @@ function UploadCard({
         <button
           type="button"
           className="upload-primary"
-          disabled={running || locked}
+          disabled={running || ["queued", "uploading", "published"].includes(item.status)}
           onClick={onUpload}
         >
           {item.status === "published"

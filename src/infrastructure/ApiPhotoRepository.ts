@@ -30,6 +30,8 @@ const NOT_IMPLEMENTED_MESSAGE =
 // ready-made from the API: the client never talks to the image host directly.
 type ApiPhotoListItem = {
   visibility?: PhotoVisibility;
+  // The administrator's listing names the camera, for Curator's filters.
+  camera?: Pick<PhotoCamera, "make" | "model">;
   id: string;
   title: string;
   width: number;
@@ -297,7 +299,15 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
         capturedAt: detail?.capturedAt,
         lastEditDate: detail?.lastEditDate,
         origin: detail?.origin,
-        camera: detail?.camera,
+        // The listing names only make and model; the detail fills in the rest.
+        camera: entry.camera && {
+          lens: null,
+          iso: null,
+          aperture: null,
+          exposureTime: null,
+          focalLength: null,
+          ...entry.camera,
+        },
       },
     });
   }

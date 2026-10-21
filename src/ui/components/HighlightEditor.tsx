@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import {
   centeredHighlight,
+  Highlight,
+  MAX_CUSTOM_HIGHLIGHTS,
   HIGHLIGHT_RATIOS,
   HighlightKind,
   PhotoHighlights,
@@ -33,13 +35,66 @@ export function HighlightEditor({
   disabled?: boolean;
 }) {
   const [kind, setKind] = useState<HighlightKind>("square");
+  const [customId, setCustomId] = useState<string | null>(null);
+  const custom = value.custom?.find((item) => item.id === customId);
   const drag = useRef<{ pointer: number; dx: number; dy: number } | null>(null);
-  const crop = value[kind];
+  const crop = custom?.crop ?? value[kind];
+  const label = custom?.name ?? LABELS[kind];
   const ratio = width / height;
   const update = (patch: Partial<NonNullable<typeof crop>>) => {
-    if (crop) onChange({ ...value, [kind]: { ...crop, ...patch } });
+    if (!crop) return;
+    const next = { ...crop, ...patch };
+    if (custom)
+      onChange({
+        ...value,
+        custom: value.custom!.map((item) =>
+          item.id === custom.id ? { ...item, crop: next } : item,
+        ),
+      });
+    else onChange({ ...value, [kind]: next });
   };
 
+  function addCustom(source?: Highlight) {
+    const items = value.custom ?? [];
+    if (items.length >= MAX_CUSTOM_HIGHLIGHTS) return;
+    const id = crypto.randomUUID();
+    onChange({
+      ...value,
+      custom: [
+        ...items,
+        {
+          id,
+          name: `Detail ${items.length + 1}`,
+          crop: source
+            ? { ...source }
+            : { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+        },
+      ],
+    });
+    setCustomId(id);
+  }
+  const previews = [
+    ...KINDS.flatMap((key) =>
+      value[key]
+        ? [
+            {
+              id: key,
+              label: LABELS[key],
+              alt: `${key} thumbnail preview`,
+              crop: value[key]!,
+              aspect: HIGHLIGHT_RATIOS[key],
+            },
+          ]
+        : [],
+    ),
+    ...(value.custom ?? []).map((item) => ({
+      id: item.id,
+      label: item.name,
+      alt: `${item.name} thumbnail preview`,
+      crop: item.crop,
+      aspect: (item.crop.width * width) / (item.crop.height * height),
+    })),
+  ];
   return (
     <fieldset className="highlight-editor" disabled={disabled}>
       <legend>
@@ -51,14 +106,64 @@ export function HighlightEditor({
           <button
             type="button"
             key={key}
-            aria-pressed={kind === key}
-            onClick={() => setKind(key)}
+            aria-pressed={!custom && kind === key}
+            onClick={() => {
+              setKind(key);
+              setCustomId(null);
+              drag.current = null;
+            }}
           >
             {LABELS[key]}
             {value[key] ? " ✓" : ""}
           </button>
         ))}
       </div>
+      <div className="highlight-tabs" aria-label="Custom highlights">
+        {(value.custom ?? []).map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            aria-pressed={custom?.id === item.id}
+            onClick={() => {
+              setCustomId(item.id);
+              drag.current = null;
+            }}
+          >
+            {item.name}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={(value.custom?.length ?? 0) >= MAX_CUSTOM_HIGHLIGHTS}
+          onClick={() => addCustom()}
+        >
+          Add custom highlight
+        </button>
+      </div>
+      <p className="upload-muted">
+        Keep the three main thumbnail shapes, plus up to {MAX_CUSTOM_HIGHLIGHTS}{" "}
+        named details with independent dimensions.
+      </p>
+      {custom && (
+        <label>
+          Highlight name
+          <input
+            value={custom.name}
+            maxLength={80}
+            required
+            onChange={(event) =>
+              onChange({
+                ...value,
+                custom: value.custom!.map((item) =>
+                  item.id === custom.id
+                    ? { ...item, name: event.target.value }
+                    : item,
+                ),
+              })
+            }
+          />
+        </label>
+      )}
       <div
         className="highlight-stage"
         style={{ aspectRatio: ratio, width: `min(100%, ${420 * ratio}px)` }}
@@ -129,7 +234,7 @@ export function HighlightEditor({
               height: `${crop.height * 100}%`,
             }}
           >
-            <span>{LABELS[kind]}</span>
+            <span>{label}</span>
           </div>
         )}
       </div>
@@ -139,6 +244,39 @@ export function HighlightEditor({
             Drag the frame to place it. Use the sliders for size and precise
             positioning.
           </p>
+          {custom && (
+            <div className="highlight-controls">
+              {(["width", "height"] as const).map((axis) => (
+                <label key={axis}>
+                  {axis === "width" ? "Crop width (px)" : "Crop height (px)"}
+                  <input
+                    type="number"
+                    min={1}
+                    max={axis === "width" ? width : height}
+                    value={Math.round(
+                      crop[axis] * (axis === "width" ? width : height),
+                    )}
+                    onChange={(event) => {
+                      const pixels = event.currentTarget.valueAsNumber;
+                      if (!Number.isFinite(pixels) || pixels < 1) return;
+                      const dimension = Math.min(
+                        1,
+                        pixels / (axis === "width" ? width : height),
+                      );
+                      const position = axis === "width" ? "x" : "y";
+                      update({
+                        [axis]: dimension,
+                        [position]: clamp(
+                          crop[position] + (crop[axis] - dimension) / 2,
+                          1 - dimension,
+                        ),
+                      });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
           <div className="highlight-controls">
             <label>
               Crop size
@@ -148,11 +286,24 @@ export function HighlightEditor({
                 max="100"
                 value={Math.round(Math.max(crop.width, crop.height) * 100)}
                 onChange={(event) => {
-                  const resized = centeredHighlight(
-                    kind,
-                    ratio,
-                    Number(event.target.value) / 100,
-                  );
+                  const resized = custom
+                    ? {
+                        x: 0,
+                        y: 0,
+                        width:
+                          ((crop.width / Math.max(crop.width, crop.height)) *
+                            Number(event.target.value)) /
+                          100,
+                        height:
+                          ((crop.height / Math.max(crop.width, crop.height)) *
+                            Number(event.target.value)) /
+                          100,
+                      }
+                    : centeredHighlight(
+                        kind,
+                        ratio,
+                        Number(event.target.value) / 100,
+                      );
                   update({
                     ...resized,
                     x: clamp(
@@ -201,12 +352,32 @@ export function HighlightEditor({
             className="upload-link"
             onClick={() => {
               const next = { ...value };
-              delete next[kind];
+              if (custom) {
+                const remaining = (value.custom ?? []).filter(
+                  (item) => item.id !== custom.id,
+                );
+                if (remaining.length) next.custom = remaining;
+                else delete next.custom;
+                setCustomId(null);
+              } else delete next[kind];
               onChange(next);
             }}
           >
-            Remove {kind} highlight
+            Remove {custom ? "custom" : kind} highlight
           </button>
+          <button
+            type="button"
+            className="upload-link"
+            disabled={(value.custom?.length ?? 0) >= MAX_CUSTOM_HIGHLIGHTS}
+            onClick={() => addCustom(crop)}
+          >
+            Duplicate as custom highlight
+          </button>
+          <p className="upload-muted">
+            {Math.round(crop.width * width)} ×{" "}
+            {Math.round(crop.height * height)} px in this image. The selection
+            scales with the stored photo.
+          </p>
         </>
       ) : (
         <button
@@ -220,16 +391,19 @@ export function HighlightEditor({
         </button>
       )}
       <div className="highlight-previews">
-        {KINDS.filter((key) => value[key]).map((key) => {
-          const c = value[key]!;
+        {previews.map((preview) => {
+          const c = preview.crop;
           return (
-            <figure key={key}>
+            <figure key={preview.id}>
               <div
-                style={{ aspectRatio: HIGHLIGHT_RATIOS[key] }}
+                style={{
+                  aspectRatio: preview.aspect,
+                  width: `min(100%, ${140 * preview.aspect}px)`,
+                }}
               >
                 <Image
                   src={src}
-                  alt={`${key} thumbnail preview`}
+                  alt={preview.alt}
                   unoptimized
                   width={width}
                   height={height}
@@ -243,7 +417,7 @@ export function HighlightEditor({
                   }}
                 />
               </div>
-              <figcaption>{LABELS[key]}</figcaption>
+              <figcaption>{preview.label}</figcaption>
             </figure>
           );
         })}

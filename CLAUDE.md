@@ -18,6 +18,7 @@ carry that convention over here, and do not mix the two inside a file.
 | Install | `npm ci` |
 | Configure | copy `.env.example` to `.env.local` and fill it in |
 | Develop | `npm run dev` (port 3000) |
+| Develop, cache cleared | `npm run dev:clean`: deletes `.next/dev` first. Use it when the dev server keeps serving an old stylesheet |
 
 Node version is pinned in `.nvmrc`. `nvm-windows` does not read that file, so on Windows
 the version has to be named by hand: `nvm use 20.20.2`.
@@ -292,7 +293,7 @@ logo, navigation and session controls, including the Google sign-in button.
 
 ## Account deletion
 
-The signed-in name in the header links to `/account`. The account page loads
+The account icon opens a disclosure with the signed-in name, email, role, a link to `/account` and sign-out. Escape closes it and returns focus to the icon. The account page loads
 `GET /auth/me/deletion-preview` before offering deletion and requires an explicit
 confirmation. The last administrator sees a warning that restoring administrative
 access requires contacting the database administrator; deletion remains available
@@ -357,9 +358,21 @@ instances on selection or filter changes. Individual saves never flush other dra
 Curator remembers only its selected tab in `sessionStorage` (`curatorSection`), not
 form data. Drafts and replacement files remain in memory only.
 
-`CollectionWorkspace` owns the collection forms; `ManageCollections` retains the
-category and variant tools. The admin photo listing includes visibility for collection
-warnings, while the public compact listing does not. Contact's `noValidate` form
+`ManageCollections` splits the catalog editor into Collections and Categories tabs; Collections stays mounted so its drafts survive the other tabs.
+`CollectionWorkspace` shows the collection grid with its side panel and owns the
+collection editors; `CollectionCanvas` is the editable mosaic (drag to reorder,
+edges and corner to resize, click to select), and every pointer gesture has a
+side-panel equivalent. Photos are added from `PhotoPicker`, a horizontal strip of
+lazily loaded thumbnails capped at 160 px, and the Photos tab's library sits in a
+scrolling card; both use `PhotoFilters` (title search ignoring case and accents,
+category from the catalog, and on Photos the camera from the admin listing). Their
+administrative images are capped at 160 px for thumbnails (the API's smallest
+rendition), 320 px for collection cards, 640 px for the
+canvas and single previews, and 960 px for the crop editor. Their
+styles live in `catalogStudio.css`, imported by the components that use them, not in
+`globals.css`. An entry's `showTitle` hides its caption in the public
+mosaic, and the collection's `description` appears above it in the gallery. The
+admin photo listing includes visibility for collection warnings, while the public compact listing does not. Contact's `noValidate` form
 checks validity and shows English errors itself; email ownership is still unverified.
 
 `/curator` (`Curator`) is the administrator's workspace, offered in the header as
@@ -369,8 +382,8 @@ messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
 every minute, when the window regains focus, and whenever a curator action dispatches
 a `curator:refresh` event.
 
-Its tabs are **Upload**, **Photos**, **Collections**, **Moderation** and **Inbox**: the
-screens of `/upload`, `/manage`, `/collections` and `/moderate`, plus the contact
+Its tabs are **Upload**, **Photos**, **Collections**, **Variants**, **Moderation** and **Inbox**: the
+screens of `/upload`, `/manage`, the collection editor and `/moderate`, plus the contact
 inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs
 does not lose unsaved edits. The older routes still work on their own.
 
@@ -383,9 +396,10 @@ does not lose unsaved edits. The older routes still work on their own.
   one as a chip, and collections chosen from a list, each with the photo's position
   (from 1; new ones default to the end). It reads the full catalog from
   `GET /catalog/manage`.
-- **Collections**: collections are cards with their title and cover photo (the
-  chosen cover, or the first photo). Unticking a photo only marks it for removal; the
-  whole collection, cover included, is saved at once.
+- **Collections**: a grid of collection cards (cover and title) with a side panel
+  of the chosen one's details, then an editor whose canvas is the composition.
+  Removing a photo only marks it; the whole collection, cover included, is saved at
+  once.
 - **Inbox** (`ContactInbox`): messages from `/contact`, newest first, unread ones
   marked, to mark as read or delete.
 
@@ -404,7 +418,7 @@ the administrator's inbox; **no email is sent**. Links are refused, and the API 
 
 ## Collection management
 
-`/collections` is the admin catalog editor, reached from `/upload`. `EditCatalog`
+The Collections tab in `/curator` is the admin catalog editor. `/collections` is the public collection grid. `EditCatalog`
 uses `CatalogRepository` and `ApiCatalogRepository`; components do not fetch directly.
 `GET /catalog` carries collection entries, categories, work variants and photo category
 assignments without image URLs. Existing photo use cases supply the renditions.
@@ -415,3 +429,40 @@ Each tile can select a variant while retaining the collection's dimensions. Phot
 keep their own viewer links and comments. Admin edits preserve their fields on failed
 writes, deletion confirms removal of the grouping, and only the API decides access.
 See README for endpoints and the required API migration.
+
+
+## Interactive browsing and variant assignment
+
+Home features a manually controlled carousel of up to eight recent public photos,
+with previous/next controls, position buttons and keyboard arrows. It never advances
+automatically. Header links react to hover and keyboard focus; the current route is
+marked. Gallery includes category chips and a compact select for longer lists.
+Categories uses selectable cards showing photo counts.
+
+**Variants** is a peer of Upload, Photos and Collections in Curator. Select a work's
+cover to edit its members as thumbnails. Upload cards can choose an existing photo
+as their variant target before publishing; the new file extends that photo's group
+or starts a two-file work. Upload and grouping are separate requests: a failed link
+keeps the uploaded result, and retry never reuploads the file. Photos offers an
+explicit **Save variant assignment** action independent of metadata saving.
+Existing groups are edited in the Variants panel, not silently merged.
+
+The collection editor can replace an entry with a variant, retaining layout,
+caption visibility and cover selection. The viewer offers variant thumbnails,
+including collection-only variants available through the public catalog and detail
+endpoint. Category filtering keeps only matching variants and chooses a matching
+photo for each work's single tile. A dedicated color/monochrome classification and
+filter remains a future addition.
+
+
+## Multiple photo highlights
+
+`PhotoHighlights` retains optional `square`, `landscape` and `portrait` crops,
+and adds `custom?: { id, name, crop: { x, y, width, height } }[]` (up to 20).
+Upload and Photos share `HighlightEditor`: add or duplicate a crop, name it,
+select it, drag its position and edit its width and height independently in pixels.
+The size slider preserves its current ratio. Pixel dimensions describe the image
+being edited; persisted coordinates remain normalized and scale with upload resizing.
+Custom crops never replace the main thumbnail presets automatically. Each custom
+crop has an independent preview and deletion action. Existing photos require no
+migration; the API must support `custom` before the updated client is used.

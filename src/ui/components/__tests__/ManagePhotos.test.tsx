@@ -24,6 +24,7 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
       }),
   },
 }));
+import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { SessionProvider } from "../SessionProvider";
 import ManagePhotos from "../ManagePhotos";
 
@@ -69,6 +70,48 @@ beforeEach(() => {
 });
 
 describe("ManagePhotos", () => {
+  it("filters the library by title, category and camera inside its scrolling card", async () => {
+    const shot = (id: string, title: string, make: string, model: string) =>
+      new Photo({
+        id,
+        title,
+        width: 640,
+        height: 480,
+        renditions: [{ width: 640, url: `https://cdn/${id}.jpg` }],
+        metadata: {
+          camera: { make, model, lens: null, iso: null, aperture: null, exposureTime: null, focalLength: null },
+        },
+      });
+    vi.mocked(getManagedPhotos.execute).mockResolvedValue([
+      shot("a", "Café at dawn", "FUJIFILM", "X-T4"),
+      shot("b", "Harbour", "Canon", "Canon EOS R6"),
+      shot("c", "Dawn harbour", "Canon", "Canon EOS R6"),
+    ]);
+    const empty = await manageCatalog.load();
+    vi.mocked(manageCatalog.load).mockResolvedValue({
+      ...empty,
+      categories: [{ id: "sea", name: "Sea" }],
+      photos: [{ id: "b", categories: [{ id: "sea" }] }, { id: "c", categories: [{ id: "sea" }] }],
+    });
+    const user = userEvent.setup();
+    show();
+    const library = await screen.findByRole("navigation", { name: "Published photos" });
+    expect(library.closest(".studio-card")).not.toBeNull();
+    await screen.findByRole("button", { name: "Harbour" });
+    await user.type(screen.getByRole("searchbox"), "cafe");
+    expect(screen.getAllByRole("button", { pressed: false })).toHaveLength(1);
+    expect(screen.getByText("1 of 3 photos")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    await user.selectOptions(screen.getByLabelText("Camera"), "Canon EOS R6");
+    await user.selectOptions(await screen.findByLabelText("Category"), "sea");
+    await user.type(screen.getByRole("searchbox"), "dawn");
+    expect(screen.getByRole("button", { name: "Dawn harbour" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Harbour" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Camera"), "FUJIFILM X-T4");
+    expect(screen.getByText("No photos match these filters.")).toBeInTheDocument();
+    vi.mocked(manageCatalog.load).mockResolvedValue(empty);
+  });
+
   it("keeps unsaved edits while switching photos and confirms cancellation", async () => {
     const other = new Photo({
       id: "other",

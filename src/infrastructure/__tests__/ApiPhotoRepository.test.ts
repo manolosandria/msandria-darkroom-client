@@ -34,6 +34,10 @@ describe("ApiPhotoRepository", () => {
     const photos = await new ApiPhotoRepository(API_URL, respondWith([{ ...apiPhoto("private"), visibility: "PRIVATE" }]), "/photos/manage").findAll();
     expect(photos?.[0].getClassification().visibility).toBe("PRIVATE");
   });
+  it("keeps the camera named by the administrator listing", async () => {
+    const photos = await new ApiPhotoRepository(API_URL, respondWith([{ ...apiPhoto("x"), camera: { make: "FUJIFILM", model: "X-T4" } }]), "/photos/manage").findAll();
+    expect(photos?.[0].getMetadata().camera).toMatchObject({ make: "FUJIFILM", model: "X-T4", lens: null });
+  });
   it("replaces only the file and version when no metadata was edited", async () => {
     const detail = { ...apiPhoto("private"), version: 7, visibility: "PRIVATE", categoryNames: ["Sea"], collections: [{ id: "sea", position: 2 }] };
     const photo = await new ApiPhotoRepository(API_URL, respondWith(detail)).findById("private");

@@ -75,7 +75,7 @@ describe("MainHeader", () => {
 
     renderHeader();
 
-    await screen.findByText("manolo@example.com");
+    await screen.findByLabelText("Your account");
     expect(screen.queryByRole("link", { name: "Curator" })).not.toBeInTheDocument();
   });
 
