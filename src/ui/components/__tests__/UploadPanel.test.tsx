@@ -12,7 +12,10 @@ import { Photo } from "@/src/domain/entities/Photo";
 import { User } from "@/src/domain/entities/User";
 import { SessionProvider } from "../SessionProvider";
 import UploadPanel from "../UploadPanel";
-vi.mock('@/src/infrastructure/catalogServices', () => ({ manageCatalog: { load: vi.fn().mockResolvedValue({ categories: [], collections: [], works: [], photos: [] }) } }));
+import { manageCatalog } from "@/src/infrastructure/catalogServices";
+import { getManagedPhotos } from "@/src/infrastructure/photoServices";
+vi.mock("@/src/infrastructure/photoServices", () => ({ uploadPhoto: { execute: vi.fn() }, getManagedPhotos: { execute: vi.fn() } }));
+vi.mock('@/src/infrastructure/catalogServices', () => ({ manageCatalog: { saveWork: vi.fn(), load: vi.fn().mockResolvedValue({ categories: [], collections: [], works: [], photos: [] }) } }));
 
 const execute = vi.fn();
 const getCurrentUser = vi.fn();
@@ -199,4 +202,23 @@ describe("Upload workspace", () => {
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:preview");
   });
+});
+
+it("retries variant linking without uploading a successful file again", async () => {
+  const target = new Photo({ id: "original", title: "Original", width: 100, height: 100, renditions: [{ width: 100, url: "https://cdn/original" }] });
+  vi.mocked(getManagedPhotos.execute).mockResolvedValue([target]);
+  vi.mocked(manageCatalog.saveWork).mockRejectedValueOnce(new Error("Link unavailable")).mockResolvedValueOnce(undefined);
+  renderPanel();
+  await select();
+  await userEvent.click(screen.getByText(/group another interpretation/));
+  await waitFor(() => expect(screen.getByRole("option", { name: "Original" })).toBeInTheDocument());
+  await userEvent.selectOptions(screen.getByLabelText("Variant of"), "original");
+  await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+  await screen.findByText(/The file is uploaded/);
+  expect(screen.getByLabelText("Title")).toBeDisabled();
+  expect(execute).toHaveBeenCalledTimes(1);
+  await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+  await screen.findByRole("button", { name: "Uploaded" });
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(manageCatalog.saveWork).toHaveBeenCalledTimes(2);
 });

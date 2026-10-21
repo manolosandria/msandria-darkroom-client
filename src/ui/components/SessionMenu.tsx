@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback } from "react";
+import "./navigation.css";
+import { useCallback, useRef } from "react";
 import { googleClientId } from "@/src/infrastructure/sessionServices";
 import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import GoogleSignInButton from "./GoogleSignInButton";
@@ -9,6 +10,7 @@ import { useSessionValue } from "./SessionProvider";
 import { useOptionalEditingWorkspace } from "./EditingWorkspace";
 
 export default function SessionMenu() {
+  const disclosure = useRef<HTMLDetailsElement>(null);
   const session = useSessionValue();
   const editing = useOptionalEditingWorkspace();
 
@@ -37,23 +39,71 @@ export default function SessionMenu() {
 
   if (!session.user) {
     return (
-      <GoogleSignInButton clientId={googleClientId} onCredential={session.signIn} />
+      <GoogleSignInButton
+        clientId={googleClientId}
+        onCredential={session.signIn}
+      />
     );
   }
 
   return (
-    <div className="flex flex-wrap justify-center items-center gap-3 text-sm">
-      <Link href="/account" className="font-semibold text-gray-700 underline" aria-label="Account settings">
-        {session.user.getDisplayName()}
-      </Link>
-      {session.user.isAdmin() && (
-        <span className="rounded bg-gray-700 px-2 py-0.5 text-xs font-semibold text-white">
-          Admin
-        </span>
-      )}
-      <button type="button" onClick={() => editing ? editing.requestExit(() => { void endSession(); }) : void endSession()} className="underline">
-        Sign out
-      </button>
-    </div>
+    <details
+      ref={disclosure}
+      className="session-menu"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          event.currentTarget.open = false;
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && disclosure.current) {
+          disclosure.current.open = false;
+          disclosure.current.querySelector("summary")?.focus();
+        }
+      }}
+    >
+      <summary aria-label="Your account" title="Your account">
+        <svg
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+        </svg>
+      </summary>
+      <div className="session-menu__panel">
+        <strong>{session.user.getDisplayName()}</strong>
+        <small>{session.user.getEmail()}</small>
+        <Link
+          href="/account"
+          className="font-semibold text-gray-700 underline"
+          aria-label="Account settings"
+        >
+          View your account
+        </Link>
+        {session.user.isAdmin() && (
+          <span className="rounded bg-gray-700 px-2 py-0.5 text-xs font-semibold text-white">
+            Admin
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() =>
+            editing
+              ? editing.requestExit(() => {
+                  void endSession();
+                })
+              : void endSession()
+          }
+          className="underline"
+        >
+          Sign out
+        </button>
+      </div>
+    </details>
   );
 }

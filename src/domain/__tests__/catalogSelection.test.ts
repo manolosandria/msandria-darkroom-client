@@ -59,3 +59,11 @@ describe("catalog selection", () => {
     expect(selectCatalog([], catalog, "", "col")).toEqual([]);
   });
 });
+
+it("removes nonmatching variants and chooses the matching rendition of a work", () => {
+  const filtered: Catalog = { ...catalog, collections: [], photos: [{ id: "b", categories: [{ id: "mono" }] }] };
+  const tiles = selectCatalog(photos, filtered, "mono", "");
+  expect(tiles).toHaveLength(1);
+  expect(tiles[0].photo.getId()).toBe("b");
+  expect(tiles[0].variants.map(photo => photo.getId())).toEqual(["b"]);
+});

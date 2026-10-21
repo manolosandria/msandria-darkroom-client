@@ -3,10 +3,13 @@ export type CollectionEntry = {
   photoId: string;
   columns: number;
   rows: number;
+  /** Absent means shown, as for collections saved before the option existed. */
+  showTitle?: boolean;
 };
 export type CollectionDraft = {
   coverPhotoId?: string | null;
   title: string;
+  description?: string | null;
   categoryIds: string[];
   entries: CollectionEntry[];
 };
@@ -14,6 +17,7 @@ export type CatalogCollection = {
   coverPhotoId?: string | null;
   id: string;
   title: string;
+  description?: string | null;
   categories: CatalogCategory[];
   entries: CollectionEntry[];
 };

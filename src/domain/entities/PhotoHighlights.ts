@@ -1,6 +1,10 @@
 export type HighlightKind = "square" | "landscape" | "portrait";
 export type Highlight = { x: number; y: number; width: number; height: number };
-export type PhotoHighlights = Partial<Record<HighlightKind, Highlight>>;
+export type CustomHighlight = { id: string; name: string; crop: Highlight };
+export type PhotoHighlights = Partial<Record<HighlightKind, Highlight>> & {
+  custom?: CustomHighlight[];
+};
+export const MAX_CUSTOM_HIGHLIGHTS = 20;
 export const HIGHLIGHT_RATIOS: Record<HighlightKind, number> = {
   square: 1,
   landscape: 3 / 2,

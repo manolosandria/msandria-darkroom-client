@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HomePage from "../HomePage";
 import { Photo } from "@/src/domain/entities/Photo";
 
@@ -17,6 +17,10 @@ describe("HomePage", () => {
 
     await waitFor(() => expect(screen.getByText("Atardecer")).toBeInTheDocument());
     expect(screen.queryByText("Esfera")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next photograph" }));
+    expect(screen.getByText("Esfera")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next photograph" }));
+    expect(screen.getByText("Atardecer")).toBeInTheDocument();
   });
 
   it("shows an error message when there are no photos", async () => {

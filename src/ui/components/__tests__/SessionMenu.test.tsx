@@ -75,6 +75,7 @@ describe("SessionMenu", () => {
     renderMenu();
 
     expect(await screen.findByText("Visitante")).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Your account"));
     expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute("href", "/account");
   });
 
@@ -99,6 +100,7 @@ describe("SessionMenu", () => {
   it("signs out and tells Google not to sign the visitor back in", async () => {
     getCurrentUser.mockResolvedValue(admin);
     renderMenu();
+    await userEvent.click(await screen.findByLabelText("Your account"));
     const button = await screen.findByRole("button", { name: "Sign out" });
 
     await userEvent.click(button);
@@ -114,6 +116,7 @@ describe("SessionMenu", () => {
     getCurrentUser.mockResolvedValue(admin);
     signOut.mockRejectedValue(new Error("boom"));
     renderMenu();
+    await userEvent.click(await screen.findByLabelText("Your account"));
     const button = await screen.findByRole("button", { name: "Sign out" });
 
     await userEvent.click(button);

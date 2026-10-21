@@ -21,6 +21,10 @@ Day to day, with everything already installed (the first time on a machine, star
 
 Keep the site on port 3000: it is the origin the API allows in `CORS_ORIGINS` and the one registered with Google for sign-in. If Next says *Another next dev server is already running*, one is already serving this folder; use it, or stop it before starting another.
 
+If a change to a stylesheet does not show up even after a hard reload, the dev server
+is serving an old copy from its own cache, not the browser's. Stop it and start it with
+`npm run dev:clean`, which deletes `.next/dev` before starting.
+
 ### Checks before a pull request
 
 ```bash
@@ -276,7 +280,7 @@ logo, navigation and session controls, including the Google sign-in button.
 
 ## Account deletion
 
-The signed-in name in the header links to `/account`. The account page loads
+The account icon opens a disclosure with the signed-in name, email, role, a link to `/account` and sign-out. Escape closes it and returns focus to the icon. The account page loads
 `GET /auth/me/deletion-preview` before offering deletion and requires an explicit
 confirmation. The last administrator sees a warning that restoring administrative
 access requires contacting the database administrator; deletion remains available
@@ -339,8 +343,8 @@ messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
 every minute, when the window regains focus, and whenever a curator action dispatches
 a `curator:refresh` event.
 
-Its tabs are **Upload**, **Photos**, **Collections**, **Moderation** and **Inbox**: the
-screens of `/upload`, `/manage`, `/collections` and `/moderate`, plus the contact
+Its tabs are **Upload**, **Photos**, **Collections**, **Variants**, **Moderation** and **Inbox**: the
+screens of `/upload`, `/manage`, the collection editor and `/moderate`, plus the contact
 inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs
 does not lose unsaved edits. The older routes still work on their own.
 
@@ -353,9 +357,15 @@ does not lose unsaved edits. The older routes still work on their own.
   one as a chip, and collections chosen from a list, each with the photo's position
   (from 1; new ones default to the end). It reads the full catalog from
   `GET /catalog/manage`.
-- **Collections**: collections are cards with their title and cover photo (the
-  chosen cover, or the first photo). Unticking a photo only marks it for removal; the
-  whole collection, cover included, is saved at once.
+- **Collections**: the catalog editor's own tabs, **Collections** and **Categories**, each in a raised card. Collections opens on a grid of cards (cover
+  and title) beside a side panel showing the chosen collection's categories,
+  description and photo thumbnails, with **Edit collection**; a **New collection**
+  card starts an empty one. Removing a photo only marks it; the whole collection,
+  cover included, is saved at once.
+- **Photos**: the published photos sit in a card of their own, with a title search
+  (case and accents ignored), category and camera filters and a vertical scroll, so
+  the editor beside it stays in view. The camera comes from the admin listing's
+  `camera` (make and model).
 - **Inbox** (`ContactInbox`): messages from `/contact`, newest first, unread ones
   marked, to mark as read or delete.
 
@@ -374,12 +384,24 @@ the administrator's inbox; **no email is sent**. Links are refused, and the API 
 
 ## Collections and variants
 
-`/collections`, linked from `/upload`, is the administrator's catalog editor. It
+The Collections tab in `/curator` is the administrator's catalog editor. It
 creates and edits categories, assigns categories to standalone photos, builds
 collections, orders their photos, and sets each tile's width and height from one
-to four cells. A live preview uses the same four-column canvas as the gallery;
-the entire composition scales down on phones without changing the arrangement.
-Photos remain uncropped inside each tile. Empty collections are allowed.
+to four cells. The collection editor (`CollectionCanvas`) is itself the
+composition, on the same four-column canvas as the gallery: a photo is dragged to
+a new place, resized by pulling its right edge, bottom edge or corner, and clicked
+to show its details in the side panel. Photos are added from **Add photos**, a
+horizontal strip of small thumbnails with their titles, filtered by title and
+category; thumbnails load lazily as the strip scrolls and never request more than a
+160-pixel rendition. Clicking one appends it to the composition and selects it,
+showing its details in the side panel — position, width and height, **Show title
+in the collection**, **Use as collection cover** and removal. Each of those also
+works from the panel without a pointer. Private and reserved photos carry a framed
+**!** on the canvas and a warning above it. The collection's own title,
+description (up to 2000 characters, shown above the collection in the gallery) and
+categories fill the panel when no photo is selected. The entire composition scales
+down on phones without changing the arrangement. Photos remain uncropped inside
+each tile. Empty collections are allowed.
 
 The gallery reads the public `GET /catalog` alongside the existing photo listing.
 Category filters include directly classified photos and photos in classified
@@ -398,4 +420,50 @@ session credentials for all calls. Writes use `POST`, `PATCH`, and `DELETE` on
 `/collections`, `/categories`, and `/works`, plus `PATCH /photos/:id/categories`.
 The API enforces administrator permissions. Failed saves keep the edited fields
 and are never replayed automatically; deletion requires confirmation.
-Apply the API's `20261018000000_collections` migration before using this feature.
+Apply the API's `20261018000000_collections` and `20261021000000_collection_studio`
+migrations before using this feature.
+
+## Public browsing
+
+The header links separately to Gallery and Collections. Gallery shuffles the public
+photos once per load, keeps that order across pages of twelve, and offers a compact
+category filter that returns to page one. Collections opens with responsive cards
+showing each collection's cover, title and description; opening one shows its saved
+mosaic and a return button. Catalog editing remains in Curator.
+
+
+## Interactive browsing and variant assignment
+
+Home features a manually controlled carousel of up to eight recent public photos,
+with previous/next controls, position buttons and keyboard arrows. It never advances
+automatically. Header links react to hover and keyboard focus; the current route is
+marked. Gallery includes category chips and a compact select for longer lists.
+Categories uses selectable cards showing photo counts.
+
+**Variants** is a peer of Upload, Photos and Collections in Curator. Select a work's
+cover to edit its members as thumbnails. Upload cards can choose an existing photo
+as their variant target before publishing; the new file extends that photo's group
+or starts a two-file work. Upload and grouping are separate requests: a failed link
+keeps the uploaded result, and retry never reuploads the file. Photos offers an
+explicit **Save variant assignment** action independent of metadata saving.
+Existing groups are edited in the Variants panel, not silently merged.
+
+The collection editor can replace an entry with a variant, retaining layout,
+caption visibility and cover selection. The viewer offers variant thumbnails,
+including collection-only variants available through the public catalog and detail
+endpoint. Category filtering keeps only matching variants and chooses a matching
+photo for each work's single tile. A dedicated color/monochrome classification and
+filter remains a future addition.
+
+
+## Multiple photo highlights
+
+`PhotoHighlights` retains optional `square`, `landscape` and `portrait` crops,
+and adds `custom?: { id, name, crop: { x, y, width, height } }[]` (up to 20).
+Upload and Photos share `HighlightEditor`: add or duplicate a crop, name it,
+select it, drag its position and edit its width and height independently in pixels.
+The size slider preserves its current ratio. Pixel dimensions describe the image
+being edited; persisted coordinates remain normalized and scale with upload resizing.
+Custom crops never replace the main thumbnail presets automatically. Each custom
+crop has an independent preview and deletion action. Existing photos require no
+migration; the API must support `custom` before the updated client is used.

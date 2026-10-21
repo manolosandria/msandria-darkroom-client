@@ -1,4 +1,5 @@
 "use client";
+import "./catalogStudio.css";
 import Link from "next/link";
 import { useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
@@ -51,7 +52,9 @@ function MosaicTile({ tile, mosaic }: { tile: CatalogTile; mosaic: boolean }) {
           className="object-contain"
           fallbackSizes="(max-width: 640px) 100vw, 50vw"
         />
-        <span className="photo-grid__caption">{photo.getTitle()}</span>
+        {tile.entry?.showTitle !== false && (
+          <span className="photo-grid__caption">{photo.getTitle()}</span>
+        )}
       </Link>
       {tile.variants.length > 1 && (
         <label className="catalog-variants">

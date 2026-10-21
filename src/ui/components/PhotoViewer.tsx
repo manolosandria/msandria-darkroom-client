@@ -28,6 +28,7 @@ import {
 } from "@/src/ui/viewerPanelState";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoInfoPanel } from "./PhotoInfoPanel";
+import { ViewerVariants } from "./ViewerVariants";
 import { QualitySelector } from "./QualitySelector";
 
 interface PhotoViewerProps {
@@ -63,7 +64,11 @@ export default function PhotoViewer({
   const router = useRouter();
   const [quality, setQuality] = usePhotoQuality();
   const [controlsVisible, setControlsVisible] = useState(true);
-  const panelOpen = useSyncExternalStore(subscribeViewerPanel, isViewerPanelOpen, () => false);
+  const panelOpen = useSyncExternalStore(
+    subscribeViewerPanel,
+    isViewerPanelOpen,
+    () => false,
+  );
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
   const lastPointerType = useRef("mouse");
@@ -85,14 +90,23 @@ export default function PhotoViewer({
     );
   }, []);
 
-  const fetchPhoto = useCallback(() => getPhoto.execute(photoId), [getPhoto, photoId]);
+  const fetchPhoto = useCallback(
+    () => getPhoto.execute(photoId),
+    [getPhoto, photoId],
+  );
   const fetchAll = useCallback(() => getAllPhotos.execute(), [getAllPhotos]);
-  const { data: photo, loading, error, retry } = usePhotoFetch(fetchPhoto, "Photo not found");
+  const {
+    data: photo,
+    loading,
+    error,
+    retry,
+  } = usePhotoFetch(fetchPhoto, "Photo not found");
   const { data: all } = usePhotoFetch(fetchAll, "No photos found");
 
   const index = all ? all.findIndex((entry) => entry.getId() === photoId) : -1;
   const previousId = all && index > 0 ? all[index - 1].getId() : null;
-  const nextId = all && index >= 0 && index < all.length - 1 ? all[index + 1].getId() : null;
+  const nextId =
+    all && index >= 0 && index < all.length - 1 ? all[index + 1].getId() : null;
 
   const go = useCallback(
     (id: string | null) => {
@@ -125,7 +139,8 @@ export default function PhotoViewer({
     const from = hiddenAt.current;
     if (
       from &&
-      Math.hypot(event.clientX - from.x, event.clientY - from.y) < REVEAL_DISTANCE
+      Math.hypot(event.clientX - from.x, event.clientY - from.y) <
+        REVEAL_DISTANCE
     )
       return;
     show();
@@ -155,7 +170,11 @@ export default function PhotoViewer({
 
   // Clicks on the edges, the back arrow, the buttons or the panel do their own job.
   const onClick = (event: MouseEvent) => {
-    if ((event.target as Element).closest("a, button") || insidePanel(event.target)) return;
+    if (
+      (event.target as Element).closest("a, button") ||
+      insidePanel(event.target)
+    )
+      return;
     if (swiped.current) {
       swiped.current = false;
       return;
@@ -191,7 +210,9 @@ export default function PhotoViewer({
         {photo && layout && (
           <figure
             className="relative m-0"
-            style={{ width: `min(100cqw - 2rem, calc((100cqh - 2rem) / ${layout.heightPerWidth}))` }}
+            style={{
+              width: `min(100cqw - 2rem, calc((100cqh - 2rem) / ${layout.heightPerWidth}))`,
+            }}
           >
             <div
               data-testid="photo-frame"
@@ -227,20 +248,42 @@ export default function PhotoViewer({
           className={`photo-viewer__control absolute left-4 top-4 z-20 ${fade}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
-            <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </Link>
 
         <button
           type="button"
-          aria-label={panelOpen ? "Hide photo information" : "Show photo information"}
+          aria-label={
+            panelOpen ? "Hide photo information" : "Show photo information"
+          }
           aria-expanded={panelOpen}
           onClick={() => setViewerPanelOpen(!panelOpen)}
           className={`photo-viewer__control absolute right-4 top-4 z-20 ${fade}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
-            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path d="M12 11v6M12 7.5v.01" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="M12 11v6M12 7.5v.01"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
 
@@ -276,6 +319,7 @@ export default function PhotoViewer({
         )}
 
         <div className={fade}>
+          {all && <ViewerVariants photoId={photoId} photos={all} />}
           <QualitySelector quality={quality} onChange={setQuality} />
         </div>
       </div>
@@ -284,16 +328,29 @@ export default function PhotoViewer({
           controls hide: it is not over the photo, and hiding it would resize the photo. */}
       {panelOpen &&
         (photo ? (
-          <PhotoInfoPanel photo={photo} onClose={() => setViewerPanelOpen(false)} />
+          <PhotoInfoPanel
+            photo={photo}
+            onClose={() => setViewerPanelOpen(false)}
+          />
         ) : (
           // Holds the panel's place while the next photo loads, so nothing jumps.
-          <aside aria-label="Photo information" aria-busy="true" className="photo-viewer__panel" />
+          <aside
+            aria-label="Photo information"
+            aria-busy="true"
+            className="photo-viewer__panel"
+          />
         ))}
     </main>
   );
 }
 
-function EdgeArrow({ direction, className }: { direction: "left" | "right"; className: string }) {
+function EdgeArrow({
+  direction,
+  className,
+}: {
+  direction: "left" | "right";
+  className: string;
+}) {
   return (
     <span className={`photo-viewer__control mx-3 ${className}`}>
       <svg viewBox="0 0 24 24" aria-hidden="true" className="h-7 w-7">
@@ -311,5 +368,7 @@ function EdgeArrow({ direction, className }: { direction: "left" | "right"; clas
 }
 
 function insidePanel(target: EventTarget) {
-  return target instanceof Element && target.closest("[data-viewer-panel]") !== null;
+  return (
+    target instanceof Element && target.closest("[data-viewer-panel]") !== null
+  );
 }
