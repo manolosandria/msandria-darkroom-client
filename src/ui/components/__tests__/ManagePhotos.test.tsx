@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -428,6 +428,42 @@ describe("ManagePhotos", () => {
     expect(
       vi.mocked(savePhoto.execute).mock.calls[0][0].getTitlePosition(),
     ).toBe("BOTTOM_RIGHT");
+  });
+
+  it("saves the frame, starting from the photo's own", async () => {
+    vi.mocked(getPhotoById.execute).mockResolvedValue(
+      new Photo({
+        id: "photo",
+        title: "The coast",
+        width: 1800,
+        height: 1200,
+        frame: { color: "#ffffff", leftRight: 4, topBottom: 4 },
+        renditions: [{ width: 1800, url: "https://cdn/detail.jpg" }],
+      }),
+    );
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "The coast" }),
+    );
+    expect(
+      await screen.findByRole("checkbox", { name: /show a frame/i }),
+    ).toBeChecked();
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Top and bottom thickness" }),
+      { target: { value: "8" } },
+    );
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Save changes" })[0],
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Accept" }),
+    );
+    await screen.findByText("Changes saved.");
+    expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getFrame()).toEqual({
+      color: "#ffffff",
+      leftRight: 4,
+      topBottom: 8,
+    });
   });
 
   it("offers retry after detail fails without opening an empty editor", async () => {

@@ -27,6 +27,7 @@ import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
+import { FrameFields } from "./FrameFields";
 import {
   PHOTO_TITLE_POSITIONS,
   PhotoTitlePosition,
@@ -314,6 +315,7 @@ function PhotoEditor({
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
   const [titlePosition, setTitlePosition] = useState(photo.getTitlePosition());
+  const [frame, setFrame] = useState(photo.getFrame());
   const [classification, setClassification] = useState(
     photo.getClassification(),
   );
@@ -329,6 +331,7 @@ function PhotoEditor({
     title !== photo.getTitle() ||
     description !== (photo.getDescription() ?? "") ||
     titlePosition !== photo.getTitlePosition() ||
+    JSON.stringify(frame) !== JSON.stringify(photo.getFrame()) ||
     JSON.stringify(highlights) !== JSON.stringify(photo.getHighlights()) ||
     JSON.stringify(classification) !==
       JSON.stringify(photo.getClassification());
@@ -337,6 +340,7 @@ function PhotoEditor({
     setDescription(photo.getDescription() ?? "");
     setHighlights(photo.getHighlights());
     setTitlePosition(photo.getTitlePosition());
+    setFrame(photo.getFrame());
     setClassification(photo.getClassification());
     setFile(null);
     setResetKey((value) => value + 1);
@@ -363,7 +367,7 @@ function PhotoEditor({
         description,
         highlights,
         titlePosition,
-        frame: photo.getFrame(),
+        frame,
         width: photo.getWidth(),
         height: photo.getHeight(),
         renditions: photo.getRenditions(),
@@ -464,7 +468,7 @@ function PhotoEditor({
         {file && (
           <p>
             Replace with {file.name}. The record, publication date, frame and
-            highlights are preserved. Review crops after replacing.
+            highlights are preserved. Review crops and frame after replacing.
           </p>
         )}
         <label>
@@ -505,6 +509,17 @@ function PhotoEditor({
             ))}
           </select>
         </label>
+        <FrameFields
+          src={photo.urlForWidth(640)}
+          width={photo.getWidth()}
+          height={photo.getHeight()}
+          value={frame}
+          onChange={(next) => {
+            setFrame(next);
+            setSaved(false);
+          }}
+          disabled={saving}
+        />
         <HighlightEditor
           src={photo.urlForWidth(960)}
           width={photo.getWidth()}

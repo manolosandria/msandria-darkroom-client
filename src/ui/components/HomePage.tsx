@@ -6,6 +6,8 @@ import { getAllPhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoS
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoImage } from "./PhotoImage";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
+import { Photo } from "@/src/domain/entities/Photo";
+import { framedLayout } from "@/src/ui/framedLayout";
 import "./homeCarousel.css";
 export default function HomePage({
   getAllPhotos = defaultGetAllPhotos,
@@ -60,10 +62,7 @@ export default function HomePage({
               className="home-carousel__image"
               href={`/photo/${encodeURIComponent(photo.getId())}`}
             >
-              <PhotoImage
-                photo={photo}
-                fallbackSizes="(max-width: 800px) 100vw, 70vw"
-              />
+              <FramedSlide photo={photo} />
               <span className="home-carousel__caption">
                 {photo.getTitle()} <span aria-hidden="true">↗</span>
               </span>
@@ -102,5 +101,35 @@ export default function HomePage({
         )}
       </section>
     </main>
+  );
+}
+
+// The photo inside its own frame, as large as the slide allows. The slide is a size
+// container, so the framed box fits whichever of its width or height runs out first.
+function FramedSlide({ photo }: { photo: Photo }) {
+  const frame = photo.getFrame();
+  const layout = framedLayout(photo.getAspectRatio(), frame);
+  return (
+    <div className="home-carousel__stage">
+      <div
+        data-testid="carousel-frame"
+        className="home-carousel__frame"
+        style={{
+          background: frame?.color,
+          padding: `${layout.paddingY}% ${layout.paddingX}%`,
+          width: `min(100cqw, 100cqh / ${layout.heightPerWidth})`,
+        }}
+      >
+        <div
+          className="home-carousel__photo"
+          style={{ aspectRatio: `${photo.getWidth()} / ${photo.getHeight()}` }}
+        >
+          <PhotoImage
+            photo={photo}
+            fallbackSizes="(max-width: 800px) 100vw, 70vw"
+          />
+        </div>
+      </div>
+    </div>
   );
 }
