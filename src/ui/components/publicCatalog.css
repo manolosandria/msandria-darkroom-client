@@ -3,9 +3,6 @@
 .public-catalog h1 { font: 400 clamp(2.75rem, 6vw, 5rem)/1.1 Georgia, serif; letter-spacing: -.04em; margin-bottom: 1rem; overflow-wrap: anywhere; }
 .public-catalog__heading p:not(.public-catalog__eyebrow) { opacity: .65; max-width: 48rem; line-height: 1.7; white-space: pre-line; }
 .public-catalog__eyebrow { text-transform: uppercase; letter-spacing: .18em; font-size: .65rem; margin-bottom: .8rem; opacity: .6; }
-.gallery-filter { display: grid; gap: .6rem; padding: 1rem 1.25rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: .75rem; min-width: min(100%, 15rem); }
-.gallery-filter label { font-size: .75rem; font-weight: 600; }
-.gallery-filter select { padding: .4rem .5rem; background: var(--background); color: var(--foreground); max-width: 100%; }
 .gallery-pagination { display: flex; align-items: center; justify-content: center; gap: clamp(.75rem, 4vw, 3rem); margin-top: 3rem; font-size: .85rem; }
 .gallery-pagination button, .collection-back { padding: .75rem 1rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 999px; cursor: pointer; }
 .gallery-pagination button:disabled { opacity: .3; cursor: default; }
@@ -22,14 +19,22 @@
 .collection-back { margin-bottom: 2rem; font-size: .85rem; }
 .public-catalog button:focus-visible, .public-catalog select:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 @media (max-width: 1000px) { .public-collections { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .public-collections { grid-template-columns: 1fr; gap: 1.5rem; } .gallery-filter { width: 100%; } }
+@media (max-width: 600px) { .public-collections { grid-template-columns: 1fr; gap: 1.5rem; } }
 @media (prefers-reduced-motion: reduce) { .public-collection__cover img { transition: none; } }
 
-.gallery-filter { background:#f5f6ef; padding:1rem 1.2rem; border:1px solid #dbe0d0; border-radius:1rem; }
-.gallery-filter select { cursor:pointer; padding:.65rem .8rem; border:1px solid #c2cab5; border-radius:.5rem; background:white; }
-.gallery-category-chips { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:0 0 2rem; }
+.public-gallery { padding-top: clamp(2rem, 3.2vw, 3.2rem); }
+.gallery-category-chips { display:grid; gap:1rem; margin:0 0 2rem; }
+.gallery-category-summary { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.gallery-category-summary span { font-size:.8rem; color:#68725e; }
+.gallery-category-group { display:flex; align-items:baseline; gap:1rem; border:0; padding:0; margin:0; min-width:0; }
+.gallery-category-group legend { float:left; flex:0 0 8rem; width:8rem; padding:.55rem 0; font-size:.75rem; color:#68725e; }
+.gallery-category-options { display:flex; flex-wrap:wrap; gap:.5rem; min-width:0; }
+@media(max-width:600px) {
+  .gallery-category-group { display:block; }
+  .gallery-category-group legend { float:none; width:auto; padding:0; margin-bottom:.5rem; }
+}
 .gallery-category-chips button { padding:.55rem 1rem; border:1px solid #d1d8c5; border-radius:2rem; color:#45513a; cursor:pointer; transition:background .18s,transform .18s; }
 .gallery-category-chips button:hover { background:#e8eedf; transform:translateY(-2px); }
 .gallery-category-chips button[aria-pressed=true] { background:#384e2b; border-color:#384e2b; color:white; }
-.gallery-category-chips>span { margin-left:auto; font-size:.8rem; color:#68725e; }
+
 @media(prefers-reduced-motion:reduce) { .gallery-category-chips button { transition:none; } }

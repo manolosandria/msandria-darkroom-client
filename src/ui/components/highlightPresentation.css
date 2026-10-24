@@ -1,0 +1,97 @@
+.highlight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+.highlight-editor .highlight-actions button {
+  padding: 0.65rem 1rem;
+  border: 1px solid #b7c1ae;
+  border-radius: 5px;
+  text-decoration: none;
+  background: #f6f7f2;
+}
+.highlight-editor .highlight-actions button:first-child {
+  color: #853f32;
+  border-color: #d7b8ae;
+  background: #fff8f5;
+}
+.highlight-eligibility {
+  margin: 1.5rem 0;
+  border-top: 1px solid #d2d7ca;
+  padding-top: 1rem;
+}
+.highlight-eligibility h3 {
+  font:
+    1.3rem Georgia,
+    serif;
+}
+.highlight-eligibility p {
+  font-size: 0.85rem;
+  color: #626b5a;
+  margin: 0.5rem 0 1rem;
+}
+.highlight-eligibility__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+.highlight-eligibility__grid article {
+  padding: 0.75rem;
+  border: 1px solid #d2d7ca;
+  border-radius: 6px;
+  background: #fafbf7;
+}
+.highlight-eligibility__preview {
+  position: relative;
+  overflow: hidden;
+  max-height: 160px;
+  margin-bottom: 0.5rem;
+  background: #e8ebdf;
+}
+.highlight-eligibility__grid label {
+  display: flex !important;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+.highlight-eligibility__grid input {
+  width: auto !important;
+  accent-color: #384e2b;
+}
+.highlight-tabs {
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.highlight-distribution-matrix {
+  margin-top: 0.75rem;
+  font:
+    0.7rem Arial,
+    sans-serif;
+}
+.highlight-distribution-matrix summary {
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.highlight-distribution-matrix table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.65rem;
+}
+.highlight-distribution-matrix caption {
+  text-align: left;
+  margin: 0.5rem 0;
+}
+.highlight-distribution-matrix th,
+.highlight-distribution-matrix td {
+  padding: 0.4rem 0.2rem;
+  border-bottom: 1px solid #d2d7ca;
+  text-align: center;
+}
+.highlight-distribution-matrix th:first-child {
+  text-align: left;
+}
+.highlight-eligibility__grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}

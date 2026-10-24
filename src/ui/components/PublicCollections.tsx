@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CatalogCollection } from "@/src/domain/entities/Catalog";
 import { selectCatalog } from "@/src/domain/catalogSelection";
 import { editCatalog } from "@/src/infrastructure/catalogServices";
@@ -14,6 +14,7 @@ export default function PublicCollections() {
   const loadCatalog = useCallback(() => editCatalog.load(), []);
   const { data: catalog, loading, error, retry } = usePhotoFetch(loadCatalog, "No collections found", "Collections could not be loaded");
   const [selected, setSelected] = useState("");
+  useEffect(()=>{queueMicrotask(()=>setSelected(new URLSearchParams(window.location.search).get("collection")??""));},[]);
   const collection = catalog?.collections.find(item => item.id === selected);
   return <main className="public-catalog">
     <div className="public-catalog__heading"><div><p className="public-catalog__eyebrow">Stories in photographs</p><h1>{collection?.title ?? "Collections"}</h1><p>{collection?.description ?? (collection ? "" : "A place, a moment, a point of view. Choose a collection to explore.")}</p></div></div>

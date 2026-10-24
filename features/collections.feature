@@ -95,3 +95,73 @@ Feature: Curated collections
   Scenario: Switch variants in the viewer
     Given I open a photograph with accessible variants
     Then thumbnail links let me view those variants at their own URLs
+
+  Scenario: Browse grouped gallery categories
+    Given categories include subjects, colors, themes and unrecognized names
+    When I open Gallery
+    Then category chips appear under their nonempty groups
+    And unrecognized names remain available under Other
+    And there is no duplicate category dropdown
+    When I choose All photographs
+    Then the category filter is cleared
+
+  Scenario: Configure the archive in Curator
+    Given I am an administrator in the Gallery section of Curator
+    When I add, remove or edit introduction blocks and change their font and size
+    Then I see the unsaved design in the desktop or mobile preview
+    And I can assign categories to groups and choose inherited or custom category appearances
+    When I save the design
+    Then other visitors see the saved design
+    And stale saves are rejected without losing the draft
+
+  Scenario: Compact category navigation
+    When I hover a category group with the mouse or tap its button on a phone
+    Then its category options open below the group bar
+    When I select a category
+    Then the options close and its saved palette and font apply
+    And Escape closes the options and returns focus to the group
+
+  Scenario: Random emphasis without reshuffling during navigation
+    Given random emphasis is selected for Gallery
+    Then each page has at most two large photographs and the remaining tiles are small
+    And returning to a page preserves its priorities
+    And a phone shows a compact multi-column composition
+    And opening a photograph shows its complete composition
+
+  Scenario: Fill the random mosaic using eligible views
+    Given a shuffled page contains landscape and portrait photographs
+    Then the random layout fills its rectangle without empty cells or repeated photos
+    And portraits span two rows unless an enabled horizontal or square crop is chosen
+    And desktop and phone arrangements each have at most two emphasis tiles
+    And navigating back preserves the selected views and arrangement
+
+  Scenario: Search the archive
+    When I search for a photo title or an assigned category name
+    Then only matching eligible photographs and variants are shown
+    And the gallery returns to its first page
+
+  Scenario: Select random presentation crops
+    Given I am editing a photograph's highlights in Curator Photos
+    When I enable an original or highlight separately for Gallery and Home
+    And save the photo
+    Then those destinations use only their enabled views
+    And deleting a crop also removes its presentation references
+    And an empty destination excludes the photo there
+
+  Scenario: Offer only configured gallery choices
+    Given Curator enables selected distributions and view aspects
+    When a visitor changes the distribution or view aspect
+    Then only enabled original or crop views for that matrix cell are shown
+    And natural proportions preserve the chosen view's aspect ratio
+    And changing display controls resets pagination without reshuffling the photos
+
+  Scenario: Edit a palette library
+    Given I am editing Gallery as the administrator
+    When I edit, add, apply or delete a palette
+    Then changes appear in the draft and publish only after Save gallery
+    And deleting a library palette retains previously applied design colors
+
+  Scenario: Reach hover options without a gap
+    When I move from a category button into its open options
+    Then the menu stays open until I choose an option or leave it
+    And the photo count appears outside the menus beside the grid

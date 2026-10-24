@@ -444,7 +444,7 @@ See README for endpoints and the required API migration.
 Home features a manually controlled carousel of up to eight recent public photos,
 with previous/next controls, position buttons and keyboard arrows. It never advances
 automatically. Header links react to hover and keyboard focus; the current route is
-marked. Gallery includes category chips and a compact select for longer lists.
+marked. Gallery groups category chips into Subjects, Color & treatment and Themes, with unrecognized names in Other. Empty groups are hidden; All photographs clears the selection.
 Categories uses selectable cards showing photo counts.
 
 **Variants** is a peer of Upload, Photos and Collections in Curator. Select a work's
@@ -474,3 +474,25 @@ being edited; persisted coordinates remain normalized and scale with upload resi
 Custom crops never replace the main thumbnail presets automatically. Each custom
 crop has an independent preview and deletion action. Existing photos require no
 migration; the API must support `custom` before the updated client is used.
+
+## Home banner
+
+Curator Home edits shared Home appearance through ManageHomeBanner and
+ApiHomeBannerRepository (`GET`/admin `PUT /home/banner`). HomePage renders both the
+public design and the editor preview. Settings live in the API, not browser storage.
+The API validates the complete design and rejects stale versions with 409. Home keeps
+the original appearance if settings cannot be loaded; the editor requires a successful
+load before saving. Preview changes never publish until Save banner is pressed.
+
+BannerComposition replaces the placement dropdown with pointer/touch and keyboard
+block placement. bannerPresets contains local font stacks and palette presets.
+HomePage supports framed/fill/highlight modes with independent desktop/mobile crops;
+the crop source uses normalized highlight coordinates, then covers the banner.
+Container queries keep the real page and embedded mobile preview consistent.
+Horizontal swipes suppress link activation; vertical gestures keep scrolling.
+
+Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the actual Welcome and Photographs areas to rearrange them; placement buttons remain available. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the downloaded rendition and effective crop pixels, warning when display density requires upscaling. Home has no exterior banner padding.
+
+Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
+
+Home adds fixed selected placement controls, icon framing choices, optional Welcome overlay with shade and height sliders, dot/thumbnail/progress navigation and overlay controls. Resolution labels use pixel categories rather than devices. Per-slide captions and destinations support photos, gallery, category, collection and external HTTPS links. Gallery and Collections read the corresponding query parameter on entry.
