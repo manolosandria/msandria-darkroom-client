@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, CSSProperties } from "react";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { selectCatalog } from "@/src/domain/catalogSelection";
 import { editCatalog } from "@/src/infrastructure/catalogServices";
@@ -7,14 +7,26 @@ import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
 import { getAllPhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
-import { CollectionMosaic } from "./CollectionMosaic";
-import { PhotoGrid } from "./PhotoGrid";
+import { GalleryVisitorControls } from "./GalleryVisitorControls";
+import { GalleryTiles } from "./GalleryTiles";
+import { GalleryFilters } from "./GalleryFilters";
+import {
+  defaultGallerySettings,
+  GallerySettings,
+  galleryFonts,
+  defaultVisitorOptions,
+} from "@/src/domain/entities/GallerySettings";
+import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
+import "./galleryStudio.css";
+import { enabledPhotoViews } from "@/src/domain/photoPresentation";
 import "./publicCatalog.css";
 
 export default function Gallery({
   getAllPhotos = defaultGetAllPhotos,
+  settings: previewSettings,
 }: {
   getAllPhotos?: Pick<GetAllPhotos, "execute">;
+  settings?: GallerySettings;
 }) {
   const fetchPhotos = useCallback(async () => {
     const result = await getAllPhotos.execute();
@@ -32,9 +44,23 @@ export default function Gallery({
     error,
     retry,
   } = usePhotoFetch(fetchPhotos, "No photos found");
+  const [storedSettings, setStoredSettings] = useState(defaultGallerySettings);
+  useEffect(() => {
+    if (!previewSettings)
+      void manageGallerySettings
+        .get()
+        .then(setStoredSettings)
+        .catch(() => {});
+  }, [previewSettings]);
+  const settings = previewSettings ?? storedSettings;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState(false);
   const [categoryId, setCategoryId] = useState("");
+  const [display, setDisplay] = useState<{
+    layout?: string;
+    crops?: string;
+  }>({});
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const loadCatalog = useCallback(async () => {
     try {
@@ -45,63 +71,151 @@ export default function Gallery({
     }
   }, []);
   useEffect(() => {
-    queueMicrotask(() => void loadCatalog());
+    queueMicrotask(() => {
+      setCategoryId(
+        new URLSearchParams(window.location.search).get("category") ?? "",
+      );
+      void loadCatalog();
+    });
   }, [loadCatalog]);
-  const tiles =
-    photos && catalog ? selectCatalog(photos, catalog, categoryId, "") : null;
+  const normalize = (text: string) =>
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  const search = normalize(query);
+  const matchingCategories = new Set(
+    catalog?.categories
+      .filter((category) => normalize(category.name).includes(search))
+      .map((category) => category.id),
+  );
+  const categoryPhotos = new Set(
+    catalog?.photos
+      .filter((photo) =>
+        photo.categories.some((category) =>
+          matchingCategories.has(category.id),
+        ),
+      )
+      .map((photo) => photo.id),
+  );
+  for (const collection of catalog?.collections ?? [])
+    if (
+      collection.categories.some((category) =>
+        matchingCategories.has(category.id),
+      )
+    ) {
+      for (const entry of collection.entries) categoryPhotos.add(entry.photoId);
+    }
+  const categoryStyle = settings.categories.find(
+    (item) => item.categoryId === categoryId,
+  );
+  const appearance = categoryStyle?.customize
+    ? categoryStyle.appearance
+    : settings.appearance;
+  const options = settings.visitorOptions ?? defaultVisitorOptions;
+  const allowed = (
+    requested: string | undefined,
+    fallback: string,
+    choices: string[],
+  ) =>
+    choices.includes(requested ?? "")
+      ? requested!
+      : choices.includes(fallback)
+        ? fallback
+        : choices[0];
+  const layout = allowed(display.layout, appearance.layout, options.layouts);
+  const crops = allowed(display.crops, "mixed", options.crops);
+  const context = { layout, crops };
+  const eligible = photos?.filter(
+    (photo) =>
+      enabledPhotoViews(photo, "gallery", context).length > 0 &&
+      (!search ||
+        normalize(photo.getTitle()).includes(search) ||
+        categoryPhotos.has(photo.getId())),
+  );
+  const tiles = eligible
+    ? selectCatalog(
+        eligible,
+        catalog ?? { photos: [], works: [], categories: [], collections: [] },
+        categoryId,
+        "",
+      )
+    : null;
   const count = tiles?.length ?? photos?.length ?? 0;
   const pages = Math.max(1, Math.ceil(count / 12));
   const currentPage = Math.min(page, pages);
   const start = (currentPage - 1) * 12;
   const visible = tiles?.slice(start, start + 12);
+  const style = {
+    "--gallery-background": appearance.background,
+    "--gallery-text": appearance.text,
+    "--gallery-accent": appearance.accent,
+    "--gallery-surface": appearance.surface,
+    "--gallery-font": galleryFonts[appearance.font],
+    "--gallery-size": `${appearance.tileSize}px`,
+    "--gallery-size-factor": 1,
+    "--gallery-mobile-columns": 2,
+    "--gallery-gap": `${appearance.gap}px`,
+  } as CSSProperties;
   return (
-    <main className="public-catalog">
-      <div className="public-catalog__heading">
-        <div>
-          <p className="public-catalog__eyebrow">Explore the archive</p>
-          <h1>Gallery</h1>
-          <p>A fresh perspective, twelve photographs at a time.</p>
-        </div>
-        {catalog && (
-          <aside className="gallery-filter" aria-label="Gallery filters">
-            <label htmlFor="gallery-category">Filter by category</label>
-            <select
-              id="gallery-category"
-              value={categoryId}
+    <main
+      className="public-catalog public-gallery gallery-styled"
+      style={style}
+    >
+      <div className="gallery-introduction">
+        <header className="gallery-heading">
+          <h1 className="gallery-sr-only">Gallery</h1>
+          {settings.blocks
+            .filter((block) => block.text.trim())
+            .map((block, index) => (
+              <p
+                key={index}
+                className={`gallery-heading__${block.kind}`}
+                style={
+                  {
+                    "--block-size": `${block.size}px`,
+                    fontFamily:
+                      galleryFonts[
+                        categoryStyle?.customize
+                          ? appearance.font
+                          : block.font === "inherit"
+                            ? appearance.font
+                            : block.font
+                      ],
+                  } as CSSProperties
+                }
+              >
+                {block.text}
+              </p>
+            ))}
+        </header>
+        <div className="gallery-tools">
+          <label className="gallery-search">
+            Search the archive
+            <input
+              type="search"
+              placeholder="Photo title or category"
+              value={query}
               onChange={(event) => {
-                setCategoryId(event.target.value);
+                setQuery(event.target.value);
                 setPage(1);
               }}
-            >
-              <option value="">All categories</option>
-              {catalog.categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </aside>
-        )}
-      </div>
-      {catalog && (
-        <div className="gallery-category-chips" aria-label="Choose a category">
-          {[{ id: "", name: "All photographs" }, ...catalog.categories].map(
-            (category) => (
-              <button
-                key={category.id}
-                aria-pressed={categoryId === category.id}
-                onClick={() => {
-                  setCategoryId(category.id);
-                  setPage(1);
-                }}
-              >
-                {category.name}
-              </button>
-            ),
+            />
+          </label>
+          {catalog && (
+            <GalleryFilters
+              categories={catalog.categories}
+              settings={settings}
+              selected={categoryId}
+              onSelect={(id) => {
+                setCategoryId(id);
+                setPage(1);
+              }}
+            />
           )}
-          <span>{count} photographs</span>
         </div>
-      )}
+      </div>
       {catalogError && (
         <p role="alert">
           Categories could not be loaded.{" "}
@@ -109,19 +223,25 @@ export default function Gallery({
         </p>
       )}
       <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
-      {photos &&
-        (visible ? (
-          visible.length ? (
-            visible.some((tile) => tile.variants.length > 1) ? (
-              <CollectionMosaic tiles={visible} mosaic={false} />
-            ) : (
-              <PhotoGrid photos={visible.map((tile) => tile.photo)} />
-            )
-          ) : (
-            <p>No photos in this selection.</p>
-          )
+      <div className="gallery-grid-toolbar">
+        <GalleryVisitorControls
+          options={options}
+          layout={layout}
+          crops={crops}
+          onChange={(key, value) => {
+            setDisplay((previous) => ({ ...previous, [key]: value }));
+            setPage(1);
+          }}
+        />
+        <span className="gallery-filter-count" aria-live="polite">
+          {count} {count === 1 ? "photograph" : "photographs"}
+        </span>
+      </div>
+      {visible &&
+        (visible.length ? (
+          <GalleryTiles tiles={visible} layout={layout} context={context} />
         ) : (
-          <PhotoGrid photos={photos.slice(start, start + 12)} />
+          <p>No photos in this selection.</p>
         ))}
       {count > 0 && (
         <nav className="gallery-pagination" aria-label="Gallery pagination">

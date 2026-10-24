@@ -445,7 +445,7 @@ mosaic and a return button. Catalog editing remains in Curator.
 Home features a manually controlled carousel of up to eight recent public photos,
 with previous/next controls, position buttons and keyboard arrows. It never advances
 automatically. Header links react to hover and keyboard focus; the current route is
-marked. Gallery includes category chips and a compact select for longer lists.
+marked. Gallery groups category chips into Subjects, Color & treatment and Themes, with unrecognized names in Other. Empty groups are hidden; All photographs clears the selection.
 Categories uses selectable cards showing photo counts.
 
 **Variants** is a peer of Upload, Photos and Collections in Curator. Select a work's
@@ -475,3 +475,98 @@ being edited; persisted coordinates remain normalized and scale with upload resi
 Custom crops never replace the main thumbnail presets automatically. Each custom
 crop has an independent preview and deletion action. Existing photos require no
 migration; the API must support `custom` before the updated client is used.
+
+### Home banner studio
+
+Open **Curator → Home** as an administrator to edit the welcome text, four colors,
+title font and size, text alignment and placement, and banner corners (rectangle,
+rounded or arch). Preview desktop/mobile layouts, save for all visitors, cancel a
+draft, or restore the original design. Fonts use local system stacks. The carousel
+continues to show the eight newest public photographs with their individual frames.
+The API stores the shared design at `/home/banner`; apply its HomeBanner migration
+first. Failed saves preserve the draft; outdated versions offer an explicit reload.
+Unsaved edits participate in the Curator leave-page protection.
+
+### Gallery appearance studio
+
+Curator → Gallery edits up to 12 introduction blocks (empty text is hidden), font and
+size per block, the general palette, category groups and optional category-specific
+font/palette/layout overrides. Preview desktop or phone, then Save gallery to apply.
+Cancel and restore operate on the draft. Failed and stale saves preserve it; reload
+requires confirmation if dirty. Category groups expand on mouse hover, keyboard click
+or touch and close on selection, blur or Escape.
+
+`GET /gallery/settings` is public with no-store; `PUT /gallery/settings` requires
+administration and the current `version` (409 on conflict). Settings reuse the existing
+HomeBanner JSON table with the independent key `gallery`, so no migration is needed
+after the Home banner migration. Nothing changes the Home record. Fonts are local
+system stacks (Georgia, Arial, Courier). Categories without overrides inherit the
+general appearance; unassigned categories use vocabulary grouping with Other as fallback.
+
+Photo layouts: justified natural proportions, uniform grid, or stable random emphasis
+with at most two large tiles per page. Size and spacing are configurable. Phone mosaics
+keep multiple smaller tiles; grid crops affect thumbnails only. Variant selectors and
+viewer links remain available. Header navigation keeps its site-wide appearance.
+
+### Random presentation choices
+
+Photos → Highlights shows each original/crop with independent Gallery and Home
+checkboxes. Existing photos default to the original in both places; creating a crop
+does not enable it automatically. Empty destination lists exclude the photo there.
+Choices are part of `highlights.presentation: { gallery: string[], home: string[] }`;
+references are `original`, `square`, `landscape`, `portrait` or `custom:<id>`.
+Deleting a crop in Curator removes its destination references. The API validates
+unique references to existing crops; save/replacement retain existing version checks.
+This is an extension of the existing JSON column and requires no migration.
+
+Gallery chooses an enabled view per photo, then packs a complete rectangle for
+wide and narrow screens. Portrait views occupy two rows; enabled horizontal/square
+views can use a small tile. Packing keeps at most two emphasis tiles and falls back
+to balanced full-width bands for unusual sets. Images are not repeated to fill gaps.
+The shuffled selection, chosen crops and layout stay stable during page navigation.
+Search matches photo titles or assigned category names and returns to page one.
+The introduction places search and compact category menus alongside the text on
+wide screens and underneath on phones. Home shuffles eligible photos once per load
+and uses only an enabled original/crop, preserving full-photo viewer links.
+
+### Visitor gallery controls and palette library
+
+Visitors choose Squares, Random emphasis (initial default) or Natural proportions,
+then Combined / Square / Rectangular views. Curator can also offer Portrait and
+Landscape individually and disable any distribution or view filter, retaining at
+least one option in each group. `visitorOptions` stores `layouts` and `crops`.
+The category's saved layout is its initial choice when enabled; visitor choices
+override it for the visit. Natural proportions use the selected view's real aspect
+ratio. The count sits beside the grid, outside category hover menus, whose options
+attach directly to their buttons.
+
+Photos Highlights expands each view's Distribution & aspect eligibility matrix.
+Optional `highlights.presentation.galleryRules` contains up to nine unique
+`{ layout, aspect, views }` cells, with `aspect` portrait / square / landscape.
+Columns describe the original or highlight's actual aspect ratio: make a separate
+crop to offer another aspect. Omitted rules inherit the previous Gallery list;
+when rules exist, missing cells are disabled. References must also be enabled in the
+overall Gallery list. Home is independent. Removing a crop removes its references.
+The square layout uses square tiles; Natural proportions preserves native framing.
+The matrix and filters do not change image quality or delivery limits.
+
+Curator Gallery starts with Archive, Night and Sand palettes. Apply copies colors to
+the current general/category design; edit names/colors, save the current design as
+a new palette or delete any library entry. Deleting leaves applied colors intact.
+Library and visitor-option edits are drafts until Save gallery, use the existing
+optimistic version check and require no database migration.
+
+Home studio also offers six one-click palettes and eight system-font stacks. Arrange
+Welcome and Photographs by dragging their handles to the composition board edges,
+by selecting a block and destination, or using arrow keys. Touch dragging is confined
+to the handles; public carousel swipes leave vertical page scrolling available.
+Image presentation can preserve the complete framed photo, fill from the full photo,
+or fill from separate desktop/mobile landscape, portrait or square highlights. Missing
+highlights fall back to the centered full photo. Fill may trim the chosen area to fit.
+The mobile preview uses the same container breakpoints as public Home.
+
+Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the actual Welcome and Photographs areas to rearrange them; placement buttons remain available. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the downloaded rendition and effective crop pixels, warning when display density requires upscaling. Home has no exterior banner padding.
+
+Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
+
+Home adds fixed selected placement controls, icon framing choices, optional Welcome overlay with shade and height sliders, dot/thumbnail/progress navigation and overlay controls. Resolution labels use pixel categories rather than devices. Per-slide captions and destinations support photos, gallery, category, collection and external HTTPS links. Gallery and Collections read the corresponding query parameter on entry.

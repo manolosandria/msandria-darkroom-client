@@ -1,8 +1,18 @@
 export type HighlightKind = "square" | "landscape" | "portrait";
 export type Highlight = { x: number; y: number; width: number; height: number };
 export type CustomHighlight = { id: string; name: string; crop: Highlight };
+export type GalleryViewRule = {
+  layout: string;
+  aspect: string;
+  views: string[];
+};
 export type PhotoHighlights = Partial<Record<HighlightKind, Highlight>> & {
   custom?: CustomHighlight[];
+  presentation?: {
+    gallery: string[];
+    home: string[];
+    galleryRules?: GalleryViewRule[];
+  };
 };
 export const MAX_CUSTOM_HIGHLIGHTS = 20;
 export const HIGHLIGHT_RATIOS: Record<HighlightKind, number> = {

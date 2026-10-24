@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import GalleryEditor from "./GalleryEditor";
+import HomeBannerEditor from "./HomeBannerEditor";
 import UploadPanel from "./UploadPanel";
 import ManagePhotos from "./ManagePhotos";
 import ManageCollections from "./ManageCollections";
@@ -10,6 +12,8 @@ import { useCuratorNotifications } from "./CuratorNotifications";
 import { EditingBoundary } from "./EditingWorkspace";
 
 const sections = [
+  "Home",
+  "Gallery",
   "Upload",
   "Photos",
   "Collections",
@@ -89,6 +93,16 @@ export default function Curator() {
         {visited.includes("Variants") && (
           <div hidden={section !== "Variants"}>
             <ManageCollections variants />
+          </div>
+        )}
+        {visited.includes("Home") && (
+          <div hidden={section !== "Home"}>
+            <HomeBannerEditor />
+          </div>
+        )}
+        {visited.includes("Gallery") && (
+          <div hidden={section !== "Gallery"}>
+            <GalleryEditor />
           </div>
         )}
         {section === "Moderation" && <CommentModeration />}
