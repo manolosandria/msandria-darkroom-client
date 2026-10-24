@@ -1,0 +1,6 @@
+.resolution-badge { display:flex; flex-wrap:wrap; gap:.3rem .6rem; align-items:center; font:11px Arial,sans-serif; padding:.5rem; background:#f0f3eb; color:#293126; border:1px solid #becab3; border-radius:6px; }
+.resolution-badge>span { opacity:.55; }.resolution-badge>span[data-ready=true] { opacity:1; color:#244b20; }.resolution-badge i { font-size:18px; font-style:normal; }.resolution-badge small { display:block; width:100%; }
+
+.resolution-badge { box-sizing:border-box; max-width:100%; min-width:0; gap:.35rem; }
+.resolution-badge>span { padding:.25rem .4rem; border:1px solid currentColor; border-radius:4px; white-space:normal; }
+.resolution-badge strong { flex-basis:100%; overflow-wrap:anywhere; }

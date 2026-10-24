@@ -234,3 +234,74 @@ it("caps custom crops and disables additions during saving", () => {
     screen.getByRole("button", { name: "Add custom highlight" }),
   ).toBeDisabled();
 });
+
+it("manages destination eligibility visually and removes references when a crop is deleted", async () => {
+  const onChange = vi.fn();
+  render(
+    <Harness
+      initial={{ square: { x: 0, y: 0, width: 0.4, height: 0.6 } }}
+      onChange={onChange}
+    />,
+  );
+  expect(
+    screen.getByRole("checkbox", { name: "Original in Gallery" }),
+  ).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Square in Gallery" }),
+  ).not.toBeChecked();
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Square in Gallery" }),
+  );
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Original in Home" }),
+  );
+  expect(onChange.mock.lastCall![0].presentation).toMatchObject({
+    gallery: ["original", "square"],
+    home: [],
+  });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Remove square highlight" }),
+  );
+  expect(onChange.mock.lastCall![0].presentation).toMatchObject({
+    gallery: ["original"],
+    home: [],
+  });
+});
+
+it("edits distribution and aspect cells without enabling other layouts", async () => {
+  const onChange = vi.fn();
+  render(
+    <Harness
+      initial={{ square: { x: 0, y: 0, width: 0.4, height: 0.6 } }}
+      onChange={onChange}
+    />,
+  );
+  const details = screen.getAllByText("Distribution & aspect eligibility");
+  await userEvent.click(details[1]);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: "Square in Random emphasis square" }),
+  );
+  const rules = onChange.mock.lastCall![0].presentation.galleryRules;
+  expect(
+    rules.find(
+      (rule: { layout: string; aspect: string }) =>
+        rule.layout === "random" && rule.aspect === "square",
+    ).views,
+  ).toContain("square");
+  expect(
+    rules
+      .filter(
+        (rule: { layout: string; aspect: string }) =>
+          rule.layout !== "random" || rule.aspect !== "square",
+      )
+      .every((rule: { views: string[] }) => !rule.views.includes("square")),
+  ).toBe(true);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Remove square highlight" }),
+  );
+  expect(
+    onChange.mock.lastCall![0].presentation.galleryRules.every(
+      (rule: { views: string[] }) => !rule.views.includes("square"),
+    ),
+  ).toBe(true);
+});

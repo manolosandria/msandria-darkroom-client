@@ -1,0 +1,523 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import {
+  defaultHomeBanner,
+  HomeBanner,
+} from "@/src/domain/entities/HomeBanner";
+import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
+import { useSessionValue } from "./SessionProvider";
+import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
+import { VisualChoice } from "./VisualChoice";
+import HomePage from "./HomePage";
+import "./homeBannerEditor.css";
+import { bannerFonts, bannerPalettes } from "../bannerPresets";
+import { BannerPhotoSettings } from "./BannerPhotoSettings";
+import { Photo } from "@/src/domain/entities/Photo";
+
+export default function HomeBannerEditor() {
+  const { user } = useSessionValue();
+  return user?.isAdmin() ? (
+    <Editor />
+  ) : (
+    <p>Sign in as the administrator to edit Home.</p>
+  );
+}
+function Editor() {
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  useEffect(() => {
+    if (editingPhoto)
+      document
+        .querySelector(".banner-photo-settings")
+        ?.scrollIntoView?.({ block: "nearest" });
+  }, [editingPhoto]);
+  const [saved, setSaved] = useState<HomeBanner | null>(null);
+  const [draft, setDraft] = useState<HomeBanner>(defaultHomeBanner);
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [highlightDirty, setHighlightDirty] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const { confirm } = useEditingWorkspace();
+  const dirty =
+    saved !== null && JSON.stringify(draft) !== JSON.stringify(saved);
+  async function load() {
+    setBusy(true);
+    setError("");
+    try {
+      const value = await manageHomeBanner.get();
+      setSaved(value);
+      setDraft(value);
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+  async function save() {
+    if (lock.current) return false;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const value = await manageHomeBanner.save(draft);
+      setSaved(value);
+      setDraft(value);
+      setNotice("Home banner saved.");
+      return true;
+    } catch (failure) {
+      setError((failure as Error).message);
+      return false;
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  function change(key: keyof HomeBanner, value: string | number) {
+    setDraft((previous) => ({ ...previous, [key]: value }));
+    setNotice("");
+  }
+  useUnsavedEditor(dirty, {
+    label: "Home banner",
+    save,
+    discard: () => {
+      if (saved) setDraft(saved);
+    },
+  });
+  return (
+    <div className="banner-editor">
+      <header>
+        <p className="banner-editor__eyebrow">CURATOR / HOME</p>
+        <h1>Make an entrance.</h1>
+        <p>
+          Shape the welcome to your gallery. Preview your changes, then save to
+          update Home for everyone.
+        </p>
+      </header>
+      {error && (
+        <p role="alert">
+          {error}{" "}
+          <button
+            disabled={busy}
+            onClick={async () => {
+              if (
+                !dirty ||
+                (await confirm(
+                  "Reload banner?",
+                  "Discard your draft and load the latest saved banner?",
+                ))
+              )
+                await load();
+            }}
+          >
+            Reload state
+          </button>
+        </p>
+      )}
+      {notice && <p role="status">{notice}</p>}
+      {!saved ? (
+        <p>{busy ? "Loading banner…" : "Banner settings are unavailable."}</p>
+      ) : (
+        <div className="banner-editor__workspace">
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              await save();
+            }}
+          >
+            <fieldset disabled={busy}>
+              <legend>Words</legend>
+              {(
+                [
+                  ["eyebrow", "Eyebrow", 120],
+                  ["title", "Title", 200],
+                  ["accentText", "Accent text", 200],
+                  ["linkText", "Gallery link text", 80],
+                ] as const
+              ).map(([key, label, max]) => (
+                <label key={key}>
+                  {label}
+                  <textarea
+                    rows={key === "eyebrow" || key === "linkText" ? 1 : 2}
+                    maxLength={max}
+                    value={draft[key]}
+                    onChange={(event) => change(key, event.target.value)}
+                  />
+                </label>
+              ))}
+            </fieldset>
+            <fieldset disabled={busy}>
+              <legend>Palette</legend>
+              <div className="banner-editor__palettes">
+                {bannerPalettes.map((palette) => (
+                  <button
+                    key={palette.name}
+                    type="button"
+                    aria-label={`Apply ${palette.name} palette`}
+                    onClick={() => {
+                      const [
+                        backgroundColor,
+                        textColor,
+                        accentColor,
+                        surfaceColor,
+                      ] = palette.colors;
+                      setDraft((previous) => ({
+                        ...previous,
+                        backgroundColor,
+                        textColor,
+                        accentColor,
+                        surfaceColor,
+                      }));
+                      setNotice("");
+                    }}
+                  >
+                    <span
+                      className="banner-editor__swatches"
+                      aria-hidden="true"
+                    >
+                      {palette.colors.map((color) => (
+                        <i key={color} style={{ background: color }} />
+                      ))}
+                    </span>
+                    {palette.name}
+                  </button>
+                ))}
+              </div>
+              <div className="banner-editor__colors">
+                {(
+                  [
+                    ["backgroundColor", "Background"],
+                    ["textColor", "Text"],
+                    ["accentColor", "Accent"],
+                    ["surfaceColor", "Photo surround"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key}>
+                    {label}
+                    <input
+                      type="color"
+                      aria-label={label}
+                      value={draft[key]}
+                      onChange={(event) => change(key, event.target.value)}
+                    />
+                    <span>{draft[key]}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset disabled={busy}>
+              <legend>Typography & composition</legend>
+              <label>
+                Font
+                <select
+                  value={draft.font}
+                  onChange={(event) => change("font", event.target.value)}
+                >
+                  {bannerFonts.map((font) => (
+                    <option key={font.id} value={font.id}>
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Title size · {draft.fontSize}px
+                <input
+                  type="range"
+                  min="24"
+                  max="96"
+                  value={draft.fontSize}
+                  onChange={(event) =>
+                    change("fontSize", Number(event.target.value))
+                  }
+                />
+              </label>
+              <label>
+                Text alignment
+                <select
+                  value={draft.textAlign}
+                  onChange={(event) => change("textAlign", event.target.value)}
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </label>
+              <label>
+                Banner shape
+                <select
+                  value={draft.shape}
+                  onChange={(event) => change("shape", event.target.value)}
+                >
+                  <option value="square">Rectangle</option>
+                  <option value="rounded">Rounded corners</option>
+                  <option value="arch">Arch</option>
+                </select>
+              </label>
+            </fieldset>
+            <fieldset disabled={busy}>
+              <legend>Photograph framing</legend>
+              <div
+                className="display-choice"
+                role="group"
+                aria-label="Image presentation"
+              >
+                {[
+                  ["highlight", "Use highlight", "▦"],
+                  ["fill", "Fill photograph", "▭"],
+                  ["framed", "Complete framed photo", "□"],
+                ].map(([value, label, icon]) => (
+                  <VisualChoice
+                    key={value}
+                    label={label}
+                    icon={icon}
+                    active={(draft.imageMode ?? "highlight") === value}
+                    onClick={() => change("imageMode", value)}
+                  />
+                ))}
+              </div>
+              <p>
+                Fill may trim the selected area. Click a preview photo to choose
+                or edit its highlights.
+              </p>
+              {(draft.imageMode ?? "highlight") === "highlight" &&
+                (["desktopCrop", "mobileCrop"] as const).map((key) => (
+                  <div key={key}>
+                    <p>
+                      {key === "desktopCrop"
+                        ? "Desktop highlight"
+                        : "Mobile highlight"}
+                    </p>
+                    <div
+                      className="display-choice"
+                      role="group"
+                      aria-label={
+                        key === "desktopCrop"
+                          ? "Desktop highlight"
+                          : "Mobile highlight"
+                      }
+                    >
+                      {[
+                        ["landscape", "Landscape 3:2", "▭"],
+                        ["portrait", "Portrait 2:3", "▯"],
+                        ["square", "Square 1:1", "□"],
+                        ["full", "Full photograph", "▦"],
+                      ].map(([value, label, icon]) => (
+                        <VisualChoice
+                          key={value}
+                          label={`${key === "desktopCrop" ? "Desktop" : "Mobile"} ${label}`}
+                          icon={icon}
+                          active={
+                            (draft[key] ??
+                              (key === "desktopCrop"
+                                ? "landscape"
+                                : "portrait")) === value
+                          }
+                          onClick={() => change(key, value)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </fieldset>
+            <fieldset disabled={busy}>
+              <legend>Carousel</legend>
+              <label>
+                Navigation
+                <select
+                  value={draft.navigation ?? "dots"}
+                  onChange={(event) => change("navigation", event.target.value)}
+                >
+                  <option value="dots">Dots</option>
+                  <option value="thumbnails">Photograph thumbnails</option>
+                  <option value="progress">Progress bar</option>
+                </select>
+              </label>
+              <label>
+                Controls placement
+                <select
+                  value={draft.controlsPosition ?? "below"}
+                  onChange={(event) =>
+                    change("controlsPosition", event.target.value)
+                  }
+                >
+                  <option value="below">Below photograph</option>
+                  <option value="overlay">Over photograph</option>
+                </select>
+              </label>
+              <label>
+                Banner height · {draft.bannerHeight ?? 620}px
+                <input
+                  type="range"
+                  min={240}
+                  max={1000}
+                  step={10}
+                  value={draft.bannerHeight ?? 620}
+                  onChange={(event) =>
+                    change("bannerHeight", Number(event.target.value))
+                  }
+                />
+              </label>
+              <label>
+                Welcome overlay shade · {draft.overlayOpacity ?? 45}%
+                <input
+                  type="range"
+                  min={0}
+                  max={85}
+                  value={draft.overlayOpacity ?? 45}
+                  onChange={(event) =>
+                    change("overlayOpacity", Number(event.target.value))
+                  }
+                />
+              </label>
+            </fieldset>
+            <div className="banner-editor__actions">
+              <button type="submit" disabled={busy || !dirty}>
+                {busy ? "Saving…" : "Save banner"}
+              </button>
+              <button
+                type="button"
+                disabled={busy || !dirty}
+                onClick={async () => {
+                  if (
+                    await confirm(
+                      "Discard changes?",
+                      "Return to the last saved banner?",
+                    )
+                  )
+                    setDraft(saved);
+                }}
+              >
+                Cancel changes
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    await confirm(
+                      "Restore original design?",
+                      "Load the original design into your preview. Save to apply it.",
+                    )
+                  )
+                    setDraft({ ...defaultHomeBanner, version: saved.version });
+                }}
+              >
+                Restore original
+              </button>
+            </div>
+          </form>
+          <section
+            className="banner-editor__preview"
+            aria-label="Banner preview"
+          >
+            <p>
+              Drag Welcome or Photographs directly in the preview to change
+              their position. Click a photograph to choose its highlight.
+            </p>
+            <div className="banner-layout-keys" aria-label="Welcome placement">
+              {["left", "right", "top", "bottom", "overlay"].map((side) => (
+                <button
+                  type="button"
+                  key={side}
+                  disabled={busy}
+                  aria-pressed={draft.layout === `text-${side}`}
+                  aria-label={`Welcome ${side}`}
+                  title={`Welcome ${side}`}
+                  onClick={() => change("layout", `text-${side}`)}
+                >
+                  <span aria-hidden="true">
+                    {
+                      (
+                        {
+                          left: "⇤",
+                          right: "⇥",
+                          top: "⇡",
+                          bottom: "⇣",
+                          overlay: "▣",
+                        } as Record<string, string>
+                      )[side]
+                    }
+                  </span>
+                  <small>Welcome {side}</small>
+                </button>
+              ))}
+            </div>
+            {editingPhoto && (
+              <BannerPhotoSettings
+                key={editingPhoto.getId()}
+                photo={editingPhoto}
+                onUpdated={setEditingPhoto}
+                onDirty={setHighlightDirty}
+                onSlideChange={(slides) => {
+                  setDraft((previous) => ({ ...previous, slides }));
+                  setNotice("");
+                }}
+                display={mobile ? "mobile" : "desktop"}
+                onDisplayChange={(value) => setMobile(value === "mobile")}
+                banner={draft}
+                onClose={() => setEditingPhoto(null)}
+                onChange={(photoCrops) => {
+                  setDraft((previous) => ({
+                    ...previous,
+                    imageMode: "highlight",
+                    photoCrops,
+                  }));
+                  setNotice("");
+                }}
+              />
+            )}
+            <div className="banner-editor__preview-bar">
+              <h2>Live preview</h2>
+              <div
+                className="display-choice"
+                role="group"
+                aria-label="Preview display"
+              >
+                <VisualChoice
+                  label="Desktop preview"
+                  icon="▰"
+                  active={!mobile}
+                  onClick={() => setMobile(false)}
+                />
+                <VisualChoice
+                  label="Mobile preview"
+                  icon="▯"
+                  active={mobile}
+                  onClick={() => setMobile(true)}
+                />
+              </div>
+              <span>Unsaved preview</span>
+            </div>
+            <div
+              className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
+            >
+              <HomePage
+                banner={draft}
+                onEditPhoto={async (photo) => {
+                  if (editingPhoto?.getId() === photo.getId()) return;
+                  if (
+                    !highlightDirty ||
+                    (await confirm(
+                      "Discard highlight changes?",
+                      "Switching photos will discard your unsaved photo highlight edits.",
+                    ))
+                  )
+                    setEditingPhoto(photo);
+                }}
+                editedPhoto={editingPhoto}
+                onLayoutChange={
+                  busy ? undefined : (value) => change("layout", value)
+                }
+              />
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
