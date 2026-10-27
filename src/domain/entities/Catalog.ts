@@ -7,6 +7,7 @@ export type CollectionEntry = {
   showTitle?: boolean;
 };
 export type CollectionDraft = {
+  version?: number;
   coverPhotoId?: string | null;
   title: string;
   description?: string | null;
@@ -14,6 +15,7 @@ export type CollectionDraft = {
   entries: CollectionEntry[];
 };
 export type CatalogCollection = {
+  version?: number;
   coverPhotoId?: string | null;
   id: string;
   title: string;
@@ -22,11 +24,12 @@ export type CatalogCollection = {
   entries: CollectionEntry[];
 };
 export type CatalogWork = {
+  version?: number;
   id: string;
   title: string;
   variants: { photoId: string }[];
 };
-export type WorkDraft = { title: string; photoIds: string[] };
+export type WorkDraft = { version?: number; title: string; photoIds: string[] };
 export type Catalog = {
   collections: CatalogCollection[];
   categories: CatalogCategory[];

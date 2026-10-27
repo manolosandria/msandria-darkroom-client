@@ -14,7 +14,7 @@ import { PhotoTitlePosition } from "@/src/domain/entities/PhotoTitlePosition";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
 import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import {
-  getAllPhotos as defaultGetAllPhotos,
+  getPhotoNeighbors,
   getPhotoById as defaultGetPhotoById,
 } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
@@ -59,7 +59,7 @@ const TITLE_CORNER_CLASS: Record<PhotoTitlePosition, string> = {
 export default function PhotoViewer({
   photoId,
   getPhoto = defaultGetPhotoById,
-  getAllPhotos = defaultGetAllPhotos,
+  getAllPhotos,
 }: PhotoViewerProps) {
   const router = useRouter();
   const [quality, setQuality] = usePhotoQuality();
@@ -94,7 +94,7 @@ export default function PhotoViewer({
     () => getPhoto.execute(photoId),
     [getPhoto, photoId],
   );
-  const fetchAll = useCallback(() => getAllPhotos.execute(), [getAllPhotos]);
+  const fetchAll = useCallback(() => (getAllPhotos ?? getPhotoNeighbors(photoId)).execute(), [getAllPhotos, photoId]);
   const {
     data: photo,
     loading,

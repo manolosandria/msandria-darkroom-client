@@ -11,6 +11,7 @@ describe("assign photo variant", () => {
           works: [
             {
               id: "w",
+              version: 3,
               title: "Moment",
               variants: [{ photoId: "a" }, { photoId: "b" }],
             },
@@ -20,7 +21,7 @@ describe("assign photo variant", () => {
     };
     await assignPhotoVariant(catalog, "c", "a", "Other");
     expect(catalog.saveWork).toHaveBeenCalledWith(
-      { title: "Moment", photoIds: ["a", "b", "c"] },
+      { title: "Moment", photoIds: ["a", "b", "c"], version: 3 },
       "w",
     );
     catalog.saveWork.mockClear();
@@ -47,6 +48,7 @@ describe("assign photo variant", () => {
           works: [
             {
               id: "w",
+              version: 3,
               title: "Moment",
               variants: [{ photoId: "a" }, { photoId: "b" }],
             },

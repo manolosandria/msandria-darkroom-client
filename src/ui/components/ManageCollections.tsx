@@ -87,6 +87,7 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
     ]);
     setCatalog(nextCatalog);
     setPhotos(nextPhotos ?? []);
+    return nextCatalog;
   }, []);
   useEffect(() => {
     const refresh = () => {
@@ -100,13 +101,14 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
       window.removeEventListener("focus", refresh);
     };
   }, [load]);
-  async function save(action: () => Promise<void>, reset?: () => void) {
+  async function save(action: () => Promise<unknown>, reset?: () => void) {
     setBusy(true);
     setError("");
     setNotice("");
     try {
       await action();
       reset?.();
+      window.dispatchEvent(new Event("curator:catalog-changed"));
       setNotice("Saved.");
       try {
         await load();
@@ -162,7 +164,18 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
       {error && (
         <p role="alert">
           {error}{" "}
-          <button disabled={busy} onClick={() => void save(load)}>
+          <button disabled={busy} onClick={async () => {
+            if (workId && !window.confirm("Discard the current variant edits and reload the saved catalog?")) return;
+            setBusy(true);
+            try {
+              const latest = await load();
+              const current = latest.works.find(item => item.id === workId);
+              setWork(current ? { version: current.version, title: current.title, photoIds: current.variants.map(variant => variant.photoId) } : { title: "", photoIds: [] });
+              if (!current) setWorkId("");
+              setError(""); setNotice("Catalog reloaded.");
+            } catch { setError("Could not reload the catalog. Your edits are kept."); }
+            finally { setBusy(false); }
+          }}>
             Reload catalog
           </button>
         </p>
@@ -408,6 +421,7 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
                           setWorkId(item.id);
                           setWork({
                             title: item.title,
+                              version: item.version,
                             photoIds: item.variants.map((v) => v.photoId),
                           });
                         }}
@@ -441,6 +455,7 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
                         item
                           ? {
                               title: item.title,
+                              version: item.version,
                               photoIds: item.variants.map(
                                 (variant) => variant.photoId,
                               ),

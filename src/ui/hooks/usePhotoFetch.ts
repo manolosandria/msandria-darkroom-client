@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type FetchState<T> = {
   data: T | null;
@@ -23,22 +23,29 @@ export function usePhotoFetch<T>(
   failureMessage = "Failed to fetch photos",
 ) {
   const [state, setState] = useState<FetchState<T>>(INITIAL_STATE);
+  const request = useRef(0);
+  const invalidate = useCallback(() => { request.current++; }, []);
 
   const fetch = useCallback(async () => {
+    const current = ++request.current;
     setState({ data: null, loading: true, error: null });
     try {
       const result = await fetchPhotos();
-      setState(toSettledState(result, emptyMessage));
+      if (current === request.current)
+        setState(toSettledState(result, emptyMessage));
     } catch {
-      setState({ data: null, loading: false, error: failureMessage });
+      if (current === request.current)
+        setState({ data: null, loading: false, error: failureMessage });
     }
   }, [fetchPhotos, emptyMessage, failureMessage]);
 
   useEffect(() => {
     // Deferred to a microtask so the initial setState doesn't run
     // synchronously inside the effect body (react-hooks/set-state-in-effect).
-    queueMicrotask(fetch);
-  }, [fetch]);
+    let active = true;
+    queueMicrotask(() => { if (active) void fetch(); });
+    return () => { active = false; invalidate(); };
+  }, [fetch, invalidate]);
 
   return { ...state, retry: fetch };
 }

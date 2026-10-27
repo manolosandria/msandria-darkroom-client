@@ -7,6 +7,7 @@ import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { getManagedPhotos } from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
 import { Catalog } from "@/src/domain/entities/Catalog";
+import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
 
 vi.mock("@/src/infrastructure/catalogServices", () => ({
   manageCatalog: {
@@ -39,6 +40,7 @@ const catalog = (collections: Catalog["collections"] = []): Catalog => ({
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(manageCatalog.saveCollection).mockResolvedValue({ id: "saved", title: "City", version: 2, categories: [], entries: [] });
   vi.mocked(manageCatalog.load).mockResolvedValue(catalog());
   vi.mocked(getManagedPhotos.execute).mockResolvedValue(photos);
 });
@@ -57,6 +59,20 @@ async function saveAndAccept(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("catalog tabs", () => {
+  it("keeps a stale draft and offers an explicit reload without retrying the write", async () => {
+    vi.mocked(manageCatalog.load).mockResolvedValue(catalog([{ id: "c", version: 4, title: "City", categories: [], entries: [] }]));
+    vi.mocked(manageCatalog.saveCollection).mockRejectedValueOnce(new CatalogConflictError());
+    const user = userEvent.setup(); render(<CatalogEditor />);
+    await user.click(await screen.findByRole("button", { name: /City/ }));
+    await user.click(await screen.findByRole("button", { name: "Edit collection" }));
+    await user.type(screen.getByLabelText("Collection title"), " at night");
+    await saveAndAccept(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Your edits are kept");
+    expect(screen.getByLabelText("Collection title")).toHaveValue("City at night");
+    expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
+    expect(manageCatalog.saveCollection).toHaveBeenCalledWith(expect.objectContaining({ version: 4 }), "c");
+    expect(screen.getByRole("button", { name: "Reload state" })).toBeInTheDocument();
+  });
   it("shows collection categories separately from the top-level variants panel", async () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
@@ -210,7 +226,7 @@ describe("collection editor", () => {
   it("keeps the composition after a failed save and retries only on request", async () => {
     vi.mocked(manageCatalog.saveCollection)
       .mockRejectedValueOnce(new Error("Offline"))
-      .mockResolvedValueOnce();
+      .mockResolvedValueOnce({ id: "new", title: "City", version: 2, categories: [], entries: [] });
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);

@@ -19,6 +19,7 @@ import {
   MOSAIC_COLUMNS,
 } from "./CollectionCanvas";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
+import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
 
 const empty = (): CollectionDraft => ({
   title: "",
@@ -30,6 +31,7 @@ const empty = (): CollectionDraft => ({
 const fromCollection = (collection?: CatalogCollection): CollectionDraft =>
   collection
     ? {
+        version: collection.version,
         title: collection.title,
         description: collection.description ?? "",
         coverPhotoId: collection.coverPhotoId ?? null,
@@ -58,7 +60,7 @@ export function CollectionWorkspace({
 }: {
   catalog: Catalog;
   photos: Photo[];
-  refresh: () => Promise<void>;
+  refresh: () => Promise<unknown>;
 }) {
   const [focused, setFocused] = useState<string | null>(null);
   // null shows the grid; "" is the new collection.
@@ -286,13 +288,14 @@ function CollectionEditor({
   collection?: CatalogCollection;
   catalog: Catalog;
   photos: Photo[];
-  refresh: () => Promise<void>;
+  refresh: () => Promise<unknown>;
   onClose: () => void;
   onCreated: () => void;
   onDeleted: () => void;
   active: boolean;
 }) {
   const [baseline, setBaseline] = useState(() => fromCollection(collection));
+  const [conflict, setConflict] = useState(false);
   const [draft, setDraft] = useState(() => fromCollection(collection));
   const [excluded, setExcluded] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -365,13 +368,15 @@ function CollectionEditor({
     setError("");
     setNotice("");
     try {
-      await manageCatalog.saveCollection(payload, id || undefined);
-      const next = id ? payload : empty();
+      const saved = await manageCatalog.saveCollection(payload, id || undefined);
+      const next = id ? { ...payload, version: saved.version } : empty();
       setBaseline(next);
       setDraft(next);
       setExcluded([]);
       setSelected(null);
       setNotice("Saved.");
+      setConflict(false);
+      window.dispatchEvent(new Event("curator:catalog-changed"));
       try {
         await refresh();
       } catch {
@@ -382,6 +387,7 @@ function CollectionEditor({
       if (!id) onCreated();
       return true;
     } catch (failure) {
+      setConflict(failure instanceof CatalogConflictError);
       setError(
         failure instanceof Error
           ? failure.message
@@ -456,6 +462,18 @@ function CollectionEditor({
           </button>
         </div>
         {error && <p role="alert">{error}</p>}
+        {conflict && <button type="button" disabled={busy} onClick={async () => {
+          if (!(await confirm("Reload collection?", "Discard this collection's edits and load the latest saved composition?"))) return;
+          setBusy(true);
+          try {
+            const latest = (await manageCatalog.load()).collections.find(item => item.id === id);
+            if (!latest) throw new Error("This collection was removed.");
+            const next = fromCollection(latest);
+            setBaseline(next); setDraft(next); setExcluded([]); setConflict(false); setError("");
+            await refresh();
+          } catch { setError("Could not reload the collection. Your edits are kept."); }
+          finally { setBusy(false); }
+        }}>Reload state</button>}
         {notice && <p role="status">{notice}</p>}
         <div className="studio-split">
           <div className="studio-main">

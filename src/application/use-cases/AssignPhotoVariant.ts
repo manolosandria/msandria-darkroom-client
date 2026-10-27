@@ -23,7 +23,7 @@ export async function assignPhotoVariant(
     ? [...target.variants.map((v) => v.photoId), photoId]
     : [targetId, photoId];
   await catalog.saveWork(
-    { title: target?.title ?? title, photoIds },
+    { title: target?.title ?? title, photoIds, ...(target ? { version: target.version } : {}) },
     target?.id,
   );
 }

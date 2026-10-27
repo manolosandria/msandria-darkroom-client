@@ -5,7 +5,7 @@ import { BannerDragHandle } from "./BannerDragHandle";
 import { ResolutionBadge } from "./ResolutionBadge";
 import Link from "next/link";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
-import { getAllPhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoServices";
+import { getHomePhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import {
   enabledPhotoViews,

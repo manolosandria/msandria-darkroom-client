@@ -1,12 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiCatalogRepository } from "../ApiCatalogRepository";
+import { CatalogConflictError } from "../../domain/errors/CatalogConflictError";
 
 describe("ApiCatalogRepository", () => {
+  it("deduplicates concurrent reads without caching subsequent reads", async () => {
+    const fetchFn = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ collections: [], works: [], categories: [], photos: [] })));
+    const repository = new ApiCatalogRepository("https://api", fetchFn);
+    await Promise.all([repository.load(), repository.load(), repository.load()]);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    await repository.load();
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the version and translates a stale composition without replaying it", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "CATALOG_CHANGED" }), { status: 409 }));
+    await expect(new ApiCatalogRepository("https://api", fetchFn).saveCollection({ title: "City", categoryIds: [], entries: [], version: 7 }, "c")).rejects.toBeInstanceOf(CatalogConflictError);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledWith("https://api/collections/c", expect.objectContaining({ body: JSON.stringify({ title: "City", categoryIds: [], entries: [], version: 7 }) }));
+  });
   it("loads the public catalog and includes the session on every mutation", async () => {
     const catalog = { categories: [], collections: [], works: [], photos: [] };
     const fetchFn = vi
       .fn()
-      .mockResolvedValue(new Response(JSON.stringify(catalog)));
+      .mockImplementation(async () => new Response(JSON.stringify(catalog)));
     const repository = new ApiCatalogRepository(
       "https://api.example/",
       fetchFn,
