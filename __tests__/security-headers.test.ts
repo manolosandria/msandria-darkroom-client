@@ -93,6 +93,22 @@ describe("contentSecurityPolicy", () => {
     );
   });
 
+  it("adds the image hosts named at build time, by origin and over https only", () => {
+    const text = contentSecurityPolicy(
+      API_URL,
+      false,
+      " https://img.galeria.example/photos , http://insecure.example, not a url,",
+    );
+    expect(directiveIn(text, "img-src")).toBe(
+      "img-src 'self' data: blob: https://res.cloudinary.com https://img.galeria.example https://api.galeria.example",
+    );
+    expect(
+      securityHeaders(API_URL, false, "https://img.galeria.example")
+        .find((header) => header.key === "Content-Security-Policy")
+        ?.value,
+    ).toContain("https://img.galeria.example");
+  });
+
   it("serves its own fonts and nothing else", () => {
     expect(directive("font-src")).toBe("font-src 'self'");
   });

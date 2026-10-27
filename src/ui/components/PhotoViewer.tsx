@@ -19,6 +19,9 @@ import {
 } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { usePhotoQuality } from "@/src/ui/hooks/usePhotoQuality";
+import { useImageFallback } from "@/src/ui/hooks/useImageFallback";
+import { Photo } from "@/src/domain/entities/Photo";
+import { PhotoQuality } from "@/src/domain/entities/PhotoQuality";
 import { framedLayout } from "@/src/ui/framedLayout";
 import { hasSeenViewerHint, markViewerHintSeen } from "@/src/ui/viewerHint";
 import {
@@ -38,6 +41,24 @@ interface PhotoViewerProps {
 }
 
 const SWIPE_DISTANCE = 50;
+
+// The photo at the chosen quality; if it fails to load, the same width from the other
+// image host.
+function ViewerImage({ photo, quality }: { photo: Photo; quality: PhotoQuality }) {
+  const { useFallback, onError } = useImageFallback(photo);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- API rendition URLs are used verbatim.
+    <img
+      src={photo.urlForQuality(quality, useFallback)}
+      alt={photo.getTitle()}
+      width={photo.getWidth()}
+      height={photo.getHeight()}
+      draggable={false}
+      onError={onError}
+      className="block h-auto w-full"
+    />
+  );
+}
 // A hand resting on the mouse jitters; only a deliberate move brings the controls back.
 const REVEAL_DISTANCE = 8;
 
@@ -221,15 +242,7 @@ export default function PhotoViewer({
                 padding: `${layout.paddingY}% ${layout.paddingX}%`,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- API rendition URLs are used verbatim. */}
-              <img
-                src={photo.urlForQuality(quality)}
-                alt={photo.getTitle()}
-                width={photo.getWidth()}
-                height={photo.getHeight()}
-                draggable={false}
-                className="block h-auto w-full"
-              />
+              <ViewerImage photo={photo} quality={quality} />
             </div>
             <figcaption
               data-position={photo.getTitlePosition()}

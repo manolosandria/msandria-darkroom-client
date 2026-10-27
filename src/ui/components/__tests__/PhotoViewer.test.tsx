@@ -62,6 +62,31 @@ describe("PhotoViewer", () => {
     expect(screen.queryByText(/Click the photo to hide the controls/)).not.toBeInTheDocument();
   });
 
+  it("loads the same width from the other image host when the photo fails", async () => {
+    const photo = new Photo({
+      id: "b",
+      title: "Photo b",
+      width: 3000,
+      height: 2000,
+      renditions: [
+        { width: 1920, url: "https://r2/b/1920", fallbackUrl: "https://cloudinary/b/1920" },
+      ],
+    });
+    render(
+      <PhotoViewer
+        photoId="b"
+        getPhoto={{ execute: vi.fn().mockResolvedValue(photo) }}
+        getAllPhotos={{ execute: vi.fn().mockResolvedValue([photo]) }}
+      />,
+    );
+    const image = await screen.findByAltText("Photo b");
+    expect(image).toHaveAttribute("src", "https://r2/b/1920");
+
+    fireEvent.error(image);
+
+    expect(screen.getByAltText("Photo b")).toHaveAttribute("src", "https://cloudinary/b/1920");
+  });
+
   it("does not repeat the hint on a later visit", async () => {
     window.localStorage.setItem("viewerHintSeen", "1");
     setup();

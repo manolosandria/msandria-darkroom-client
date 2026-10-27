@@ -26,6 +26,8 @@ export type PhotoMetadata = {
 export type PhotoRendition = {
   width: number;
   url: string;
+  // The same rendition on the other image host, to try only when `url` fails to load.
+  fallbackUrl?: string;
 };
 
 // Who may see a photo. Select is reserved for special accounts that do not exist yet,
@@ -89,10 +91,14 @@ export class Photo {
     this.width = params.width;
     this.height = params.height;
     this.renditions = params.renditions
-      .map((rendition) => ({
-        width: rendition.width,
-        url: rendition.url.trim(),
-      }))
+      .map((rendition) => {
+        const fallbackUrl = rendition.fallbackUrl?.trim();
+        return {
+          width: rendition.width,
+          url: rendition.url.trim(),
+          ...(fallbackUrl ? { fallbackUrl } : {}),
+        };
+      })
       .sort((a, b) => a.width - b.width);
     this.description = params.description?.trim();
     this.createdAt = params.createdAt ?? new Date();
@@ -152,8 +158,18 @@ export class Photo {
   getAspectRatio() {
     return this.width / this.height;
   }
-  getRenditions() {
-    return this.renditions;
+  // With `useFallback`, every rendition that has a copy on the other image host points
+  // there instead; the rest keep their own URL.
+  getRenditions(useFallback = false): PhotoRendition[] {
+    return useFallback
+      ? this.renditions.map(({ width, url, fallbackUrl }) => ({
+          width,
+          url: fallbackUrl ?? url,
+        }))
+      : this.renditions;
+  }
+  hasFallback() {
+    return this.renditions.some((rendition) => rendition.fallbackUrl);
   }
   getCreatedAt() {
     return this.createdAt;
@@ -170,10 +186,11 @@ export class Photo {
 
   // The widest rendition the quality level allows, or the narrowest one when even that
   // is over the cap: a photo always has something to show.
-  urlForQuality(quality: PhotoQuality) {
+  urlForQuality(quality: PhotoQuality, useFallback = false) {
     const cap = PHOTO_QUALITY_WIDTH[quality];
-    const allowed = this.renditions.filter((rendition) => rendition.width <= cap);
-    return (allowed.length > 0 ? allowed[allowed.length - 1] : this.renditions[0]).url;
+    const renditions = this.getRenditions(useFallback);
+    const allowed = renditions.filter((rendition) => rendition.width <= cap);
+    return (allowed.length > 0 ? allowed[allowed.length - 1] : renditions[0]).url;
   }
 
   rename(newTitle: string) {

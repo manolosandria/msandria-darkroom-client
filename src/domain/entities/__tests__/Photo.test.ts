@@ -15,6 +15,31 @@ describe("Photo", () => {
     expect(photo.getRenditions()).toEqual(renditions);
   });
 
+  it("keeps each rendition's fallback on the other host and switches to it on request", () => {
+    const photo = new Photo({
+      id: "1",
+      title: "Esfera",
+      width: 1920,
+      height: 1080,
+      renditions: [
+        { width: 640, url: "https://r2/640", fallbackUrl: " https://cloudinary/640 " },
+        { width: 1280, url: "https://r2/1280", fallbackUrl: "  " },
+      ],
+    });
+
+    expect(photo.hasFallback()).toBe(true);
+    expect(photo.getRenditions()).toEqual([
+      { width: 640, url: "https://r2/640", fallbackUrl: "https://cloudinary/640" },
+      { width: 1280, url: "https://r2/1280" },
+    ]);
+    expect(photo.getRenditions(true)).toEqual([
+      { width: 640, url: "https://cloudinary/640" },
+      { width: 1280, url: "https://r2/1280" },
+    ]);
+    expect(photo.urlForQuality("saver", true)).toBe("https://cloudinary/640");
+    expect(new Photo({ id: "2", title: "Sola", width: 640, height: 480, renditions }).hasFallback()).toBe(false);
+  });
+
   it("trims title and rendition urls on creation", () => {
     const photo = new Photo({
       id: "1",

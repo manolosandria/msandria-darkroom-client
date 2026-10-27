@@ -35,6 +35,10 @@ production build:
 There is no client secret and no redirect URI in this project, and none belongs in this
 repository. See "Sessions" below.
 
+One optional build-time variable, `IMAGE_ORIGINS`, names extra image hosts for the
+Content-Security-Policy (https origins, comma-separated), such as the domain in front
+of the API's R2 bucket. Cloudinary is always allowed.
+
 ## Checks before opening a pull request
 
 ```
@@ -264,6 +268,11 @@ to reuse the same rendition. A browser can choose an already cached larger image
 a larger card or zoom can legitimately require another rendition. Listing images
 remain capped at 1280 px, so zoom and dense mobile screens can reach that ceiling.
 The gallery itself has no quality selector; the viewer does (see "Photo viewer").
+
+A rendition may carry `fallbackUrl`, the same width on the API's other image host.
+`PhotoImage` and the viewer use `useImageFallback`: when the image fails to load, the
+whole srcset (or the viewer's single URL) switches once to the fallbacks, and never
+retries again. Photos on one host only have no fallback and nothing changes.
 
 See [photo delivery verification](docs/photo-delivery-verification.md) for the tested
 viewports, synthetic density/zoom budgets, cache observations and remaining limits.
