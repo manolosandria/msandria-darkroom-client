@@ -88,7 +88,7 @@ The one with substance is the `Content-Security-Policy`, which lists the only pl
 |---|---|---|
 | `script-src` | this origin, inline, `accounts.google.com/gsi/client` | Next writes its bootstrap script into the HTML, and Google's script draws the sign-in button |
 | `style-src` | this origin, inline, `accounts.google.com/gsi/style` | `PhotoGrid` sets each photo's proportion as a style attribute, which counts as inline |
-| `img-src` | this origin, `data:`, `blob:`, `res.cloudinary.com`, `NEXT_PUBLIC_API_URL` | Photos come from the API's image host; private ones, from the API itself |
+| `img-src` | this origin, `data:`, `blob:`, `res.cloudinary.com`, the https origins in `IMAGE_ORIGINS`, `NEXT_PUBLIC_API_URL` | Photos come from the API's image hosts (Cloudinary, and R2's domain when set at build time); private ones, from the API itself. If a photo fails on one host, the page tries the `fallbackUrl` the API gave for the other, once |
 | `connect-src` | this origin, `NEXT_PUBLIC_API_URL`, `accounts.google.com/gsi/` | The page is useless if it cannot call the API, which is on another origin |
 | `frame-src` | `accounts.google.com/gsi/` | Google draws its button inside its own frame |
 | everything else | nothing | `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'` |

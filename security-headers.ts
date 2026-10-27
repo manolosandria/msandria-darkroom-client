@@ -18,8 +18,23 @@ const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 const GOOGLE_IDENTITY_STYLE = "https://accounts.google.com/gsi/style";
 const GOOGLE_IDENTITY = "https://accounts.google.com/gsi/";
 
-// Photos are delivered by the API's image host, and nothing else is ever loaded from it.
+// Photos are delivered by the API's image hosts, and nothing else is ever loaded from
+// them. Cloudinary is always allowed; any other host, such as the domain in front of an
+// R2 bucket, is named at build time in IMAGE_ORIGINS.
 const IMAGE_HOST = "https://res.cloudinary.com";
+
+// Comma-separated origins, https only. Anything unreadable or insecure is dropped
+// rather than trusted: a stray value must never widen the policy.
+export function imageOrigins(value: string | undefined): string[] {
+  return (value ?? "").split(",").flatMap((entry) => {
+    try {
+      const url = new URL(entry.trim());
+      return url.protocol === "https:" ? [url.origin] : [];
+    } catch {
+      return [];
+    }
+  });
+}
 
 export type SecurityHeader = { key: string; value: string };
 
@@ -38,8 +53,10 @@ function apiOrigin(apiUrl: string | undefined): string | null {
 export function contentSecurityPolicy(
   apiUrl: string | undefined,
   isDevelopment: boolean,
+  extraImageOrigins: string | undefined = undefined,
 ): string {
   const api = apiOrigin(apiUrl);
+  const images = [IMAGE_HOST, ...imageOrigins(extraImageOrigins)].join(" ");
   const directives = [
     "default-src 'self'",
     // 'unsafe-eval' is React's doing in development: it rebuilds error stacks with it.
@@ -47,7 +64,7 @@ export function contentSecurityPolicy(
     // Tailwind ships a stylesheet, but a component still sets a custom property inline
     // to keep each photo's proportion, and a style attribute counts as an inline style.
     `style-src 'self' 'unsafe-inline' ${GOOGLE_IDENTITY_STYLE}`,
-    `img-src 'self' data: blob: ${IMAGE_HOST}${api ? ` ${api}` : ""}`,
+    `img-src 'self' data: blob: ${images}${api ? ` ${api}` : ""}`,
     // next/font downloads Geist at build time and serves it from this origin.
     "font-src 'self'",
     // In development the extra scheme is the socket `next dev` pushes reloads through.
@@ -73,11 +90,12 @@ export function contentSecurityPolicy(
 export function securityHeaders(
   apiUrl: string | undefined,
   isDevelopment: boolean,
+  extraImageOrigins: string | undefined = undefined,
 ): SecurityHeader[] {
   const headers: SecurityHeader[] = [
     {
       key: "Content-Security-Policy",
-      value: contentSecurityPolicy(apiUrl, isDevelopment),
+      value: contentSecurityPolicy(apiUrl, isDevelopment, extraImageOrigins),
     },
     // The browser must not guess the type of a response: a file served as an image is
     // never to be run as a script.

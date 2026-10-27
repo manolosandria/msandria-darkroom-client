@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { PhotoImage } from "../PhotoImage";
 
@@ -26,6 +26,30 @@ describe("PhotoImage", () => {
     expect(screen.getByRole("img")).toHaveAttribute("srcset", "https://cdn/320 320w, https://cdn/640 640w");
     rerender(<PhotoImage photo={photo} fallbackSizes="72px" maxWidth={100} />);
     expect(screen.getByRole("img")).toHaveAttribute("srcset", "https://cdn/320 320w");
+  });
+
+  it("switches once to the other image host when the image fails to load", () => {
+    const photo = new Photo({ id: "both", title: "Both hosts", width: 640, height: 480,
+      renditions: [
+        { width: 320, url: "https://r2/320", fallbackUrl: "https://cloudinary/320" },
+        { width: 640, url: "https://r2/640", fallbackUrl: "https://cloudinary/640" },
+      ] });
+    render(<PhotoImage photo={photo} fallbackSizes="100vw" />);
+    const image = screen.getByRole("img");
+
+    fireEvent.error(image);
+    expect(image).toHaveAttribute("srcset", "https://cloudinary/320 320w, https://cloudinary/640 640w");
+    expect(image).toHaveAttribute("src", "https://cloudinary/320");
+    fireEvent.error(image);
+    expect(image).toHaveAttribute("src", "https://cloudinary/320");
+  });
+
+  it("keeps its only host when there is no fallback", () => {
+    const photo = new Photo({ id: "one", title: "One host", width: 320, height: 240,
+      renditions: [{ width: 320, url: "https://r2/320" }] });
+    render(<PhotoImage photo={photo} fallbackSizes="100vw" />);
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByRole("img")).toHaveAttribute("src", "https://r2/320");
   });
 
   it("does not invent candidates for an image with only one available rendition", () => {

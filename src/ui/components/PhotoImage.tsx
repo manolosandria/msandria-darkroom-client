@@ -1,5 +1,8 @@
+"use client";
+
 import { Highlight } from "@/src/domain/entities/PhotoHighlights";
 import { Photo } from "@/src/domain/entities/Photo";
+import { useImageFallback } from "@/src/ui/hooks/useImageFallback";
 
 interface PhotoImageProps {
   photo: Photo;
@@ -10,8 +13,9 @@ interface PhotoImageProps {
   crop?: Highlight;
 }
 
-// Cloudinary already optimizes these files. Native srcset keeps every descriptor
+// The image host already optimizes these files. Native srcset keeps every descriptor
 // equal to its actual rendition width, including nonstandard source dimensions.
+// If the image fails to load, the whole srcset switches once to the other host.
 export function PhotoImage({
   photo,
   fallbackSizes,
@@ -19,7 +23,8 @@ export function PhotoImage({
   maxWidth,
   crop,
 }: PhotoImageProps) {
-  const all = photo.getRenditions();
+  const { useFallback, onError } = useImageFallback(photo);
+  const all = photo.getRenditions(useFallback);
   const capped = maxWidth ? all.filter(({ width }) => width <= maxWidth) : all;
   // A cap below the smallest rendition still needs one candidate.
   const renditions = capped.length ? capped : all.slice(0, 1);
@@ -34,6 +39,7 @@ export function PhotoImage({
       height={photo.getHeight()}
       loading="lazy"
       decoding="async"
+      onError={onError}
       style={
         crop
           ? {
