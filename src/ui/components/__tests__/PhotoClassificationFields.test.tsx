@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ClassificationCatalogBoundary } from "../ClassificationCatalog";
 import userEvent from "@testing-library/user-event";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import {
@@ -48,6 +49,13 @@ beforeEach(() => {
 });
 
 describe("PhotoClassificationFields", () => {
+  it("shares suggestions across cards and reloads once after a catalog change", async () => {
+    render(<ClassificationCatalogBoundary><Harness /><Harness /><Harness /></ClassificationCatalogBoundary>);
+    await screen.findAllByRole("option", { name: "City" });
+    expect(manageCatalog.load).toHaveBeenCalledTimes(1);
+    fireEvent(window, new Event("curator:catalog-changed"));
+    await waitFor(() => expect(manageCatalog.load).toHaveBeenCalledTimes(2));
+  });
   it("starts public", () => {
     render(<Harness />);
     expect(screen.getByLabelText("Visibility")).toHaveValue("PUBLIC");

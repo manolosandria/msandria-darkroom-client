@@ -10,6 +10,8 @@ import CommentModeration from "./CommentModeration";
 import ContactInbox from "./ContactInbox";
 import { useCuratorNotifications } from "./CuratorNotifications";
 import { EditingBoundary } from "./EditingWorkspace";
+import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
+import { useSessionValue } from "./SessionProvider";
 
 const sections = [
   "Home",
@@ -24,6 +26,7 @@ const sections = [
 type Section = (typeof sections)[number];
 
 export default function Curator() {
+  const { user } = useSessionValue();
   const [section, setSection] = useState<Section>("Upload");
   const [visited, setVisited] = useState<Section[]>(["Upload"]);
   const counts = useCuratorNotifications();
@@ -45,7 +48,7 @@ export default function Curator() {
   }, []);
   return (
     <EditingBoundary>
-      <div className="curator-workspace">
+      <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}><div className="curator-workspace">
         <nav aria-label="Curator sections" className="curator-tabs">
           {sections.map((name) => {
             const count =
@@ -107,7 +110,7 @@ export default function Curator() {
         )}
         {section === "Moderation" && <CommentModeration />}
         {section === "Inbox" && <ContactInbox />}
-      </div>
+      </div></ClassificationCatalogBoundary>
     </EditingBoundary>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState, CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, CSSProperties } from "react";
 import { Catalog } from "@/src/domain/entities/Catalog";
-import { selectCatalog } from "@/src/domain/catalogSelection";
-import { editCatalog } from "@/src/infrastructure/catalogServices";
-import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
-import { getAllPhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoServices";
+
+import { galleryCategories } from "@/src/infrastructure/catalogServices";
+import { BrowsePhotos } from "@/src/application/use-cases/BrowsePhotos";
+import { browsePhotos as defaultBrowsePhotos } from "@/src/infrastructure/photoServices";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { GalleryVisitorControls } from "./GalleryVisitorControls";
@@ -18,32 +18,16 @@ import {
 } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
 import "./galleryStudio.css";
-import { enabledPhotoViews } from "@/src/domain/photoPresentation";
+
 import "./publicCatalog.css";
 
 export default function Gallery({
-  getAllPhotos = defaultGetAllPhotos,
+  browsePhotos = defaultBrowsePhotos,
   settings: previewSettings,
 }: {
-  getAllPhotos?: Pick<GetAllPhotos, "execute">;
+  browsePhotos?: Pick<BrowsePhotos, "execute">;
   settings?: GallerySettings;
 }) {
-  const fetchPhotos = useCallback(async () => {
-    const result = await getAllPhotos.execute();
-    if (!result) return result;
-    const shuffled = [...result];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }, [getAllPhotos]);
-  const {
-    data: photos,
-    loading,
-    error,
-    retry,
-  } = usePhotoFetch(fetchPhotos, "No photos found");
   const [storedSettings, setStoredSettings] = useState(defaultGallerySettings);
   useEffect(() => {
     if (!previewSettings)
@@ -64,7 +48,7 @@ export default function Gallery({
   const [page, setPage] = useState(1);
   const loadCatalog = useCallback(async () => {
     try {
-      setCatalog(await editCatalog.load());
+      setCatalog(await galleryCategories.load());
       setCatalogError(false);
     } catch {
       setCatalogError(true);
@@ -78,35 +62,6 @@ export default function Gallery({
       void loadCatalog();
     });
   }, [loadCatalog]);
-  const normalize = (text: string) =>
-    text
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-  const search = normalize(query);
-  const matchingCategories = new Set(
-    catalog?.categories
-      .filter((category) => normalize(category.name).includes(search))
-      .map((category) => category.id),
-  );
-  const categoryPhotos = new Set(
-    catalog?.photos
-      .filter((photo) =>
-        photo.categories.some((category) =>
-          matchingCategories.has(category.id),
-        ),
-      )
-      .map((photo) => photo.id),
-  );
-  for (const collection of catalog?.collections ?? [])
-    if (
-      collection.categories.some((category) =>
-        matchingCategories.has(category.id),
-      )
-    ) {
-      for (const entry of collection.entries) categoryPhotos.add(entry.photoId);
-    }
   const categoryStyle = settings.categories.find(
     (item) => item.categoryId === categoryId,
   );
@@ -127,26 +82,58 @@ export default function Gallery({
   const layout = allowed(display.layout, appearance.layout, options.layouts);
   const crops = allowed(display.crops, "mixed", options.crops);
   const context = { layout, crops };
-  const eligible = photos?.filter(
-    (photo) =>
-      enabledPhotoViews(photo, "gallery", context).length > 0 &&
-      (!search ||
-        normalize(photo.getTitle()).includes(search) ||
-        categoryPhotos.has(photo.getId())),
+  const [seed] = useState(() => String(Math.random()).slice(2));
+  const [settledSearch, setSettledSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSettledSearch(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const abort = useRef<AbortController | null>(null);
+  const pageLock = useRef(false);
+  const cooldown = useRef(0);
+  const fetchPhotos = useCallback(async () => {
+    abort.current?.abort();
+    const controller = new AbortController();
+    abort.current = controller;
+    pageLock.current = true;
+    try {
+      return await browsePhotos.execute(
+        {
+          page,
+          limit: 12,
+          seed,
+          category: categoryId || undefined,
+          search: settledSearch,
+          layout,
+          crops,
+        },
+        controller.signal,
+      );
+    } finally {
+      if (abort.current === controller) pageLock.current = false;
+    }
+  }, [browsePhotos, page, seed, categoryId, settledSearch, layout, crops]);
+  useEffect(() => () => abort.current?.abort(), []);
+  const {
+    data: result,
+    loading,
+    error,
+    retry,
+  } = usePhotoFetch(
+    fetchPhotos,
+    "No photos found",
+    "Photos could not be loaded. Please wait a moment before retrying.",
   );
-  const tiles = eligible
-    ? selectCatalog(
-        eligible,
-        catalog ?? { photos: [], works: [], categories: [], collections: [] },
-        categoryId,
-        "",
-      )
-    : null;
-  const count = tiles?.length ?? photos?.length ?? 0;
-  const pages = Math.max(1, Math.ceil(count / 12));
-  const currentPage = Math.min(page, pages);
-  const start = (currentPage - 1) * 12;
-  const visible = tiles?.slice(start, start + 12);
+  const count = result?.total ?? 0;
+  const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));
+  const currentPage = page;
+  const visible = result?.tiles;
+  const navigate = (next: number) => {
+    if (loading || pageLock.current || Date.now() < cooldown.current) return;
+    pageLock.current = true;
+    cooldown.current = Date.now() + 500;
+    setPage(next);
+  };
   const style = {
     "--gallery-background": appearance.background,
     "--gallery-text": appearance.text,
@@ -246,8 +233,8 @@ export default function Gallery({
       {count > 0 && (
         <nav className="gallery-pagination" aria-label="Gallery pagination">
           <button
-            disabled={currentPage === 1}
-            onClick={() => setPage(currentPage - 1)}
+            disabled={loading || currentPage === 1}
+            onClick={() => navigate(currentPage - 1)}
           >
             ← Previous
           </button>
@@ -255,8 +242,8 @@ export default function Gallery({
             Page {currentPage} of {pages}
           </span>
           <button
-            disabled={currentPage === pages}
-            onClick={() => setPage(currentPage + 1)}
+            disabled={loading || currentPage >= pages}
+            onClick={() => navigate(currentPage + 1)}
           >
             Next →
           </button>

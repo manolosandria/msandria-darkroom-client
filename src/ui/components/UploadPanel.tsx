@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
 import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { VariantAssignment } from "./VariantAssignment";
 import { assignPhotoVariant } from "@/src/application/use-cases/AssignPhotoVariant";
@@ -594,6 +595,7 @@ function Shell({
   children,
   ...rest
 }: { children?: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
+  const { user } = useSessionValue();
   return (
     <main className="upload-workspace" {...rest}>
       <div className="upload-container">
@@ -602,7 +604,7 @@ function Shell({
           <h1>A place for your next photographs.</h1>
           <p>Select, refine, and give every photograph its own frame.</p>
         </div>
-        {children}
+        <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>{children}</ClassificationCatalogBoundary>
       </div>
     </main>
   );

@@ -21,7 +21,7 @@ carry that convention over here, and do not mix the two inside a file.
 | Develop, cache cleared | `npm run dev:clean`: deletes `.next/dev` first. Use it when the dev server keeps serving an old stylesheet |
 
 Node version is pinned in `.nvmrc`. `nvm-windows` does not read that file, so on Windows
-the version has to be named by hand: `nvm use 20.20.2`.
+the version has to be named by hand: `nvm use 24.22.1`.
 
 `.env.local` is ignored by git and must never be committed. Two variables, both
 inlined into the client bundle at build time, so both must be set **before** a
@@ -496,3 +496,38 @@ Home preview photos open per-photo banner settings with named custom crops, rati
 Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
 
 Home adds fixed selected placement controls, icon framing choices, optional Welcome overlay with shade and height sliders, dot/thumbnail/progress navigation and overlay controls. Resolution labels use pixel categories rather than devices. Per-slide captions and destinations support photos, gallery, category, collection and external HTTPS links. Gallery and Collections read the corresponding query parameter on entry.
+
+
+## Catalog reliability and shared reads
+
+Collection and work updates send the version originally loaded from the catalog.
+Successful saves adopt the returned version; stale writes keep the draft and explain
+that the catalog changed. Collection Reload state confirms before discarding edits;
+Reload catalog can restore the saved variant group after confirmation. Versions are
+opaque and may advance by more than one after composition changes.
+
+Collection cards obtain public covers together from `GET /photos/covers`; opening a
+collection still loads its contents. Classification cards share one lazily loaded
+catalog within the workspace, reload on catalog changes or window focus, and reset
+on account changes. Concurrent repository reads share only the in-flight request;
+completed responses and authorization are not persistently cached. `usePhotoFetch`
+accepts only the latest active request, including during retries and filter changes.
+Deploy the API's `20261027000000_audit_reliability` migration and API changes before
+this client. Existing Home and Gallery presentation preferences are preserved.
+
+
+## Server pagination
+
+Gallery uses BrowsePhotos and the bounded `/photos/browse` contract, not GetAllPhotos.
+The server filters category, title/category search and presentation rules before
+pagination, grouping variants into one tile. Keep the seed between page requests.
+Do not restore client-only pagination or load the full photo catalog for the viewer's
+arrow order. Home requests eight groups, collections sixty. Gallery only requests
+category metadata for its controls. Gallery aborts obsolete reads, debounces search
+350 ms and guards pagination while loading and for 500 ms between changes; the API's
+90 requests/minute/IP limit remains the server-side protection. Collection composition
+references are distinct from the bounded photo payload.
+
+Node is pinned to 24.22.1 LTS in both repositories. Turbopack's experimental workerThreads
+plugin runtime avoids the failing local PostCSS child-process socket handshake on
+Windows; retain the default Turbopack build and review this option with Next upgrades.

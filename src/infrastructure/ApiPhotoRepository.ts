@@ -1,5 +1,9 @@
 import { rateLimitError } from "./rateLimitError";
 import {
+  PhotoPage,
+  PhotoPageQuery,
+} from "../domain/repositories/PhotoBrowseRepository";
+import {
   Photo,
   PhotoCamera,
   PhotoCollectionPlacement,
@@ -72,12 +76,48 @@ type ApiReviewedPhoto = ApiPhoto & {
   optimizationIssues: ApiOptimizationIssue[];
 };
 
-export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepository {
+export class ApiPhotoRepository
+  implements PhotoRepository, PhotoMaintenanceRepository
+{
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
     private readonly listingPath = "/photos",
   ) {}
+
+  async browse(
+    query: PhotoPageQuery,
+    signal?: AbortSignal,
+  ): Promise<PhotoPage> {
+    if (!this.baseUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
+    const params = new URLSearchParams(
+      Object.entries(query)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, String(value)]),
+    );
+    const response = await this.fetchFn(
+      `${this.baseUrl.replace(/\/+$/, "")}/photos/browse?${params}`,
+      { credentials: "include", signal },
+    );
+    if (response.status === 429) throw rateLimitError(response);
+    const result = (await this.ensureOk(response).json()) as {
+      page: number;
+      limit: number;
+      total: number;
+      tiles: { key: string; photos: ApiPhotoListItem[] }[];
+    };
+    return {
+      ...result,
+      tiles: result.tiles.flatMap((tile) => {
+        const variants = tile.photos
+          .filter((photo) => this.isDeliverable(photo))
+          .map((photo) => this.toDomainPhoto(photo));
+        return variants.length
+          ? [{ key: tile.key, photo: variants[0], variants }]
+          : [];
+      }),
+    };
+  }
 
   async findById(id: string): Promise<Photo | null> {
     const response = await this.get(`/photos/${encodeURIComponent(id)}`);
@@ -88,7 +128,9 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
 
   async findAll(): Promise<Photo[] | null> {
     const response = await this.get(this.listingPath);
-    const entries = (await this.ensureOk(response).json()) as ApiPhotoListItem[];
+    const entries = (await this.ensureOk(
+      response,
+    ).json()) as ApiPhotoListItem[];
     const photos = entries
       .filter((entry) => this.isDeliverable(entry))
       .map((entry) => this.toDomainPhoto(entry));
@@ -103,8 +145,10 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     form.append("file", draft.file);
     form.append("title", draft.title);
     if (draft.visibility) form.append("visibility", draft.visibility);
-    if (draft.categoryNames) form.append("categoryNames", JSON.stringify(draft.categoryNames));
-    if (draft.collections) form.append("collections", JSON.stringify(draft.collections));
+    if (draft.categoryNames)
+      form.append("categoryNames", JSON.stringify(draft.categoryNames));
+    if (draft.collections)
+      form.append("collections", JSON.stringify(draft.collections));
     if (draft.description) form.append("description", draft.description);
     if (draft.highlights)
       form.append("highlights", JSON.stringify(draft.highlights));
@@ -132,25 +176,49 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
     return ((await response.json()) as ApiReviewedPhoto[])
       .filter((entry) => this.isDeliverable(entry))
       .map((entry) => this.toReviewedPhoto(entry))
-      .filter((entry) => entry.optimizationIssues.some((issue) => issue.isPending()));
+      .filter((entry) =>
+        entry.optimizationIssues.some((issue) => issue.isPending()),
+      );
   }
 
-  async replace(photo: Photo, file: File, original?: Photo): Promise<PublishedPhoto> {
+  async replace(
+    photo: Photo,
+    file: File,
+    original?: Photo,
+  ): Promise<PublishedPhoto> {
     const form = new FormData();
     form.append("file", file);
-    for (const [key, value] of Object.entries(this.editFields(photo, original))) {
+    for (const [key, value] of Object.entries(
+      this.editFields(photo, original),
+    )) {
       // A form cannot carry null, and an empty colour is refused. Removing the frame
       // still lands: both thicknesses go as 0, which is read back as no frame.
       if (key === "frameColor" && value === null) continue;
-      form.append(key, typeof value === "object" && value !== null ? JSON.stringify(value) : value === null ? "" : String(value));
+      form.append(
+        key,
+        typeof value === "object" && value !== null
+          ? JSON.stringify(value)
+          : value === null
+            ? ""
+            : String(value),
+      );
     }
-    const response = await this.send("POST", `/photos/${encodeURIComponent(photo.getId())}/file`, form);
+    const response = await this.send(
+      "POST",
+      `/photos/${encodeURIComponent(photo.getId())}/file`,
+      form,
+    );
     if (!response.ok) throw await this.toUploadError(response);
     return this.toReviewedPhoto((await response.json()) as ApiReviewedPhoto);
   }
 
   private toReviewedPhoto(entry: ApiReviewedPhoto): PublishedPhoto {
-    return { photo: this.toDomainPhoto(entry), optimizationIssues: entry.optimizationIssues.map((issue) => new PhotoOptimizationIssue(issue)) };
+    return {
+      photo: this.toDomainPhoto(entry),
+      optimizationIssues: entry.optimizationIssues.map(
+        (issue) => new PhotoOptimizationIssue(issue),
+      ),
+    };
   }
 
   async findCollection(_id: string): Promise<Photo[] | null> {
@@ -185,9 +253,14 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       ...entry.getClassification(),
     });
     const before = original ? fields(original) : null;
-    const { frame, ...changed } = Object.fromEntries(Object.entries(fields(photo)).filter(([key, value]) =>
-      !before || JSON.stringify(value) !== JSON.stringify(before[key as keyof typeof before]),
-    ));
+    const { frame, ...changed } = Object.fromEntries(
+      Object.entries(fields(photo)).filter(
+        ([key, value]) =>
+          !before ||
+          JSON.stringify(value) !==
+            JSON.stringify(before[key as keyof typeof before]),
+      ),
+    );
     return {
       version: photo.getVersion(),
       ...changed,
@@ -198,7 +271,11 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
   // The API stores the frame as three columns; no colour means no frame.
   private frameFields(frame: PhotoFrame | null) {
     return frame
-      ? { frameColor: frame.color, frameLeftRight: frame.leftRight, frameTopBottom: frame.topBottom }
+      ? {
+          frameColor: frame.color,
+          frameLeftRight: frame.leftRight,
+          frameTopBottom: frame.topBottom,
+        }
       : { frameColor: null, frameLeftRight: 0, frameTopBottom: 0 };
   }
 
@@ -255,7 +332,10 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       );
     }
     if (response.status === 409) {
-      return new PhotoUploadError("conflict", "This photo changed while you were editing it. Reload its state before saving.");
+      return new PhotoUploadError(
+        "conflict",
+        "This photo changed while you were editing it. Reload its state before saving.",
+      );
     }
     if (response.status === 413) {
       return new PhotoUploadError(
@@ -311,7 +391,10 @@ export class ApiPhotoRepository implements PhotoRepository, PhotoMaintenanceRepo
       collections: detail?.collections,
       highlights: entry.highlights,
       // A frame with no thickness on any side is no frame (see `replace`).
-      frame: entry.frame && (entry.frame.leftRight > 0 || entry.frame.topBottom > 0) ? entry.frame : null,
+      frame:
+        entry.frame && (entry.frame.leftRight > 0 || entry.frame.topBottom > 0)
+          ? entry.frame
+          : null,
       titlePosition: detail?.titlePosition,
       metadata: {
         format: detail?.format,

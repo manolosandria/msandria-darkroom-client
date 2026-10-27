@@ -85,6 +85,7 @@ describe("Curator", () => {
   });
   it("opens on Upload and switches between its sections", async () => {
     show(admin);
+    await screen.findByRole("button", { name: "Moderation2" });
     expect(screen.getByRole("button", { name: "Upload" })).toHaveAttribute(
       "aria-current",
       "page",

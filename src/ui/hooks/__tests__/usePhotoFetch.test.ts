@@ -1,8 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { usePhotoFetch } from "../usePhotoFetch";
 
 describe("usePhotoFetch", () => {
+  it("keeps the latest result when an older request finishes last", async () => {
+    let resolveOld!: (value: string[]) => void;
+    const old = () => new Promise<string[]>((resolve) => {
+      resolveOld = resolve;
+    });
+    const fresh = () => Promise.resolve(["current"]);
+    const { result, rerender } = renderHook(
+      ({ fetcher }) => usePhotoFetch(fetcher, "empty"),
+      { initialProps: { fetcher: old } },
+    );
+    await waitFor(() => expect(resolveOld).toBeDefined());
+    rerender({ fetcher: fresh });
+    await waitFor(() => expect(result.current.data).toEqual(["current"]));
+    await act(async () => resolveOld(["obsolete"]));
+    expect(result.current.data).toEqual(["current"]);
+  });
+
+  it("ignores an obsolete failure after a successful retry", async () => {
+    let rejectOld!: (reason: Error) => void;
+    const fetcher = vi.fn().mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
+      .mockResolvedValue(["current"]);
+    const { result } = renderHook(() => usePhotoFetch(fetcher, "empty"));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    await act(async () => { await result.current.retry(); });
+    await act(async () => rejectOld(new Error("obsolete")));
+    expect(result.current.data).toEqual(["current"]);
+    expect(result.current.error).toBeNull();
+  });
   it("starts loading and then exposes the resolved data", async () => {
     const fetcher = vi.fn().mockResolvedValue(["a", "b"]);
 

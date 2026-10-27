@@ -10,7 +10,7 @@ Day to day, with everything already installed (the first time on a machine, star
 
 1. **Start the API first.** In another terminal, from `msandria-darkroom-api`, run `npm run start:dev` and wait for `Nest application successfully started` (see that repository's README). Without it the gallery has nothing to show and sign-in fails.
 2. **Move into this folder.** `npm` commands run inside `msandria-darkroom-client`, not in the folder that holds both repositories, which has no `package.json`.
-3. If you use `nvm`, switch to the version in `.nvmrc` (`nvm use` in bash; with `nvm-windows`, `nvm use 20.20.2`, since it does not read `.nvmrc`).
+3. If you use `nvm`, switch to the version in `.nvmrc` (`nvm use` in bash; with `nvm-windows`, `nvm use 24.22.1`, since it does not read `.nvmrc`).
 4. Start the development server:
 
    ```bash
@@ -42,7 +42,7 @@ Once per machine.
 
 ### Tools
 
-- **Node 20.20.2**, the version in `.nvmrc` and the one CI uses. The easy way is `nvm` (WSL, Linux, macOS) or `nvm-windows`. Other versions usually run, but they are not what CI checks.
+- **Node 24.22.1**, the version in `.nvmrc` and the one CI uses. The easy way is `nvm` (WSL, Linux, macOS) or `nvm-windows`. Other versions usually run, but they are not what CI checks.
 - **Git**.
 - **`msandria-darkroom-api`** installed and running locally, following its own README (Postgres or a Neon development branch, Cloudinary and Google credentials).
 - A **Google OAuth client id** of type "Web application", the same one the API uses, with `http://localhost:3000` under "Authorized JavaScript origins".
@@ -60,8 +60,8 @@ Once per machine.
    With `nvm-windows`, pass the version, since it does not read `.nvmrc`:
 
    ```powershell
-   nvm install 20.20.2
-   nvm use 20.20.2
+   nvm install 24.22.1
+   nvm use 24.22.1
    npm ci
    ```
 
@@ -570,3 +570,45 @@ Home preview photos open per-photo banner settings with named custom crops, rati
 Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
 
 Home adds fixed selected placement controls, icon framing choices, optional Welcome overlay with shade and height sliders, dot/thumbnail/progress navigation and overlay controls. Resolution labels use pixel categories rather than devices. Per-slide captions and destinations support photos, gallery, category, collection and external HTTPS links. Gallery and Collections read the corresponding query parameter on entry.
+
+
+## Catalog reliability and shared reads
+
+Collection and work updates send the version originally loaded from the catalog.
+Successful saves adopt the returned version; stale writes keep the draft and explain
+that the catalog changed. Collection Reload state confirms before discarding edits;
+Reload catalog can restore the saved variant group after confirmation. Versions are
+opaque and may advance by more than one after composition changes.
+
+Collection cards obtain public covers together from `GET /photos/covers`; opening a
+collection still loads its contents. Classification cards share one lazily loaded
+catalog within the workspace, reload on catalog changes or window focus, and reset
+on account changes. Concurrent repository reads share only the in-flight request;
+completed responses and authorization are not persistently cached. `usePhotoFetch`
+accepts only the latest active request, including during retries and filter changes.
+Deploy the API's `20261027000000_audit_reliability` migration and API changes before
+this client. Existing Home and Gallery presentation preferences are preserved.
+
+
+### Bounded public browsing and Turbopack
+
+Gallery requests twelve groups per page from `GET /photos/browse`, with search,
+category and presentation filters applied by the API. A group may carry several
+visible variants. The seed keeps random ordering stable while the data set remains
+unchanged. Home requests at most eight groups; collections request sixty per page.
+The viewer requests only its public neighbors for arrow navigation. Full photo
+listings belong to the administrator's panel. The public collection catalog still
+contains composition references, without downloading every photo's renditions.
+
+Search waits 350 ms; obsolete Gallery reads are aborted. Pagination blocks while
+loading and ignores changes less than 500 ms apart. The API also enforces a
+90-requests/minute/IP quota for browsing and neighbors; rejected reads need a manual
+retry. Multi-instance deployment needs the shared rate-limit store tracked by the API.
+
+Both repositories use Node **24.22.1 LTS**. `engines` requires the supported 24.x
+line; CI reads `.nvmrc`. Install/select that version locally before running npm.
+Next 16.3.6 uses the experimental `turbopackPluginRuntimeStrategy: "workerThreads"`
+to avoid the PostCSS child-process socket handshake that failed on this Windows
+environment. Turbopack remains the default for development and builds. Review this
+option on Next upgrades; the successful workaround does not identify the operating
+system cause of the socket failure.

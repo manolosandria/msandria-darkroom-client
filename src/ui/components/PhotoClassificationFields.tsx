@@ -1,10 +1,9 @@
 "use client";
 
 import styles from "./EditorFeedback.module.css";
-import { useEffect, useId, useState } from "react";
-import { Catalog } from "@/src/domain/entities/Catalog";
+import { useId, useState } from "react";
 import { PhotoClassification } from "@/src/domain/entities/Photo";
-import { manageCatalog } from "@/src/infrastructure/catalogServices";
+import { ClassificationCatalogBoundary, useClassificationCatalog } from "./ClassificationCatalog";
 
 export type { PhotoClassification };
 
@@ -15,30 +14,24 @@ export const publicClassification = (): PhotoClassification => ({
   collections: [],
 });
 
-export function PhotoClassificationFields({
-  value,
-  onChange,
-  disabled = false,
-}: {
+type Props = {
   value: PhotoClassification;
   onChange: (value: PhotoClassification) => void;
   disabled?: boolean;
-}) {
+};
+
+export function PhotoClassificationFields(props: Props) {
+  return <ClassificationCatalogBoundary><ClassificationFields {...props} /></ClassificationCatalogBoundary>;
+}
+
+function ClassificationFields({
+  value,
+  onChange,
+  disabled = false,
+}: Props) {
   const id = useId();
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [failed, setFailed] = useState(false);
+  const { catalog, failed, reload: load } = useClassificationCatalog();
   const [text, setText] = useState("");
-  async function load() {
-    try {
-      setCatalog(await manageCatalog.load());
-      setFailed(false);
-    } catch {
-      setFailed(true);
-    }
-  }
-  useEffect(() => {
-    queueMicrotask(() => void load());
-  }, []);
   function add(raw: string) {
     const names = [...value.categoryNames];
     for (const part of raw.split(",")) {

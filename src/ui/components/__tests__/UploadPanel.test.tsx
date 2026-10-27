@@ -231,7 +231,7 @@ describe("Upload workspace", () => {
 it("retries variant linking without uploading a successful file again", async () => {
   const target = new Photo({ id: "original", title: "Original", width: 100, height: 100, renditions: [{ width: 100, url: "https://cdn/original" }] });
   vi.mocked(getManagedPhotos.execute).mockResolvedValue([target]);
-  vi.mocked(manageCatalog.saveWork).mockRejectedValueOnce(new Error("Link unavailable")).mockResolvedValueOnce(undefined);
+  vi.mocked(manageCatalog.saveWork).mockRejectedValueOnce(new Error("Link unavailable")).mockResolvedValueOnce({id:"work",title:"Work",version:1,variants:[]});
   renderPanel();
   await select();
   await userEvent.click(screen.getByText(/group another interpretation/));
