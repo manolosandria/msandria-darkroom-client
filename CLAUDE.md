@@ -450,9 +450,13 @@ See README for endpoints and the required API migration.
 
 ## Interactive browsing and variant assignment
 
-Home features a manually controlled carousel of up to eight recent public photos,
-with previous/next controls, position buttons and keyboard arrows. It never advances
-automatically. Header links react to hover and keyboard focus; the current route is
+Home features a manually controlled carousel with previous/next controls, position
+buttons and keyboard arrows. Slides chosen in Curator (`BannerSlideList`) decide its
+photos and order; without them it draws up to eight eligible photos at random per
+visit. Clicking the photo only focuses the carousel (no focus frame); the slide title
+is the only link. It never advances automatically. Gallery keeps its place in the URL
+and its seed in `sessionStorage`; `viewerSequence` lets the viewer's arrows follow the
+page a photo was opened from, and the viewer ignores keys typed in fields. Header links react to hover and keyboard focus; the current route is
 marked. Gallery groups category chips into Subjects, Color & treatment and Themes, with unrecognized names in Other. Empty groups are hidden; All photographs clears the selection.
 Categories uses selectable cards showing photo counts.
 

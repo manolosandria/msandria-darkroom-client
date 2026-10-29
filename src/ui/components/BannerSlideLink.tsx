@@ -45,13 +45,18 @@ export function BannerSlideLink({
         : slide.href === "/gallery"
           ? "gallery"
           : "photo";
-  const update = (patch: Partial<typeof slide>) =>
+  // Slides are the carousel's order, so an edit keeps the slide where it is; a photo
+  // that is not a slide yet joins at the end, up to eight.
+  const update = (patch: Partial<typeof slide>) => {
+    const slides = banner.slides ?? [];
     onChange(
-      [
-        ...(banner.slides ?? []).filter((item) => item.photoId !== photoId),
-        { ...slide, ...patch },
-      ].slice(-8),
+      slides.some((item) => item.photoId === photoId)
+        ? slides.map((item) =>
+            item.photoId === photoId ? { ...slide, ...patch } : item,
+          )
+        : [...slides, { ...slide, ...patch }].slice(-8),
     );
+  };
   return (
     <fieldset className="banner-slide-link">
       <legend>Slide text & destination</legend>

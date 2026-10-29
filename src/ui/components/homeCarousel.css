@@ -347,7 +347,14 @@
 .banner-live-handle>span { font-size:22px; }
 .banner-live-handle small { display:none; }
 .banner-live-handle:hover small,.banner-live-handle:focus small,.banner-live-handle:active small { display:inline; }
-.home-carousel:focus-visible { outline:3px solid #708756; outline-offset:-3px; }
+/* Clicking the photo focuses the carousel for the arrow keys; the banner never shows a
+   focus frame around itself. Its buttons and title link keep their own focus styles. */
+.home-carousel:focus, .home-carousel:focus-visible { outline:none; }
+.home-carousel__image { cursor:default; }
+.home-carousel__caption { pointer-events:none; }
+.home-carousel__caption > a { pointer-events:auto; display:inline-flex; gap:.5rem; align-items:baseline; color:inherit; text-decoration:none; }
+.home-carousel__caption > a:hover { text-decoration:underline; text-underline-offset:.2em; }
+.home-carousel__caption > a:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
 .resolution-badge { display:flex; flex-wrap:wrap; gap:.3rem .6rem; align-items:center; font:11px Arial,sans-serif; padding:.5rem; background:#f0f3eb; color:#293126; border:1px solid #becab3; border-radius:6px; }
 .resolution-badge>span { opacity:.55; }
 .resolution-badge>span[data-ready=true] { opacity:1; color:#244b20; }

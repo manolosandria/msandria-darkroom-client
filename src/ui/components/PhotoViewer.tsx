@@ -33,6 +33,7 @@ import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoInfoPanel } from "./PhotoInfoPanel";
 import { ViewerVariants } from "./ViewerVariants";
 import { QualitySelector } from "./QualitySelector";
+import { sequenceNeighbors } from "@/src/ui/viewerSequence";
 
 interface PhotoViewerProps {
   photoId: string;
@@ -124,10 +125,23 @@ export default function PhotoViewer({
   } = usePhotoFetch(fetchPhoto, "Photo not found");
   const { data: all } = usePhotoFetch(fetchAll, "No photos found");
 
+  // Opened from Gallery or a collection, the arrows follow that order; otherwise the
+  // API's chronological neighbours. Read after mounting: the server has no session tab.
+  const [sequence, setSequence] = useState<ReturnType<
+    typeof sequenceNeighbors
+  > | null>(null);
+  useEffect(() => {
+    queueMicrotask(() => setSequence(sequenceNeighbors(photoId)));
+  }, [photoId]);
   const index = all ? all.findIndex((entry) => entry.getId() === photoId) : -1;
-  const previousId = all && index > 0 ? all[index - 1].getId() : null;
+  const previousId =
+    sequence?.previousId ??
+    (!sequence && all && index > 0 ? all[index - 1].getId() : null);
   const nextId =
-    all && index >= 0 && index < all.length - 1 ? all[index + 1].getId() : null;
+    sequence?.nextId ??
+    (!sequence && all && index >= 0 && index < all.length - 1
+      ? all[index + 1].getId()
+      : null);
 
   const go = useCallback(
     (id: string | null) => {
@@ -138,6 +152,8 @@ export default function PhotoViewer({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // Arrows and Escape belong to whatever is being typed, such as a comment.
+      if (isTypingTarget(event.target)) return;
       if (event.key === "ArrowLeft") go(previousId);
       else if (event.key === "ArrowRight") go(nextId);
       // Escape closes the panel first, and only then leaves the photo.
@@ -383,5 +399,13 @@ function EdgeArrow({
 function insidePanel(target: EventTarget) {
   return (
     target instanceof Element && target.closest("[data-viewer-panel]") !== null
+  );
+}
+
+function isTypingTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.closest("input, textarea, select, [contenteditable]") !== null)
   );
 }

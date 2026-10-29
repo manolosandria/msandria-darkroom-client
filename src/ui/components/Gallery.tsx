@@ -17,6 +17,10 @@ import {
   defaultVisitorOptions,
 } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
+import {
+  readGalleryState,
+  writeGalleryState,
+} from "@/src/ui/galleryNavigationState";
 import "./galleryStudio.css";
 
 import "./publicCatalog.css";
@@ -29,12 +33,16 @@ export default function Gallery({
   settings?: GallerySettings;
 }) {
   const [storedSettings, setStoredSettings] = useState(defaultGallerySettings);
+  // The first page waits for the saved settings, whose layout shapes the request, so a
+  // visit sends one query instead of one per default it later corrects.
+  const [settingsReady, setSettingsReady] = useState(!!previewSettings);
   useEffect(() => {
     if (!previewSettings)
       void manageGallerySettings
         .get()
         .then(setStoredSettings)
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setSettingsReady(true));
   }, [previewSettings]);
   const settings = previewSettings ?? storedSettings;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -54,14 +62,25 @@ export default function Gallery({
       setCatalogError(true);
     }
   }, []);
+  // The URL and the tab keep the visitor's place, so returning from a photo shows the
+  // same order, page, search and filters. Read after mounting: the server has neither.
+  const [seed, setSeed] = useState("");
+  const [settledSearch, setSettledSearch] = useState("");
   useEffect(() => {
     queueMicrotask(() => {
-      setCategoryId(
-        new URLSearchParams(window.location.search).get("category") ?? "",
-      );
+      const state = readGalleryState(!previewSettings);
+      setCategoryId(state.category);
+      setQuery(state.search);
+      setSettledSearch(state.search);
+      setPage(state.page);
+      setDisplay(state.display);
+      setSeed(state.seed);
       void loadCatalog();
     });
+    // Read once on arrival; a preview's settings change does not reset the place.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadCatalog]);
+  const ready = seed !== "" && settingsReady;
   const categoryStyle = settings.categories.find(
     (item) => item.categoryId === categoryId,
   );
@@ -82,8 +101,15 @@ export default function Gallery({
   const layout = allowed(display.layout, appearance.layout, options.layouts);
   const crops = allowed(display.crops, "mixed", options.crops);
   const context = { layout, crops };
-  const [seed] = useState(() => String(Math.random()).slice(2));
-  const [settledSearch, setSettledSearch] = useState("");
+  useEffect(() => {
+    if (ready && !previewSettings)
+      writeGalleryState({
+        category: categoryId,
+        search: settledSearch,
+        page,
+        display,
+      });
+  }, [ready, previewSettings, categoryId, settledSearch, page, display]);
   useEffect(() => {
     const timer = setTimeout(() => setSettledSearch(query.trim()), 350);
     return () => clearTimeout(timer);
@@ -123,6 +149,7 @@ export default function Gallery({
     fetchPhotos,
     "No photos found",
     "Photos could not be loaded. Please wait a moment before retrying.",
+    ready,
   );
   const count = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));

@@ -42,6 +42,17 @@ Feature: Photo viewer
     Then the previous or next photo opens at its own URL
     And the return arrow or Escape goes back to the gallery
 
+  Scenario: Following the order the photo was opened from
+    Given the visitor opened a photo from a Gallery page, a collection or Home
+    When they move to the previous or next photo
+    Then the photos follow that page's order, one per work
+    And a photo opened from anywhere else follows the archive's chronology
+
+  Scenario: Typing a comment
+    Given the visitor is typing in the comment box
+    When they press the arrow keys or Escape
+    Then the cursor moves in the text and the viewer stays on the photo
+
   Scenario: Title and controls over the photo
     Given a photo is open
     Then its title is shown over the photo with the arrows and the quality selector

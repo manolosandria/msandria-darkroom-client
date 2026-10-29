@@ -47,6 +47,7 @@ describe("PhotoViewer", () => {
   beforeEach(() => {
     push.mockReset();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     resetViewerHintForTests();
     setViewerPanelOpen(false);
   });
@@ -186,6 +187,26 @@ describe("PhotoViewer", () => {
     await screen.findByAltText("Photo a");
     await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
     expect(screen.queryByRole("link", { name: "Previous photo" })).not.toBeInTheDocument();
+  });
+
+  it("leaves the arrow keys and Escape to a field being typed in", async () => {
+    setup("b");
+    await waitFor(() => expect(screen.getByRole("link", { name: "Next photo" })).toBeInTheDocument());
+    const box = document.createElement("textarea");
+    document.body.appendChild(box);
+
+    for (const key of ["ArrowRight", "ArrowLeft", "Escape"]) fireEvent.keyDown(box, { key });
+    expect(push).not.toHaveBeenCalled();
+    box.remove();
+  });
+
+  it("follows the order the photo was opened from instead of the chronological one", async () => {
+    window.sessionStorage.setItem("viewerSequence", JSON.stringify([["x"], ["b", "b2"], ["y"]]));
+    setup("b");
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Previous photo" })).toHaveAttribute("href", "/photo/x"));
+    expect(screen.getByRole("link", { name: "Next photo" })).toHaveAttribute("href", "/photo/y");
+    window.sessionStorage.clear();
   });
 
   it("moves with the arrow keys and leaves with Escape", async () => {

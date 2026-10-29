@@ -279,3 +279,9 @@
 .visual-choice small,.visual-choice:hover small,.visual-choice:focus-visible small,.visual-choice[aria-pressed=true] small { display:block; font-size:.6rem; line-height:1.1; }
 .banner-slide-link input,.banner-slide-link select { width:100%; min-width:0; padding:.5rem; border:1px solid #b6c0ad; background:white; box-sizing:border-box; }
 .banner-slide-link p { overflow-wrap:anywhere; }
+.banner-slide-list { display:grid; gap:.5rem; }
+.banner-slide-list p { margin:0; font-size:.85rem; }
+.banner-slide-list ol { display:grid; gap:.35rem; margin:0; padding-left:1.4rem; }
+.banner-slide-list li { display:grid; grid-template-columns:minmax(0,1fr) repeat(3,32px); gap:.3rem; align-items:center; }
+.banner-slide-list li span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.banner-slide-list__add { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem; align-items:end; }

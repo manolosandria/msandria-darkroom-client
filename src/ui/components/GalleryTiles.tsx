@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CSSProperties, useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
 import { PhotoImage } from "./PhotoImage";
+import { rememberTilesOnViewerClick } from "@/src/ui/viewerSequence";
 
 import {
   choosePhotoView,
@@ -36,6 +37,11 @@ export function GalleryTiles({
   return (
     <ul
       className={`gallery-tiles gallery-tiles--${layout}`}
+      onClickCapture={(event) =>
+        rememberTilesOnViewerClick(event.target, tiles, (_tile, index) =>
+          photos[index].getId(),
+        )
+      }
       style={
         {
           "--desktop-rows": desktop.rows,
