@@ -31,6 +31,35 @@ describe("usePhotoFetch", () => {
     expect(result.current.data).toEqual(["current"]);
     expect(result.current.error).toBeNull();
   });
+  it("can keep the previous result on screen while the next one loads", async () => {
+    let resolveNext!: (value: string[]) => void;
+    const first = () => Promise.resolve(["first"]);
+    const next = () => new Promise<string[]>((resolve) => { resolveNext = resolve; });
+    const { result, rerender } = renderHook(
+      ({ fetcher }) => usePhotoFetch(fetcher, "empty", undefined, true, true),
+      { initialProps: { fetcher: first } },
+    );
+    await waitFor(() => expect(result.current.data).toEqual(["first"]));
+    rerender({ fetcher: next });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    expect(result.current.data).toEqual(["first"]);
+    await act(async () => resolveNext(["second"]));
+    expect(result.current.data).toEqual(["second"]);
+  });
+
+  it("sends nothing until enabled", async () => {
+    const fetcher = vi.fn().mockResolvedValue(["a"]);
+    const { result, rerender } = renderHook(
+      ({ enabled }) => usePhotoFetch(fetcher, "empty", undefined, enabled),
+      { initialProps: { enabled: false } },
+    );
+    await act(async () => {});
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(true);
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.data).toEqual(["a"]));
+  });
+
   it("starts loading and then exposes the resolved data", async () => {
     const fetcher = vi.fn().mockResolvedValue(["a", "b"]);
 

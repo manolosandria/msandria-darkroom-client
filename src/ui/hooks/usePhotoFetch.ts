@@ -24,6 +24,9 @@ export function usePhotoFetch<T>(
   // While false the hook stays loading and sends nothing, for callers that must read
   // their parameters (the URL, saved settings) before the first request.
   enabled = true,
+  // Keeps the last result on screen while the next one loads, so paging or filtering
+  // does not blank the page and shift the layout.
+  keepPrevious = false,
 ) {
   const [state, setState] = useState<FetchState<T>>(INITIAL_STATE);
   const request = useRef(0);
@@ -31,7 +34,11 @@ export function usePhotoFetch<T>(
 
   const fetch = useCallback(async () => {
     const current = ++request.current;
-    setState({ data: null, loading: true, error: null });
+    setState((previous) => ({
+      data: keepPrevious ? previous.data : null,
+      loading: true,
+      error: null,
+    }));
     try {
       const result = await fetchPhotos();
       if (current === request.current)
@@ -40,7 +47,7 @@ export function usePhotoFetch<T>(
       if (current === request.current)
         setState({ data: null, loading: false, error: failureMessage });
     }
-  }, [fetchPhotos, emptyMessage, failureMessage]);
+  }, [fetchPhotos, emptyMessage, failureMessage, keepPrevious]);
 
   useEffect(() => {
     // Deferred to a microtask so the initial setState doesn't run

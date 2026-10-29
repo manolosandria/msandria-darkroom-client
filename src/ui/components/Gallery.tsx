@@ -150,6 +150,7 @@ export default function Gallery({
     "No photos found",
     "Photos could not be loaded. Please wait a moment before retrying.",
     ready,
+    true,
   );
   const count = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));
@@ -253,7 +254,9 @@ export default function Gallery({
       </div>
       {visible &&
         (visible.length ? (
-          <GalleryTiles tiles={visible} layout={layout} context={context} />
+          <div aria-busy={loading} className={loading ? "gallery-loading" : undefined}>
+            <GalleryTiles tiles={visible} layout={layout} context={context} />
+          </div>
         ) : (
           <p>No photos in this selection.</p>
         ))}

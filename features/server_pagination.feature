@@ -25,6 +25,10 @@ Feature: Bounded public photo browsing
     Then the gallery shows the same page, search, filters and order
     And the URL carries the search, category, page and display so it can be shared
 
+  Scenario: Loading the next page
+    When the visitor changes page or filter
+    Then the current tiles stay visible, dimmed, until the next ones arrive
+
   Scenario: Other public screens
     Then Home requests at most eight groups
     And a collection requests at most sixty groups per page

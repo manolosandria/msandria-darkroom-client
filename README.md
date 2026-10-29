@@ -537,7 +537,8 @@ Gallery keeps the visitor's place in the URL (`category`, `q`, `page`, `layout`,
 photo restores the same page and order. Opening a photo from Gallery, a collection or
 Home stores that order (`viewerSequence`, per tab), and the viewer's arrows follow it;
 otherwise they use the API's chronological neighbours. Arrow keys and Escape typed in a
-field, such as the comment box, never move the viewer.
+field, such as the comment box, never move the viewer. While the next page or filter loads, the previous
+tiles stay on screen, dimmed, instead of the grid disappearing.
 
 ### Visitor gallery controls and palette library
 

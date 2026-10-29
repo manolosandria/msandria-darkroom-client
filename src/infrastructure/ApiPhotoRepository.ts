@@ -36,6 +36,8 @@ type ApiPhotoListItem = {
   visibility?: PhotoVisibility;
   // The administrator's listing names the camera, for Curator's filters.
   camera?: Pick<PhotoCamera, "make" | "model">;
+  // Only the administrator's listing carries it, for versioned writes from Curator.
+  version?: number;
   id: string;
   title: string;
   width: number;
@@ -376,7 +378,7 @@ export class ApiPhotoRepository
     const detail = "description" in entry ? entry : undefined;
     return new Photo({
       id: entry.id,
-      version: detail?.version,
+      version: entry.version,
       title: entry.title,
       description: detail?.description ?? undefined,
       width: entry.width,

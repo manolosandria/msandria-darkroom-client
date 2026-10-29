@@ -15,8 +15,8 @@ export class EditCatalog {
   saveWork(draft: WorkDraft, id?: string) {
     return this.repository.saveWork(draft, id);
   }
-  setPhotoCategories(id: string, categoryIds: string[]) {
-    return this.repository.setPhotoCategories(id, categoryIds);
+  setPhotoCategories(id: string, categoryIds: string[], version?: number) {
+    return this.repository.setPhotoCategories(id, categoryIds, version);
   }
   remove(kind: "collections" | "categories" | "works", id: string) {
     return this.repository.remove(kind, id);

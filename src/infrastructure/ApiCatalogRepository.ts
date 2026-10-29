@@ -54,11 +54,11 @@ export class ApiCatalogRepository implements CatalogRepository {
   async saveWork(draft: WorkDraft, id?: string) {
     return (await this.save("works", draft, id)).json() as Promise<CatalogWork>;
   }
-  async setPhotoCategories(id: string, categoryIds: string[]) {
+  async setPhotoCategories(id: string, categoryIds: string[], version?: number) {
     await this.request(
       "PATCH",
       `/photos/${encodeURIComponent(id)}/categories`,
-      { categoryIds },
+      { categoryIds, ...(version !== undefined ? { version } : {}) },
     );
   }
   async remove(kind: "collections" | "categories" | "works", id: string) {
