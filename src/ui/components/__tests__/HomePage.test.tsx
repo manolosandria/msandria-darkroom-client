@@ -1,7 +1,7 @@
 import { defaultHomeBanner } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import HomePage from "../HomePage";
 import { Photo } from "@/src/domain/entities/Photo";
 
@@ -51,6 +51,53 @@ describe("HomePage", () => {
       "home-gallery--controls-overlay",
     );
     expect(screen.getByRole("progressbar")).toHaveAttribute("max", "1");
+  });
+  it("shows the slides chosen in Curator, in their order, instead of random photos", async () => {
+    const getAllPhotos = { execute: vi.fn().mockResolvedValue([makePhoto("r", "Random")]) };
+    const getPhotoById = {
+      execute: vi.fn((id: string) =>
+        Promise.resolve(id === "gone" ? null : makePhoto(id, `Photo ${id}`)),
+      ),
+    };
+    render(
+      <HomePage
+        banner={{
+          ...defaultHomeBanner,
+          slides: [
+            { photoId: "b", text: "Second chosen", href: "/gallery" },
+            { photoId: "gone", text: "Missing", href: "/gallery" },
+            { photoId: "a", text: "First chosen", href: "/photo/a" },
+          ],
+        }}
+        getAllPhotos={getAllPhotos}
+        getPhotoById={getPhotoById}
+      />,
+    );
+    expect(await screen.findByRole("link", { name: /Second chosen/ })).toHaveAttribute("href", "/gallery");
+    expect(screen.getByText("01 / 02", { exact: false })).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("region", { name: "Featured photographs" }), { key: "ArrowRight" });
+    expect(screen.getByRole("link", { name: /First chosen/ })).toHaveAttribute("href", "/photo/a");
+    expect(getAllPhotos.execute).not.toHaveBeenCalled();
+    // Each slide's detail came with the slide list; nothing is fetched again.
+    expect(getPhotoById.execute).toHaveBeenCalledTimes(3);
+  });
+  it("opens the destination only from the title and remembers Home's order for the viewer", async () => {
+    window.sessionStorage.clear();
+    render(
+      <HomePage
+        banner={defaultHomeBanner}
+        getAllPhotos={{
+          execute: vi.fn().mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
+        }}
+        getPhotoById={{ execute: vi.fn().mockResolvedValue(null) }}
+      />,
+    );
+    const title = await screen.findByRole("link", { name: /First/ });
+    const carousel = screen.getByRole("region", { name: "Featured photographs" });
+    expect(within(carousel).getAllByRole("link")).toEqual([title]);
+    for (const image of screen.getAllByAltText("First")) expect(image.closest("a")).toBeNull();
+    fireEvent.click(title);
+    expect(JSON.parse(window.sessionStorage.getItem("viewerSequence")!)).toEqual([["a"], ["b"]]);
   });
   it("changes slides with focused horizontal keys and accepts composition drops", async () => {
     render(

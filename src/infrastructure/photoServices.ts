@@ -10,11 +10,17 @@ import { BrowsePhotos } from "../application/use-cases/BrowsePhotos";
 // Next.js inlines NEXT_PUBLIC_* at build time, so it must be set before building.
 const photoRepository = new ApiPhotoRepository(process.env.NEXT_PUBLIC_API_URL);
 export const browsePhotos = new BrowsePhotos(photoRepository);
+// A fresh seed per visit, so Home draws from every eligible photo rather than the same
+// first eight of a fixed order; one photo per work, so variants never fill the carousel.
 export const getHomePhotos = {
   execute: async () =>
-    (await browsePhotos.execute({ target: "home", limit: 8 })).tiles.flatMap(
-      (tile) => tile.variants,
-    ),
+    (
+      await browsePhotos.execute({
+        target: "home",
+        limit: 8,
+        seed: String(Math.random()).slice(2) || "1",
+      })
+    ).tiles.map((tile) => tile.photo),
 };
 export const getPhotoNeighbors = (id: string) =>
   new GetAllPhotos(

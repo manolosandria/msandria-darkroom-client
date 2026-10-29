@@ -15,6 +15,8 @@ vi.mock("../HomePage", () => ({
     <div data-testid="preview">{banner.title}</div>
   ),
 }));
+// The slide list has its own tests; here it only marks its place.
+vi.mock("../BannerSlideList", () => ({ BannerSlideList: () => null }));
 vi.mock("@/src/infrastructure/homeBannerServices", () => ({
   manageHomeBanner: { get: vi.fn(), save: vi.fn() },
 }));

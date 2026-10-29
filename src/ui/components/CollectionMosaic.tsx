@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
 import { PhotoImage } from "./PhotoImage";
+import { rememberTilesOnViewerClick } from "@/src/ui/viewerSequence";
 
 export function CollectionMosaic({
   tiles,
@@ -14,7 +15,12 @@ export function CollectionMosaic({
 }) {
   return (
     <div className="collection-canvas">
-      <ul className={mosaic ? "collection-mosaic" : "catalog-grid"}>
+      <ul
+        className={mosaic ? "collection-mosaic" : "catalog-grid"}
+        onClickCapture={(event) =>
+          rememberTilesOnViewerClick(event.target, tiles)
+        }
+      >
         {tiles.map((tile) => (
           <MosaicTile
             key={`${tile.key}:${tile.photo.getId()}`}

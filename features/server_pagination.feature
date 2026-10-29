@@ -17,6 +17,13 @@ Feature: Bounded public photo browsing
     When the visitor types a search phrase
     Then the client waits for a typing pause before requesting results
     And the server applies category and crop eligibility before grouping and pagination
+    And any Latin accent is ignored, and "%" or "_" match only themselves
+
+  Scenario: Returning from a photo
+    Given the visitor searched, filtered or paged through the gallery
+    When they open a photo and go back
+    Then the gallery shows the same page, search, filters and order
+    And the URL carries the search, category, page and display so it can be shared
 
   Scenario: Other public screens
     Then Home requests at most eight groups

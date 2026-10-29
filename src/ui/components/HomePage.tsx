@@ -1,6 +1,8 @@
 "use client";
 import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
-import { getPhotoById } from "@/src/infrastructure/photoServices";
+import { getPhotoById as defaultGetPhotoById } from "@/src/infrastructure/photoServices";
+import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
+import { rememberViewerSequence } from "@/src/ui/viewerSequence";
 import { BannerDragHandle } from "./BannerDragHandle";
 import { ResolutionBadge } from "./ResolutionBadge";
 import Link from "next/link";
@@ -26,12 +28,14 @@ import {
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
 export default function HomePage({
   getAllPhotos = defaultGetAllPhotos,
+  getPhotoById = defaultGetPhotoById,
   banner: previewBanner,
   onEditPhoto,
   editedPhoto,
   onLayoutChange,
 }: {
   getAllPhotos?: Pick<GetAllPhotos, "execute">;
+  getPhotoById?: Pick<GetPhotoById, "execute">;
   banner?: HomeBanner;
   editedPhoto?: Photo | null;
   onEditPhoto?: (photo: Photo) => void;
@@ -54,7 +58,27 @@ export default function HomePage({
     };
   }, [previewBanner]);
   const banner = previewBanner ?? savedBanner;
+  // Slides chosen in Curator decide the carousel, in their order. Without any, or when
+  // none of them can be shown, Home draws eligible photos at random.
+  const slideIds = (banner.slides ?? []).map((slide) => slide.photoId).join("|");
+  const [details, setDetails] = useState<Record<string, Photo>>({});
   const fetchPhotos = useCallback(async () => {
+    if (slideIds) {
+      const curated = (
+        await Promise.all(
+          slideIds
+            .split("|")
+            .map((id) => getPhotoById.execute(id).catch(() => null)),
+        )
+      ).filter((photo): photo is Photo => !!photo);
+      // These are already the detail responses the active slide needs.
+      setDetails((previous) => ({
+        ...previous,
+        ...Object.fromEntries(curated.map((photo) => [photo.getId(), photo])),
+      }));
+      if (curated.some((photo) => enabledPhotoViews(photo, "home").length))
+        return curated;
+    }
     const photos = await getAllPhotos.execute();
     const eligible =
       photos?.filter((photo) => enabledPhotoViews(photo, "home").length > 0) ??
@@ -64,21 +88,18 @@ export default function HomePage({
       [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
     return eligible.length ? eligible.slice(0, 8) : null;
-  }, [getAllPhotos]);
+  }, [getAllPhotos, getPhotoById, slideIds]);
   const {
     data: loadedPhotos,
     loading,
     error,
     retry,
   } = usePhotoFetch(fetchPhotos, "Photo not found");
-  const [detail, setDetail] = useState<Photo | null>(null);
   const photos = loadedPhotos
     ?.map((item) =>
       editedPhoto?.getId() === item.getId()
         ? editedPhoto
-        : detail?.getId() === item.getId()
-          ? detail
-          : item,
+        : (details[item.getId()] ?? item),
     )
     .filter((item) => enabledPhotoViews(item, "home").length > 0);
   const swipe = useRef<{ x: number; y: number } | null>(null);
@@ -87,25 +108,23 @@ export default function HomePage({
   const selected = photos?.length ? index % photos.length : 0;
   const listed = photos?.[selected];
   const listedId = listed?.getId();
+  // Each slide's detail is fetched once and kept, so going back to it costs nothing.
+  const hasDetail = !!listedId && !!details[listedId];
   useEffect(() => {
     let active = true;
-    if (listedId)
+    if (listedId && !hasDetail)
       void getPhotoById
         .execute(listedId)
         .then((value) => {
-          if (active) setDetail(value ?? null);
+          if (active && value)
+            setDetails((previous) => ({ ...previous, [listedId]: value }));
         })
         .catch(() => {});
     return () => {
       active = false;
     };
-  }, [listedId]);
-  const photo =
-    editedPhoto?.getId() === listed?.getId()
-      ? editedPhoto
-      : detail?.getId() === listed?.getId()
-        ? detail
-        : listed;
+  }, [listedId, hasDetail, getPhotoById]);
+  const photo = listed;
   const view = photo
     ? choosePhotoView(
         photo,
@@ -117,6 +136,8 @@ export default function HomePage({
     (item) => item.photoId === photo?.getId(),
   );
   const slide = banner.slides?.find((item) => item.photoId === photo?.getId());
+  const destination =
+    slide?.href ?? `/photo/${encodeURIComponent(photo?.getId() ?? "")}`;
   const start = useRef<{ x: number; y: number; block: string } | null>(null);
   const arrange = (block: string) => ({
     draggable: !!onLayoutChange,
@@ -284,19 +305,14 @@ export default function HomePage({
           )}
           {photo && (
             <>
-              <Link
+              {/* A click on the photo only selects the carousel, for the arrow keys; the
+                  title is what opens the slide's destination. In Curator the photo
+                  opens its banner settings instead. */}
+              <div
                 key={photo.getId()}
                 draggable={false}
                 className="home-carousel__image"
-                onClick={(event) => {
-                  if (onEditPhoto) {
-                    event.preventDefault();
-                    onEditPhoto(photo);
-                  }
-                }}
-                href={
-                  slide?.href ?? `/photo/${encodeURIComponent(photo.getId())}`
-                }
+                onClick={() => onEditPhoto?.(photo)}
               >
                 {banner.imageMode === "framed" ? (
                   <FramedSlide photo={photo} view={view!} />
@@ -331,10 +347,24 @@ export default function HomePage({
                   </>
                 )}
                 <span className="home-carousel__caption">
-                  {slide?.text ?? photo.getTitle()}{" "}
-                  <span aria-hidden="true">↗</span>
+                  <Link
+                    draggable={false}
+                    href={destination}
+                    onClick={(event) => {
+                      if (onEditPhoto) {
+                        event.preventDefault();
+                        onEditPhoto(photo);
+                      } else if (destination.startsWith("/photo/"))
+                        rememberViewerSequence(
+                          photos!.map((item) => [item.getId()]),
+                        );
+                    }}
+                  >
+                    {slide?.text ?? photo.getTitle()}{" "}
+                    <span aria-hidden="true">↗</span>
+                  </Link>
                 </span>
-              </Link>
+              </div>
               <div className="home-carousel__controls">
                 <span aria-live="polite">
                   {String(selected + 1).padStart(2, "0")} /{" "}

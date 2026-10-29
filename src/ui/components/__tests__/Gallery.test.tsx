@@ -21,6 +21,16 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
       }),
   },
 }));
+vi.mock("@/src/infrastructure/gallerySettingsServices", async () => {
+  const { defaultGallerySettings } = await import(
+    "@/src/domain/entities/GallerySettings"
+  );
+  return {
+    manageGallerySettings: {
+      get: vi.fn().mockResolvedValue(defaultGallerySettings),
+    },
+  };
+});
 function result(page = 1, total = 25): PhotoPage {
   return {
     page,
@@ -145,5 +155,26 @@ describe("Gallery server pagination", () => {
     expect(
       screen.queryByRole("navigation", { name: "Gallery pagination" }),
     ).not.toBeInTheDocument();
+  });
+  it("returns to the same place after visiting a photo", async () => {
+    window.sessionStorage.setItem("gallerySeed", "42");
+    window.history.replaceState(null, "", "/gallery?category=street&q=night&page=2");
+    const execute = vi.fn().mockResolvedValue(result(2));
+    // The public page, which reads its saved settings, not the Curator preview.
+    render(<Gallery browsePhotos={{ execute }} />);
+    await waitFor(() => expect(execute).toHaveBeenCalled());
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute.mock.calls[0][0]).toMatchObject({
+      page: 2,
+      seed: "42",
+      category: "street",
+      search: "night",
+    });
+    expect(screen.getByRole("searchbox")).toHaveValue("night");
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Next/ }));
+    await waitFor(() => expect(window.location.search).toContain("page=3"));
+    expect(window.location.search).toContain("category=street");
+    window.history.replaceState(null, "", "/");
+    window.sessionStorage.clear();
   });
 });

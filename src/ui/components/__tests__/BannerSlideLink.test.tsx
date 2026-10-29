@@ -21,4 +21,11 @@ describe('Slide destinations',()=>{
  expect(screen.getByLabelText('Caption text')).toHaveValue('Follow my work');
  expect(screen.getByText(/Destination:/)).toHaveTextContent('https://www.instagram.com/photographer/');
  });
+ it('edits an existing slide in place, keeping the carousel order',async()=>{
+ const onChange=vi.fn();
+ const banner={...defaultHomeBanner,slides:[{photoId:'a',text:'A',href:'/gallery'},{photoId:'b',text:'B',href:'/gallery'}]};
+ render(<BannerSlideLink photoId="a" title="A" banner={banner} onChange={onChange}/>);
+ fireEvent.change(await screen.findByLabelText('Caption text'),{target:{value:'Renamed'}});
+ expect(onChange).toHaveBeenLastCalledWith([{photoId:'a',text:'Renamed',href:'/gallery'},{photoId:'b',text:'B',href:'/gallery'}]);
+ });
 });

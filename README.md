@@ -442,9 +442,13 @@ mosaic and a return button. Catalog editing remains in Curator.
 
 ## Interactive browsing and variant assignment
 
-Home features a manually controlled carousel of up to eight recent public photos,
-with previous/next controls, position buttons and keyboard arrows. It never advances
-automatically. Header links react to hover and keyboard focus; the current route is
+Home features a manually controlled carousel with previous/next controls, position
+buttons and keyboard arrows. It shows the slides chosen in **Curator → Home →
+Carousel** (`BannerSlideList`: up to eight public photographs, in order); without
+slides it draws up to eight eligible photos at random on each visit, one per work. A
+click on the photo only focuses the carousel for the arrow keys, without a focus
+frame; the slide title is the link to its photo, page or external destination. It
+never advances automatically. Header links react to hover and keyboard focus; the current route is
 marked. Gallery groups category chips into Subjects, Color & treatment and Themes, with unrecognized names in Other. Empty groups are hidden; All photographs clears the selection.
 Categories uses selectable cards showing photo counts.
 
@@ -528,6 +532,12 @@ Search matches photo titles or assigned category names and returns to page one.
 The introduction places search and compact category menus alongside the text on
 wide screens and underneath on phones. Home shuffles eligible photos once per load
 and uses only an enabled original/crop, preserving full-photo viewer links.
+Gallery keeps the visitor's place in the URL (`category`, `q`, `page`, `layout`,
+`crops`) and its shuffle seed in `sessionStorage` (`gallerySeed`), so returning from a
+photo restores the same page and order. Opening a photo from Gallery, a collection or
+Home stores that order (`viewerSequence`, per tab), and the viewer's arrows follow it;
+otherwise they use the API's chronological neighbours. Arrow keys and Escape typed in a
+field, such as the comment box, never move the viewer.
 
 ### Visitor gallery controls and palette library
 

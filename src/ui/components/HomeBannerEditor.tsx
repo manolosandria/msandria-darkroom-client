@@ -12,6 +12,7 @@ import HomePage from "./HomePage";
 import "./homeBannerEditor.css";
 import { bannerFonts, bannerPalettes } from "../bannerPresets";
 import { BannerPhotoSettings } from "./BannerPhotoSettings";
+import { BannerSlideList } from "./BannerSlideList";
 import { Photo } from "@/src/domain/entities/Photo";
 
 export default function HomeBannerEditor() {
@@ -326,6 +327,14 @@ function Editor() {
             </fieldset>
             <fieldset disabled={busy}>
               <legend>Carousel</legend>
+              <BannerSlideList
+                slides={draft.slides ?? []}
+                disabled={busy}
+                onChange={(slides) => {
+                  setDraft((previous) => ({ ...previous, slides }));
+                  setNotice("");
+                }}
+              />
               <label>
                 Navigation
                 <select

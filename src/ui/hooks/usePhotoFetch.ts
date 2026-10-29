@@ -21,6 +21,9 @@ export function usePhotoFetch<T>(
   fetchPhotos: () => Promise<T | null>,
   emptyMessage: string,
   failureMessage = "Failed to fetch photos",
+  // While false the hook stays loading and sends nothing, for callers that must read
+  // their parameters (the URL, saved settings) before the first request.
+  enabled = true,
 ) {
   const [state, setState] = useState<FetchState<T>>(INITIAL_STATE);
   const request = useRef(0);
@@ -42,10 +45,11 @@ export function usePhotoFetch<T>(
   useEffect(() => {
     // Deferred to a microtask so the initial setState doesn't run
     // synchronously inside the effect body (react-hooks/set-state-in-effect).
+    if (!enabled) return;
     let active = true;
     queueMicrotask(() => { if (active) void fetch(); });
     return () => { active = false; invalidate(); };
-  }, [fetch, invalidate]);
+  }, [fetch, invalidate, enabled]);
 
   return { ...state, retry: fetch };
 }
