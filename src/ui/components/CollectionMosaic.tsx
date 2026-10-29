@@ -4,14 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
 import { PhotoImage } from "./PhotoImage";
+import { VariantThumbs } from "./VariantThumbs";
 import { rememberTilesOnViewerClick } from "@/src/ui/viewerSequence";
 
 export function CollectionMosaic({
   tiles,
   mosaic,
+  variants = false,
 }: {
   tiles: CatalogTile[];
   mosaic: boolean;
+  /** Whether visitors may switch each work's variant; the collection decides. */
+  variants?: boolean;
 }) {
   return (
     <div className="collection-canvas">
@@ -26,6 +30,7 @@ export function CollectionMosaic({
             key={`${tile.key}:${tile.photo.getId()}`}
             tile={tile}
             mosaic={mosaic}
+            variants={variants}
           />
         ))}
       </ul>
@@ -33,7 +38,15 @@ export function CollectionMosaic({
   );
 }
 
-function MosaicTile({ tile, mosaic }: { tile: CatalogTile; mosaic: boolean }) {
+function MosaicTile({
+  tile,
+  mosaic,
+  variants,
+}: {
+  tile: CatalogTile;
+  mosaic: boolean;
+  variants: boolean;
+}) {
   const [selectedId, setSelectedId] = useState(tile.photo.getId());
   const photo =
     tile.variants.find((item) => item.getId() === selectedId) ?? tile.photo;
@@ -62,21 +75,14 @@ function MosaicTile({ tile, mosaic }: { tile: CatalogTile; mosaic: boolean }) {
           <span className="photo-grid__caption">{photo.getTitle()}</span>
         )}
       </Link>
-      {tile.variants.length > 1 && (
-        <label className="catalog-variants">
-          Variant
-          <select
-            aria-label={`Variant of ${tile.photo.getTitle()}`}
-            value={photo.getId()}
-            onChange={(event) => setSelectedId(event.target.value)}
-          >
-            {tile.variants.map((variant) => (
-              <option key={variant.getId()} value={variant.getId()}>
-                {variant.getTitle()}
-              </option>
-            ))}
-          </select>
-        </label>
+      {variants && (
+        <VariantThumbs
+          className="catalog-variants"
+          variants={tile.variants}
+          selectedId={photo.getId()}
+          onSelect={setSelectedId}
+          label={`Variants of ${tile.photo.getTitle()}`}
+        />
       )}
     </li>
   );

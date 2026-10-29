@@ -198,10 +198,100 @@
 .gallery-editor .public-gallery {
   padding: 1.5rem;
 }
+/* Introduction texts: each one a numbered card, its edge coloured by its role. */
+.gallery-editor-blocks {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
 .gallery-editor-block {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid #d2d7ca;
+  border-left: 4px solid #9fb685;
+  border-radius: 0.7rem;
+  background: #fff;
+  box-shadow: 0 4px 14px -10px #2b332255;
+}
+.gallery-editor-block[data-kind="title"] {
+  border-left-color: #4d6b3a;
+}
+.gallery-editor-block[data-kind="eyebrow"] {
+  border-left-color: #c9a46b;
+}
+.gallery-editor-block__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.gallery-editor-block__number {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: #eef0e8;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.gallery-editor-block__head strong {
+  flex: 1;
+  font-size: 0.85rem;
+}
+.banner-editor .gallery-editor-block__remove {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.banner-editor .gallery-editor-block__remove:hover {
+  background: #fbe9e6;
+  border-color: #9b2c1f;
+  color: #9b2c1f;
+}
+.gallery-editor-block__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.banner-editor .gallery-editor-add {
+  width: 100%;
+  border-style: dashed;
+}
+.gallery-editor-colors {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.banner-editor .gallery-editor-colors label {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+}
+.gallery-editor-colors input[type="color"] {
+  width: 100%;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid #0002;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.gallery-editor-colors small {
+  color: #72786b;
+  font-size: 0.65rem;
+}
+.banner-editor .gallery-editor-type {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
 }
 
 .gallery-styled .gallery-filter-button {
@@ -385,18 +475,120 @@
   gap: 0.75rem;
   font-family: Arial, sans-serif;
 }
-.gallery-visitor-controls label {
+/* Display choices as segmented icon buttons: a native radio under each one. */
+.gallery-visitor-controls .gallery-segmented {
   display: grid;
-  gap: 0.25rem;
-  font-size: 0.7rem;
+  gap: 0.35rem;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
 }
-.gallery-visitor-controls select {
-  border: 1px solid color-mix(in srgb, var(--gallery-text) 24%, transparent);
-  padding: 0.5rem 0.65rem;
-  border-radius: 3px;
+.gallery-visitor-controls .gallery-segmented legend {
+  padding: 0;
+  font-family: inherit;
+  margin-bottom: 0.35rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.gallery-segmented__options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery-text) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gallery-text) 12%, transparent);
+}
+.gallery-segmented label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--gallery-text) 75%, transparent);
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.gallery-segmented label:hover {
+  color: var(--gallery-text);
+  background: color-mix(in srgb, var(--gallery-background) 70%, transparent);
+}
+.gallery-segmented input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.gallery-segmented label:has(input:checked) {
   background: var(--gallery-background);
   color: var(--gallery-text);
-  font-size: 0.8rem;
+  box-shadow:
+    0 1px 2px #0002,
+    0 0 0 1px color-mix(in srgb, var(--gallery-accent) 45%, transparent);
+}
+.gallery-segmented label:has(input:checked) svg {
+  color: var(--gallery-accent);
+}
+.gallery-segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 1px;
+}
+.gallery-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.gallery-search__field svg {
+  position: absolute;
+  left: 0.9rem;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.gallery-search .gallery-search__field input {
+  padding-left: 2.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery-text) 4%, var(--gallery-background));
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
+}
+.gallery-search .gallery-search__field input:hover,
+.gallery-search .gallery-search__field input:focus {
+  outline: none;
+  background: var(--gallery-background);
+  border-color: var(--gallery-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gallery-accent) 18%, transparent);
+}
+.gallery-search {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+.gallery-search input {
+  letter-spacing: normal;
+  text-transform: none;
+}
+.gallery-filter-button {
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.gallery-filter-button:hover {
+  border-color: var(--gallery-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -6px #0006;
 }
 .gallery-grid-toolbar {
   flex-wrap: wrap;
@@ -431,15 +623,349 @@
     width: 100%;
     gap: 0.5rem;
   }
-  .gallery-visitor-controls label {
-    min-width: 0;
+  .gallery-segmented__options {
+    display: flex;
+    border-radius: 0.9rem;
   }
-  .gallery-visitor-controls select {
-    width: 100%;
-    min-width: 0;
-    padding: 0.5rem 0.35rem;
-    font-size: 0.75rem;
+  .gallery-segmented label {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0.45rem;
+  }
+  /* Phones keep the pictures; the names stay for screen readers and tooltips. */
+  .gallery-segmented label span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
   }
 }
 /* The previous page stays while the next loads, dimmed so the change is visible. */
 .gallery-loading { opacity:.55; transition:opacity .2s; pointer-events:none; }
+
+/* Gallery studio preview: pick a monitor or a phone, and the preview sits inside it. */
+.gallery-editor .banner-editor__preview.device-preview {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.device-preview__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.device-preview__bar h2 {
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+}
+.device-preview__bar > span {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #8a5d0b;
+  background: #fff5dc;
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+}
+.device-switch {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+.device-preview .device-switch button {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 4.6rem;
+  padding: 0.5rem 0.25rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #72786b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+.device-preview .device-switch button:hover {
+  color: #263021;
+  background: #e7ecdf;
+}
+.device-preview .device-switch button[aria-checked="true"] {
+  color: #fff;
+  background: #2f4f2a;
+  border-color: #2f4f2a;
+  box-shadow: 0 6px 14px -6px #2f4f2aaa;
+}
+.device-switch svg {
+  width: 30px;
+  height: 30px;
+}
+/* A dark monitor with its stand, or a phone with rounded corners and a speaker slot. */
+.device-frame {
+  margin: 0 auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.device-frame--desktop {
+  padding: 14px 14px 18px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2b2d2a, #1b1c1a);
+  box-shadow: 0 18px 40px -18px #000a;
+  position: relative;
+  margin-bottom: 52px;
+}
+.device-frame--desktop::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -46px;
+  width: 30%;
+  height: 46px;
+  transform: translateX(-50%);
+  background:
+    linear-gradient(#2b2d2a, #2b2d2a) center top / 22% 34px no-repeat,
+    linear-gradient(#3a3c38, #232421) center bottom / 100% 10px no-repeat;
+  border-radius: 0 0 6px 6px;
+}
+.device-frame--mobile {
+  width: min(414px, 100%);
+  padding: 44px 12px 40px;
+  border-radius: 44px;
+  background: linear-gradient(160deg, #2f312e, #161715);
+  box-shadow:
+    0 0 0 2px #4a4d47,
+    0 24px 48px -20px #000b;
+  position: relative;
+}
+.device-frame--mobile::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 70px;
+  height: 8px;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  background: #0c0c0b;
+}
+.device-frame .banner-editor__viewport {
+  border: 0;
+  box-shadow: none;
+  border-radius: 4px;
+  max-height: 78vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.device-frame--mobile .banner-editor__viewport {
+  width: 100%;
+  border-radius: 6px;
+  max-height: 72vh;
+}
+
+/* Gallery heading and controls, second pass: one height, one radius and one surface for
+   every control, all from the gallery's theme variables so a category's look restyles them. */
+.gallery-styled {
+  --gallery-control-height: 2.75rem;
+  --gallery-control-border: color-mix(in srgb, var(--gallery-text) 16%, transparent);
+  --gallery-control-fill: color-mix(in srgb, var(--gallery-text) 4%, var(--gallery-background));
+}
+.gallery-heading .gallery-heading__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: min(var(--block-size), 0.8rem);
+  opacity: 0.8;
+}
+.gallery-heading .gallery-heading__eyebrow::before {
+  content: "";
+  width: 2.25rem;
+  height: 1px;
+  background: var(--gallery-accent);
+}
+.gallery-heading .gallery-heading__title {
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  margin-bottom: 1.1rem;
+}
+.gallery-heading .gallery-heading__title::after {
+  content: "";
+  display: inline-block;
+  width: 0.14em;
+  height: 0.14em;
+  margin-left: 0.05em;
+  border-radius: 50%;
+  background: var(--gallery-accent);
+}
+.gallery-heading .gallery-heading__body {
+  max-width: 34ch;
+  padding-left: 1rem;
+  border-left: 2px solid color-mix(in srgb, var(--gallery-accent) 55%, transparent);
+}
+.gallery-tools {
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--gallery-surface) 55%, var(--gallery-background));
+  border: 1px solid var(--gallery-control-border);
+}
+.gallery-search {
+  gap: 0.4rem;
+  opacity: 1;
+}
+.gallery-search .gallery-search__field input {
+  height: var(--gallery-control-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  border-color: var(--gallery-control-border);
+  background: var(--gallery-background);
+}
+.gallery-filters {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+.gallery-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.gallery-styled .gallery-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: var(--gallery-control-height);
+  padding: 0 1rem;
+  border-radius: 999px;
+  border-color: var(--gallery-control-border);
+  background: var(--gallery-background);
+  font-size: 0.85rem;
+}
+.gallery-styled .gallery-filter-button[data-active] {
+  border-color: var(--gallery-accent);
+  box-shadow: inset 0 0 0 1px var(--gallery-accent);
+}
+.gallery-filter-caret {
+  opacity: 0.6;
+  transition: transform 0.15s;
+}
+.gallery-filter-button[aria-expanded="true"] .gallery-filter-caret {
+  transform: rotate(180deg);
+}
+.gallery-filter-badge {
+  display: grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 1rem;
+  background: var(--gallery-accent);
+  color: var(--gallery-background);
+  font-size: 0.7rem;
+  font-family: Arial, sans-serif;
+}
+.gallery-filter-reset {
+  display: grid;
+  place-items: center;
+  width: var(--gallery-control-height);
+  height: var(--gallery-control-height);
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--gallery-control-border);
+  border-radius: 50%;
+  background: var(--gallery-background);
+  color: var(--gallery-text);
+  cursor: pointer;
+  transition:
+    transform 0.25s,
+    background-color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+.gallery-filter-reset:not(:disabled):hover {
+  border-color: var(--gallery-accent);
+  color: var(--gallery-accent);
+  transform: rotate(-90deg);
+}
+.gallery-filter-reset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.gallery-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gallery-filter-chips button {
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gallery-accent);
+  color: var(--gallery-background);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.gallery-filter-chips button:hover {
+  opacity: 0.8;
+}
+.gallery-filter-menu:not([hidden]) {
+  border-radius: 0.9rem;
+  border-color: var(--gallery-control-border);
+  padding: 0.4rem;
+  box-shadow: 0 14px 30px -14px #0006;
+}
+.gallery-filter-option {
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.6rem;
+}
+.gallery-filter-check {
+  border-radius: 0.3rem;
+}
+/* Display controls: the pictures alone, and what the chosen one means underneath. */
+.gallery-visitor-controls {
+  gap: 1.25rem;
+}
+.gallery-visitor-controls .gallery-segmented {
+  justify-items: center;
+  gap: 0.3rem;
+}
+.gallery-visitor-controls .gallery-segmented__options {
+  gap: 0;
+  padding: 3px;
+  border-color: var(--gallery-control-border);
+  background: var(--gallery-control-fill);
+}
+.gallery-visitor-controls .gallery-segmented label {
+  width: 2.4rem;
+  height: 2.2rem;
+  justify-content: center;
+  padding: 0;
+}
+.gallery-segmented__caption {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  font-family: Arial, sans-serif;
+}
+@container (max-width:600px) {
+  .gallery-filter-reset {
+    margin-left: 0;
+  }
+  .gallery-visitor-controls .gallery-segmented label {
+    width: auto;
+  }
+}

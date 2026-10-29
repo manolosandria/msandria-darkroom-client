@@ -1,29 +1,54 @@
 "use client";
+import "./paletteStudio.css";
 import { useState } from "react";
 import {
   GalleryAppearance,
   GalleryPalette,
 } from "@/src/domain/entities/GallerySettings";
 import { useEditingWorkspace } from "./EditingWorkspace";
+
+type PaletteColors = Pick<
+  GalleryAppearance,
+  "background" | "text" | "accent" | "surface"
+>;
+export const PALETTE_KEYS = [
+  "background",
+  "text",
+  "accent",
+  "surface",
+] as const;
+
+// Where each colour of a palette ends up on the public Gallery.
+export const PALETTE_ROLES: Record<(typeof PALETTE_KEYS)[number], string> = {
+  background: "Page behind the photographs and the filter fields",
+  text: "Headings, descriptions, labels and icons",
+  accent:
+    "Chosen filters and their badges, active buttons, the title's dot and rules",
+  surface: "Filter panel, open menus and empty photo frames",
+};
+
+const pick = ({ background, text, accent, surface }: PaletteColors) => ({
+  background,
+  text,
+  accent,
+  surface,
+});
+
 export function GalleryPaletteLibrary({
   palettes,
   appearance,
   disabled,
-  applyDisabled,
+  applyDisabled = false,
   onChange,
   onApply,
 }: {
   palettes: GalleryPalette[];
   appearance: GalleryAppearance;
   disabled: boolean;
-  applyDisabled: boolean;
+  applyDisabled?: boolean;
   onChange: (palettes: GalleryPalette[]) => void;
-  onApply: (
-    colors: Pick<
-      GalleryAppearance,
-      "background" | "text" | "accent" | "surface"
-    >,
-  ) => void;
+  /** Without it the library only manages palettes, as Curator → Palettes does. */
+  onApply?: (colors: PaletteColors) => void;
 }) {
   const [selected, setSelected] = useState(palettes[0]?.id ?? "");
   const [name, setName] = useState("");
@@ -37,29 +62,36 @@ export function GalleryPaletteLibrary({
       ),
     );
   }
+  function create(colors: PaletteColors, paletteName: string) {
+    const palette = {
+      id: crypto.randomUUID(),
+      name: paletteName,
+      ...pick(colors),
+    };
+    onChange([...palettes, palette]);
+    setSelected(palette.id);
+  }
   return (
-    <fieldset disabled={disabled}>
+    <fieldset className="palette-library" disabled={disabled}>
       <legend>Palette library</legend>
-      <p>
-        Edit the library, then apply a palette to the selected general or
-        category style. Save gallery to publish all changes.
-      </p>
-      <label>
-        Saved palette
-        <select
-          value={current?.id ?? ""}
-          onChange={(event) => setSelected(event.target.value)}
-        >
-          <option value="">Choose a palette</option>
-          {palettes.map((palette) => (
-            <option key={palette.id} value={palette.id}>
-              {palette.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ul className="palette-library__grid" aria-label="Saved palettes">
+        {palettes.map((palette) => (
+          <li key={palette.id}>
+            <button
+              type="button"
+              className="palette-card"
+              aria-pressed={palette.id === selected}
+              aria-label={palette.name}
+              onClick={() => setSelected(palette.id)}
+            >
+              <PaletteSwatch colors={palette} />
+              <span className="palette-card__name">{palette.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
       {current && (
-        <>
+        <div className="palette-library__editor">
           <label>
             Palette name
             <input
@@ -69,49 +101,45 @@ export function GalleryPaletteLibrary({
               onChange={(event) => edit({ name: event.target.value })}
             />
           </label>
-          <div className="banner-editor__colors">
-            {(["background", "text", "accent", "surface"] as const).map(
-              (key) => (
-                <label key={key}>
-                  Palette {key}
-                  <input
-                    type="color"
-                    value={current[key]}
-                    onChange={(event) => edit({ [key]: event.target.value })}
-                  />
-                </label>
-              ),
+          <div className="palette-library__colors">
+            {PALETTE_KEYS.map((key) => (
+              <label key={key} className="palette-color">
+                <input
+                  type="color"
+                  aria-label={`Palette ${key}`}
+                  value={current[key]}
+                  onChange={(event) => edit({ [key]: event.target.value })}
+                />
+                <span>
+                  <strong>{key[0].toUpperCase() + key.slice(1)}</strong>
+                  <small>{PALETTE_ROLES[key]}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="palette-library__actions">
+            {onApply && (
+              <button
+                type="button"
+                className="palette-library__apply"
+                disabled={applyDisabled}
+                onClick={() => onApply(pick(current))}
+              >
+                Apply palette
+              </button>
             )}
-          </div>
-          <div
-            className="gallery-palette-swatch"
-            style={{
-              background: current.background,
-              color: current.text,
-              borderColor: current.accent,
-            }}
-          >
-            Aa{" "}
-            <span
-              style={{ background: current.accent, color: current.background }}
-            >
-              Accent
-            </span>
-            <span style={{ background: current.surface }}>Surface</span>
-          </div>
-          <div className="highlight-actions">
             <button
               type="button"
-              disabled={applyDisabled}
-              onClick={() => {
-                const { background, text, accent, surface } = current;
-                onApply({ background, text, accent, surface });
-              }}
+              onClick={() =>
+                create(current, `${current.name} copy`.slice(0, 80))
+              }
+              disabled={palettes.length >= 30}
             >
-              Apply palette
+              Duplicate
             </button>
             <button
               type="button"
+              className="palette-library__delete"
               onClick={async () => {
                 if (
                   await confirm(
@@ -129,42 +157,45 @@ export function GalleryPaletteLibrary({
               Delete palette
             </button>
           </div>
-        </>
+        </div>
       )}
-      <label>
-        New palette name
-        <input
-          maxLength={80}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
+      <div className="palette-library__new">
+        <label>
+          New palette name
+          <input
+            maxLength={80}
+            value={name}
+            placeholder="From the current colors"
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={palettes.length >= 30}
+          onClick={() => {
+            if (!name.trim()) {
+              setError("Give the new palette a name.");
+              return;
+            }
+            create(appearance, name.trim());
+            setName("");
+            setError("");
+          }}
+        >
+          Save current colors as new palette
+        </button>
+      </div>
       {error && <p role="alert">{error}</p>}
-      <button
-        type="button"
-        disabled={palettes.length >= 30}
-        onClick={() => {
-          if (!name.trim()) {
-            setError("Give the new palette a name.");
-            return;
-          }
-          const { background, text, accent, surface } = appearance;
-          const palette = {
-            id: crypto.randomUUID(),
-            name: name.trim(),
-            background,
-            text,
-            accent,
-            surface,
-          };
-          onChange([...palettes, palette]);
-          setSelected(palette.id);
-          setName("");
-          setError("");
-        }}
-      >
-        Save current colors as new palette
-      </button>
     </fieldset>
+  );
+}
+
+export function PaletteSwatch({ colors }: { colors: PaletteColors }) {
+  return (
+    <span className="palette-swatch" aria-hidden="true">
+      {PALETTE_KEYS.map((key) => (
+        <span key={key} style={{ background: colors[key] }} />
+      ))}
+    </span>
   );
 }

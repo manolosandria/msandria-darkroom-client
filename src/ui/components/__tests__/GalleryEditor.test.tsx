@@ -78,7 +78,7 @@ describe("Gallery studio", () => {
     expect(screen.getAllByRole("textbox", { name: /^Text \d+$/ })).toHaveLength(
       2,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add text" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Add text" }));
     expect(screen.getAllByRole("textbox", { name: /^Text \d+$/ })).toHaveLength(
       3,
     );
@@ -100,10 +100,7 @@ describe("Gallery studio", () => {
 
 it("adds, edits, applies and deletes palettes in the draft before saving", async () => {
   render(<GalleryEditor />);
-  await screen.findByLabelText("Saved palette");
-  fireEvent.change(screen.getByLabelText("Saved palette"), {
-    target: { value: "night" },
-  });
+  fireEvent.click(await screen.findByRole("button", { name: "Night" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply palette" }));
   expect(
     JSON.parse(screen.getByTestId("preview").textContent!).appearance
@@ -143,4 +140,17 @@ it("lets the administrator disable visitor options without allowing an empty gro
     JSON.parse(screen.getByTestId("preview").textContent!).visitorOptions
       .layouts,
   ).toEqual(["random"]);
+});
+it("previews the gallery inside a chosen monitor or phone", async () => {
+  render(<GalleryEditor />);
+  const desktop = await screen.findByRole("radio", { name: /Desktop/ });
+  expect(desktop).toHaveAttribute("aria-checked", "true");
+  fireEvent.click(screen.getByRole("radio", { name: /Phone/ }));
+  expect(screen.getByRole("radio", { name: /Phone/ })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  expect(
+    screen.getByTestId("preview").closest(".device-frame"),
+  ).toHaveClass("device-frame--mobile");
 });

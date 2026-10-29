@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import GalleryEditor from "./GalleryEditor";
+import PaletteManager from "./PaletteManager";
 import HomeBannerEditor from "./HomeBannerEditor";
 import UploadPanel from "./UploadPanel";
 import ManagePhotos from "./ManagePhotos";
@@ -16,6 +17,7 @@ import { useSessionValue } from "./SessionProvider";
 const sections = [
   "Home",
   "Gallery",
+  "Palettes",
   "Upload",
   "Photos",
   "Collections",
@@ -101,6 +103,11 @@ export default function Curator() {
         {visited.includes("Home") && (
           <div hidden={section !== "Home"}>
             <HomeBannerEditor />
+          </div>
+        )}
+        {visited.includes("Palettes") && (
+          <div hidden={section !== "Palettes"}>
+            <PaletteManager />
           </div>
         )}
         {visited.includes("Gallery") && (

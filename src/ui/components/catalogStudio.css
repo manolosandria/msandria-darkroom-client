@@ -144,7 +144,11 @@
 .studio-card--categories>section { padding:1.2rem; border-radius:1rem; background:#f8f9f4; border:1px solid #e0e5d7; }
 .variant-assignment { display:grid; gap:.75rem; padding:1rem; border:1px solid #dbe1d0; border-radius:.7rem; background:#f4f6ee; margin:1rem 0; }
 .variant-assignment select { max-width:100%; padding:.6rem; border:1px solid #cbd4bd; border-radius:.4rem; background:white; }
-.viewer-variants { position:absolute; top:5rem; left:50%; transform:translateX(-50%); z-index:20; display:flex; gap:.5rem; max-width:65%; overflow:auto; padding:.5rem; background:#141914dd; border:1px solid #ffffff35; border-radius:.7rem; }
-.viewer-variants a { display:block; position:relative; width:54px; min-width:54px; height:54px; border:2px solid transparent; border-radius:.3rem; overflow:hidden; }
-.viewer-variants a[aria-current] { border-color:#e2eccf; }
+/* Viewer: the work's variants as a strip along the bottom edge, the current one marked. */
+.viewer-variants { position:absolute; bottom:1.25rem; left:50%; transform:translateX(-50%); z-index:20; display:grid; justify-items:center; gap:.35rem; max-width:min(70%, 36rem); padding:.5rem .6rem .45rem; background:#141914d9; border:1px solid #ffffff30; border-radius:.9rem; backdrop-filter:blur(6px); box-shadow:0 12px 30px -12px #000c; }
+.viewer-variants__label { color:#d8dccf; font:600 .62rem/1 Arial, sans-serif; letter-spacing:.14em; text-transform:uppercase; }
+.viewer-variants__strip { display:flex; gap:.45rem; max-width:100%; overflow-x:auto; scrollbar-width:thin; padding:2px; }
+.viewer-variants a { display:block; position:relative; width:58px; min-width:58px; height:58px; border-radius:.45rem; overflow:hidden; opacity:.7; box-shadow:0 0 0 1px #ffffff40; transition:opacity .15s, transform .15s, box-shadow .15s; }
+.viewer-variants a:hover, .viewer-variants a:focus-visible { opacity:1; transform:translateY(-2px); }
+.viewer-variants a[aria-current] { opacity:1; box-shadow:0 0 0 2px #e2eccf, 0 6px 14px -6px #000; }
 @media(prefers-reduced-motion:reduce) { .catalog-editor *, .gallery-category-chips * { transition:none!important; } }

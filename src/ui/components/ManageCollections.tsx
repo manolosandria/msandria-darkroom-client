@@ -6,11 +6,11 @@ import { Catalog, WorkDraft } from "@/src/domain/entities/Catalog";
 import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog as editCatalog } from "@/src/infrastructure/catalogServices";
 import { getManagedPhotos as getAllPhotos } from "@/src/infrastructure/photoServices";
-import { PhotoImage } from "./PhotoImage";
 import { CollectionWorkspace } from "./CollectionWorkspace";
 import { EditingBoundary } from "./EditingWorkspace";
 import { useSessionValue } from "./SessionProvider";
 import { ErrorMessage } from "./ErrorMessage";
+import { VariantStudio } from "./VariantStudio";
 
 const TABS = ["Collections", "Categories"] as const;
 type Tab = (typeof TABS)[number] | "Variants";
@@ -394,170 +394,42 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
                   tile with a variant selector. Each file keeps its comments and
                   its own viewer URL.
                 </p>
-                <div className="variant-library">
-                  <button
-                    type="button"
-                    className="variant-card"
-                    aria-pressed={!workId}
-                    onClick={() => {
-                      setWorkId("");
-                      setWork({ title: "", photoIds: [] });
-                    }}
-                  >
-                    <span className="variant-card__image variant-card__new">
-                      ＋
-                    </span>
-                    <strong>New work</strong>
-                    <small>Bring photographs together</small>
-                  </button>
-                  {catalog.works.map((item) => {
-                    const cover = photos.find(
-                      (photo) => photo.getId() === item.variants[0]?.photoId,
-                    );
-                    return (
-                      <button
-                        type="button"
-                        key={item.id}
-                        className="variant-card"
-                        aria-pressed={workId === item.id}
-                        onClick={() => {
-                          setWorkId(item.id);
-                          setWork({
+                <VariantStudio
+                  catalog={catalog}
+                  photos={photos}
+                  busy={busy}
+                  workId={workId}
+                  work={work}
+                  onOpen={(id) => {
+                    const item = catalog.works.find((item) => item.id === id);
+                    setWorkId(item ? id : "");
+                    setWork(
+                      item
+                        ? {
                             title: item.title,
-                              version: item.version,
+                            version: item.version,
                             photoIds: item.variants.map((v) => v.photoId),
-                          });
-                        }}
-                      >
-                        <span className="variant-card__image">
-                          {cover && (
-                            <PhotoImage
-                              photo={cover}
-                              maxWidth={320}
-                              fallbackSizes="180px"
-                              className="object-cover"
-                            />
-                          )}
-                        </span>
-                        <strong>{item.title}</strong>
-                        <small>{item.variants.length} variants</small>
-                      </button>
+                          }
+                        : { title: "", photoIds: [] },
                     );
-                  })}
-                </div>
-                <label>
-                  Edit work
-                  <select
-                    value={workId}
-                    onChange={(event) => {
-                      setWorkId(event.target.value);
-                      const item = catalog.works.find(
-                        (item) => item.id === event.target.value,
-                      );
-                      setWork(
-                        item
-                          ? {
-                              title: item.title,
-                              version: item.version,
-                              photoIds: item.variants.map(
-                                (variant) => variant.photoId,
-                              ),
-                            }
-                          : { title: "", photoIds: [] },
-                      );
-                    }}
-                  >
-                    <option value="">New work</option>
-                    {catalog.works.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
+                  }}
+                  onChange={setWork}
+                  onSave={() =>
                     void save(
                       () => editCatalog.saveWork(work, workId || undefined),
                       () => {
                         setWorkId("");
                         setWork({ title: "", photoIds: [] });
                       },
-                    );
-                  }}
-                >
-                  <fieldset>
-                    <label>
-                      Work title
-                      <input
-                        required
-                        maxLength={160}
-                        value={work.title}
-                        onChange={(event) =>
-                          setWork({ ...work, title: event.target.value })
-                        }
-                      />
-                    </label>
-                    <div className="variant-library">
-                      {photos.map((photo) => {
-                        const assigned = catalog.works.some(
-                          (item) =>
-                            item.id !== workId &&
-                            item.variants.some(
-                              (variant) => variant.photoId === photo.getId(),
-                            ),
-                        );
-                        return (
-                          <label key={photo.getId()} className="variant-card">
-                            <input
-                              type="checkbox"
-                              disabled={assigned}
-                              checked={work.photoIds.includes(photo.getId())}
-                              onChange={() =>
-                                setWork({
-                                  ...work,
-                                  photoIds: toggle(
-                                    work.photoIds,
-                                    photo.getId(),
-                                  ),
-                                })
-                              }
-                            />
-                            <span className="variant-card__image">
-                              <PhotoImage
-                                photo={photo}
-                                maxWidth={160}
-                                fallbackSizes="140px"
-                                className="object-cover"
-                              />
-                            </span>
-                            {photo.getTitle()}
-                            {assigned && " (already grouped)"}
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <button
-                      className="studio-save"
-                      disabled={work.photoIds.length < 2}
-                    >
-                      Save variants
-                    </button>
-                  </fieldset>
-                </form>
-                {workId && (
-                  <button
-                    onClick={() =>
-                      remove("works", workId, () => {
-                        setWorkId("");
-                        setWork({ title: "", photoIds: [] });
-                      })
-                    }
-                  >
-                    Ungroup variants
-                  </button>
-                )}
+                    )
+                  }
+                  onUngroup={() =>
+                    remove("works", workId, () => {
+                      setWorkId("");
+                      setWork({ title: "", photoIds: [] });
+                    })
+                  }
+                />
               </section>
             </fieldset>
           )}

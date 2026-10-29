@@ -16,8 +16,44 @@ Feature: Editing the current version of a photo
   Scenario: Find a photo in the library
     Given I am on the Photos tab as the administrator
     When I search by title or filter by category or camera
-    Then the library card lists only the matching photos and how many there are
-    And the list scrolls on its own while the editor stays in view
+    Then the library lists only the matching photos and how many there are
+
+  Scenario: Browse the library as a grid or a list
+    Given I am on the Photos tab as the administrator
+    When I switch the library from Grid to List
+    Then each photo shows as a row with its visibility, size, camera and date
+    When I open a photo
+    Then the library becomes a filmstrip above the editor
+    And Library brings back the grid or list I left
+
+  Scenario: Preview a highlight large and move between sections
+    Given I am editing a photo with a square highlight
+    When I choose Square above the stage
+    Then the stage shows that crop large instead of the whole photo
+    When I collapse every section and choose Frame among the section tabs
+    Then the Frame section opens and scrolls into view
+
+  Scenario: Classify a photo visually
+    Given I am editing a photo
+    Then visibility is chosen among four cards with a picture each
+    And existing categories can be added with a click
+    When I expand Collections
+    Then every collection shows its cover and title, marking the ones holding the photo
+    And choosing a card adds or removes the photo, with its order beside it
+
+  Scenario: Replacing the file warns that the current one is lost
+    Given I am editing a photo
+    When I choose a file with Replace file at the bottom of the editor
+    Then a warning says the current file will be lost and cannot be recovered
+    And Keep the current file withdraws the replacement before saving
+
+  Scenario: Build a work in the Variants studio
+    Given I am in Curator Variants
+    When I drag photos from the library into the open work, or tick them there
+    Then they appear large in the work, the first as its cover
+    When I drop image files on the work or choose Upload files
+    Then each file is uploaded with the visibility of the work's first photo and joins the work
+    And the work is grouped only when I choose Save variants
 
   Scenario: Save several custom highlights alongside the main shapes
     Given I am editing a photo with a square highlight
@@ -44,3 +80,28 @@ Feature: Editing the current version of a photo
     Then the photo keeps its colour and sides with the new top and bottom
     When I turn its frame off and save
     Then the photo is shown bare in the viewer and on Home
+
+  Scenario: Draw a highlight and revert a change
+    Given I am editing a photo without highlights
+    When I press the green plus, choose the square and drag on the photo
+    Then a square crop appears that I can move or resize from a corner
+    And it is kept only when I accept it, and cancelling leaves nothing behind
+    When I move an accepted highlight and choose Revert
+    Then it returns to where it was when I opened the photo
+
+  Scenario: Combine Gallery filters
+    Given the gallery has categories in Subjects and in Color & treatment
+    When I choose two subjects and one color
+    Then the gallery shows photos with either subject that also have that color
+    And the round reset icon clears every filter at once
+
+  Scenario: Switch variants where the work is shown
+    Given a work with two variants
+    Then its Gallery tile and the viewer show both as small thumbnails to choose from
+    And a collection shows them only when its Display section allows it
+
+  Scenario: Manage palettes in their own tab
+    Given I open Curator Palettes
+    Then each palette shows its four colors and a drawing says where each one goes
+    When I rename a palette and save
+    Then the Gallery studio keeps its own draft and adopts the new palettes

@@ -1,0 +1,249 @@
+/* Highlight editor: thumbnails of every crop, a green + to draw a new one, and a stage
+   where the selected crop moves with the pointer and resizes from its corners. */
+.highlight-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+.highlight-strip {
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 3px 3px 6px;
+  scrollbar-width: thin;
+}
+.highlight-strip__empty {
+  margin: 0;
+  align-self: center;
+  font-size: 0.8rem;
+}
+.highlight-editor .highlight-thumb {
+  display: grid;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+  width: 5.5rem;
+  padding: 0.3rem;
+  border: 1px solid #0000001a;
+  border-radius: 0.55rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.highlight-editor .highlight-thumb:hover {
+  border-color: #65724a;
+  transform: translateY(-2px);
+}
+.highlight-editor .highlight-thumb[aria-pressed="true"] {
+  border-color: #4d6b3a;
+  box-shadow: 0 0 0 2px #4d6b3a66;
+}
+.highlight-thumb__image {
+  position: relative;
+  display: block;
+  max-height: 4.2rem;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 0.3rem;
+  background: #e5e8e0;
+}
+.highlight-thumb__label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  color: #3d4934;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.highlight-thumb__label svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+.highlight-editor .highlight-add {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-top: 0.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #3f8f3a;
+  color: #fff;
+  box-shadow: 0 6px 14px -6px #2f6b2bcc;
+  cursor: pointer;
+  transition: transform 0.15s, background-color 0.15s;
+}
+.highlight-editor .highlight-add:hover {
+  background: #347a30;
+  transform: scale(1.06);
+}
+.highlight-editor .highlight-add[aria-expanded="true"] {
+  transform: rotate(45deg);
+}
+.highlight-editor .highlight-add svg {
+  width: 22px;
+  height: 22px;
+}
+.highlight-shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.7rem;
+  background: #eef3e6;
+}
+.highlight-editor .highlight-shapes button {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  min-width: 4.4rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  background: #fff;
+  color: #2f4f2a;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.highlight-editor .highlight-shapes button:hover:not(:disabled) {
+  border-color: #3f8f3a;
+}
+.highlight-editor .highlight-shapes button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.highlight-stage[data-drawing] {
+  cursor: crosshair;
+  outline: 2px dashed #3f8f3a;
+  outline-offset: 3px;
+}
+.highlight-stage__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  z-index: 2;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #000a;
+  color: #fff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.highlight-selection--draft {
+  border-style: dashed;
+  border-color: #b6f0a8;
+}
+.highlight-handle {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #2f4f2a, 0 1px 4px #0008;
+  touch-action: none;
+}
+.highlight-handle--nw { left: -8px; top: -8px; cursor: nwse-resize; }
+.highlight-handle--se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.highlight-handle--ne { right: -8px; top: -8px; cursor: nesw-resize; }
+.highlight-handle--sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.highlight-handle--n,
+.highlight-handle--s {
+  left: calc(50% - 10px);
+  width: 20px;
+  height: 8px;
+  cursor: ns-resize;
+}
+.highlight-handle--n { top: -5px; }
+.highlight-handle--s { bottom: -5px; }
+.highlight-handle--e,
+.highlight-handle--w {
+  top: calc(50% - 10px);
+  width: 8px;
+  height: 20px;
+  cursor: ew-resize;
+}
+.highlight-handle--e { right: -5px; }
+.highlight-handle--w { left: -5px; }
+.highlight-confirm,
+.highlight-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.highlight-confirm > span,
+.highlight-tools__size {
+  flex: 1;
+  min-width: 8rem;
+  font-size: 0.78rem;
+  color: #5c6851;
+}
+.highlight-editor .highlight-confirm button,
+.highlight-editor .highlight-tools button {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0;
+  border: 1px solid #d0d8c6;
+  border-radius: 50%;
+  background: #fff;
+  color: #394c36;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.highlight-editor .highlight-confirm button:disabled,
+.highlight-editor .highlight-tools button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.highlight-editor .highlight-tools button:hover:not(:disabled) {
+  border-color: #65724a;
+  background: #eef3e6;
+}
+.highlight-editor .highlight-confirm .highlight-confirm__accept {
+  background: #3f8f3a;
+  border-color: #3f8f3a;
+  color: #fff;
+}
+.highlight-editor .highlight-confirm .highlight-confirm__accept:not(:disabled):hover {
+  background: #347a30;
+}
+.highlight-editor .highlight-confirm__cancel:hover,
+.highlight-editor .highlight-tools .highlight-tools__remove:hover:not(:disabled) {
+  background: #fbe9e6;
+  border-color: #b9412f;
+  color: #9b2c1f;
+}
+.highlight-tools__name {
+  flex: 1 1 10rem;
+}
+.highlight-tools__name input {
+  width: 100%;
+  margin: 0;
+}
+.highlight-precise {
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+}
+.highlight-precise > summary {
+  cursor: pointer;
+  color: #4d6b3a;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}

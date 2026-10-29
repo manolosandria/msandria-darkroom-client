@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CatalogEditor } from "../ManageCollections";
 import { CollectionMosaic } from "../CollectionMosaic";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
-import { getManagedPhotos } from "@/src/infrastructure/photoServices";
+import { getManagedPhotos, uploadPhoto } from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
@@ -21,6 +21,7 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
 }));
 vi.mock("@/src/infrastructure/photoServices", () => ({
   getManagedPhotos: { execute: vi.fn() },
+  uploadPhoto: { execute: vi.fn() },
 }));
 const photo = (title: string, visibility?: "PRIVATE") =>
   new Photo({
@@ -247,6 +248,7 @@ describe("collection editor", () => {
         title: "City",
         description: "At night",
         coverPhotoId: null,
+        showVariants: false,
         categoryIds: [],
         entries: [{ photoId: "Color", columns: 2, rows: 1, showTitle: true }],
       },
@@ -288,6 +290,7 @@ describe("collection editor", () => {
         title: "City",
         description: "",
         coverPhotoId: "Monochrome",
+        showVariants: false,
         categoryIds: [],
         entries: [
           { photoId: "Monochrome", columns: 1, rows: 1, showTitle: false },
@@ -375,6 +378,7 @@ describe("collection mosaic", () => {
     render(
       <CollectionMosaic
         mosaic
+        variants
         tiles={[
           {
             key: "work",
@@ -386,12 +390,15 @@ describe("collection mosaic", () => {
       />,
     );
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    await user.selectOptions(screen.getByRole("combobox"), "Monochrome");
+    await user.click(screen.getByRole("radio", { name: "Monochrome" }));
     expect(screen.getByRole("link")).toHaveAttribute(
       "href",
       "/photo/Monochrome",
     );
-    expect(screen.getByRole("img")).toHaveAttribute("alt", "Monochrome");
+    expect(within(screen.getByRole("link")).getByRole("img")).toHaveAttribute(
+      "alt",
+      "Monochrome",
+    );
     expect(screen.getByRole("listitem")).toHaveStyle({
       gridColumn: "span 2",
       gridRow: "span 3",
@@ -430,4 +437,56 @@ it("opens an existing work from its cover in the standalone variants panel", asy
   expect(screen.getByLabelText("Work title")).toHaveValue("Two expressions");
   expect(screen.getAllByRole("checkbox").filter(input => (input as HTMLInputElement).checked)).toHaveLength(2);
   expect(screen.queryByRole("tab", { name: "Variants" })).not.toBeInTheDocument();
+});
+
+it("adds a library photo to a new work and uploads dropped files with the work's visibility", async () => {
+  vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo("Color", "PRIVATE"), photo("Monochrome")]);
+  const uploaded = photo("Infrared");
+  vi.mocked(uploadPhoto.execute).mockResolvedValue({ photo: uploaded, optimizationIssues: [] });
+  vi.mocked(manageCatalog.saveWork).mockResolvedValue({ id: "w", title: "Night", version: 1, variants: [] });
+  render(<CatalogEditor variants />);
+  const library = await screen.findByRole("region", { name: "Photo library" });
+  await userEvent.click(within(library).getAllByRole("checkbox")[0]);
+  const zone = screen.getByRole("group", { name: "Variants of this work" });
+  expect(within(zone).getByText("Color")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Save variants" })).toBeDisabled();
+  await userEvent.upload(
+    screen.getByLabelText("Upload files…"),
+    new File(["image"], "night_infrared.jpg", { type: "image/jpeg" }),
+  );
+  expect(await within(zone).findByText("Infrared")).toBeInTheDocument();
+  expect(uploadPhoto.execute).toHaveBeenCalledWith(
+    expect.objectContaining({ title: "night infrared", visibility: "PRIVATE" }),
+  );
+  expect(screen.getByLabelText("Work title")).toHaveValue("Infrared");
+  await userEvent.click(screen.getByRole("button", { name: "Save variants" }));
+  await waitFor(() =>
+    expect(manageCatalog.saveWork).toHaveBeenCalledWith(
+      { title: "Infrared", photoIds: ["Color", "Infrared"] },
+      undefined,
+    ),
+  );
+});
+
+it("adds a photo dragged from the library and refuses files that are not images", async () => {
+  render(<CatalogEditor variants />);
+  const zone = await screen.findByRole("group", { name: "Variants of this work" });
+  const data = new Map<string, string>([["application/x-darkroom-photo", "Monochrome"]]);
+  fireEvent.drop(zone, { dataTransfer: { getData: (type: string) => data.get(type) ?? "", files: [] } });
+  expect(within(zone).getByText("Monochrome")).toBeInTheDocument();
+  fireEvent.drop(zone, {
+    dataTransfer: { getData: () => "", files: [new File(["x"], "notes.txt", { type: "text/plain" })] },
+  });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Drop JPEG, PNG or WebP images.");
+  expect(uploadPhoto.execute).not.toHaveBeenCalled();
+});
+
+it("offers variants in a public mosaic only when the collection allows it", () => {
+  const tiles = [{ key: "work", photo: photos[0], variants: photos }];
+  const { rerender } = render(<CollectionMosaic mosaic tiles={tiles} />);
+  expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+  rerender(<CollectionMosaic mosaic variants tiles={tiles} />);
+  expect(
+    screen.getByRole("radiogroup", { name: "Variants of Color" }),
+  ).toBeInTheDocument();
 });

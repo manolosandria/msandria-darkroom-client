@@ -178,6 +178,7 @@ function CollectionContents({
         <CollectionMosaic
           tiles={selectCatalog(photos, catalog, "", collection.id)}
           mosaic
+          variants={collection.showVariants === true}
         />
       )}
       {result && pages > 1 && (

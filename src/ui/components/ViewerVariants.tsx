@@ -43,21 +43,26 @@ export function ViewerVariants({
   if (variants.length < 2) return null;
   return (
     <nav className="viewer-variants" aria-label="Photograph variants">
-      {variants.map((photo) => (
-        <Link
-          key={photo.getId()}
-          href={`/photo/${encodeURIComponent(photo.getId())}`}
-          aria-label={`View variant: ${photo.getTitle()}`}
-          aria-current={photo.getId() === photoId ? "page" : undefined}
-        >
-          <PhotoImage
-            photo={photo}
-            maxWidth={160}
-            fallbackSizes="54px"
-            className="object-cover"
-          />
-        </Link>
-      ))}
+      <span className="viewer-variants__label" aria-hidden="true">
+        {variants.length} variants
+      </span>
+      <div className="viewer-variants__strip">
+        {variants.map((photo) => (
+          <Link
+            key={photo.getId()}
+            href={`/photo/${encodeURIComponent(photo.getId())}`}
+            aria-label={`View variant: ${photo.getTitle()}`}
+            aria-current={photo.getId() === photoId ? "page" : undefined}
+          >
+            <PhotoImage
+              photo={photo}
+              maxWidth={160}
+              fallbackSizes="58px"
+              className="object-cover"
+            />
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }

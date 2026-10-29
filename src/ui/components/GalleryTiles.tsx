@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CSSProperties, useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
 import { PhotoImage } from "./PhotoImage";
+import { VariantThumbs } from "./VariantThumbs";
 import { rememberTilesOnViewerClick } from "@/src/ui/viewerSequence";
 
 import {
@@ -108,22 +109,13 @@ function Tile({
         />
         <span className="photo-grid__caption">{photo.getTitle()}</span>
       </Link>
-      {tile.variants.length > 1 && (
-        <label className="gallery-tile__variants">
-          Variant
-          <select
-            aria-label={`Variant of ${tile.photo.getTitle()}`}
-            value={photo.getId()}
-            onChange={(event) => onSelect(event.target.value)}
-          >
-            {tile.variants.map((variant) => (
-              <option key={variant.getId()} value={variant.getId()}>
-                {variant.getTitle()}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <VariantThumbs
+        className="gallery-tile__variants"
+        variants={tile.variants}
+        selectedId={photo.getId()}
+        onSelect={onSelect}
+        label={`Variants of ${tile.photo.getTitle()}`}
+      />
     </li>
   );
 }

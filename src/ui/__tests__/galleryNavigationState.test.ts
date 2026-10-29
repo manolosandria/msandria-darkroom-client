@@ -14,11 +14,11 @@ describe("gallery navigation state", () => {
     window.history.replaceState(
       null,
       "",
-      "/gallery?category=street&q=night&page=3&layout=uniform&crops=square",
+      "/gallery?category=street,night_1,bad%20id&q=night&page=3&layout=uniform&crops=square",
     );
     const state = readGalleryState();
     expect(state).toMatchObject({
-      category: "street",
+      categories: ["street", "night_1"],
       search: "night",
       page: 3,
       display: { layout: "uniform", crops: "square" },
@@ -29,20 +29,20 @@ describe("gallery navigation state", () => {
 
   it("ignores the URL for a preview and invalid pages", () => {
     window.history.replaceState(null, "", "/curator?category=street&page=x");
-    expect(readGalleryState(false)).toMatchObject({ category: "", page: 1 });
+    expect(readGalleryState(false)).toMatchObject({ categories: [], page: 1 });
     expect(readGalleryState().page).toBe(1);
   });
 
   it("writes the place without dropping other parameters", () => {
     window.history.replaceState(null, "", "/gallery?ref=home&page=4");
     writeGalleryState({
-      category: "city",
+      categories: ["city", "rain"],
       search: "rain",
       page: 1,
       display: { layout: "random" },
     });
     expect(window.location.search).toBe(
-      "?ref=home&category=city&q=rain&layout=random",
+      "?ref=home&category=city%2Crain&q=rain&layout=random",
     );
   });
 });

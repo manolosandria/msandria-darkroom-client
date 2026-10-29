@@ -6,7 +6,8 @@ const SEED_KEY = "gallerySeed";
 const DISPLAY_KEYS = ["layout", "crops"] as const;
 
 export type GalleryNavigationState = {
-  category: string;
+  /** Every chosen category; the URL keeps them comma-separated in `category`. */
+  categories: string[];
   search: string;
   page: number;
   display: { layout?: string; crops?: string };
@@ -36,7 +37,13 @@ export function readGalleryState(
     if (value) display[key] = value;
   }
   return {
-    category: params.get("category") ?? "",
+    categories: [
+      ...new Set(
+        (params.get("category") ?? "")
+          .split(",")
+          .filter((id) => /^[\w-]{1,128}$/.test(id)),
+      ),
+    ].slice(0, 20),
     search: (params.get("q") ?? "").slice(0, 120),
     page: Number.isInteger(page) && page >= 1 && page <= 10000 ? page : 1,
     display,
@@ -52,7 +59,7 @@ export function writeGalleryState(state: GalleryNavigationState) {
     if (value) params.set(key, value);
     else params.delete(key);
   };
-  set("category", state.category);
+  set("category", state.categories.join(","));
   set("q", state.search);
   set("page", state.page > 1 ? String(state.page) : undefined);
   for (const key of DISPLAY_KEYS) set(key, state.display[key]);

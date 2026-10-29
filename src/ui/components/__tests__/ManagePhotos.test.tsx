@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -187,7 +187,7 @@ describe("ManagePhotos", () => {
     expect(await screen.findByLabelText("Description")).toHaveValue(
       "Saved elsewhere",
     );
-    expect(screen.getByLabelText("Visibility")).toHaveValue("PRIVATE");
+    expect(screen.getByRole("radio", { name: /Private/ })).toBeChecked();
     expect(
       screen.queryByRole("button", { name: "Reload state" }),
     ).not.toBeInTheDocument();
@@ -245,7 +245,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(screen.getByRole("button", { name: "Other photo" }));
     await screen.findByLabelText("Description");
     await userEvent.click(screen.getByRole("button", { name: "The coast" }));
-    expect(await screen.findByLabelText("Visibility")).toHaveValue("PRIVATE");
+    expect(await screen.findByRole("radio", { name: /Private/ })).toBeChecked();
     expect(
       screen.getByRole("button", { name: "Remove category Sea" }),
     ).toBeInTheDocument();
@@ -415,9 +415,8 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
-    const corner = await screen.findByLabelText("Title corner in the viewer");
-    expect(corner).toHaveValue("TOP_LEFT");
-    await userEvent.selectOptions(corner, "BOTTOM_RIGHT");
+    expect(await screen.findByRole("radio", { name: "Top left" })).toBeChecked();
+    await userEvent.click(screen.getByRole("radio", { name: "Bottom right" }));
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
@@ -504,5 +503,54 @@ describe("ManagePhotos", () => {
     expect(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     ).toBeEnabled();
+  });
+
+  it("browses as a grid or a list and returns to the library from the editor", async () => {
+    const user = userEvent.setup();
+    show();
+    const library = await screen.findByRole("navigation", { name: "Published photos" });
+    expect(library).toHaveClass("photo-browser--grid");
+    await user.click(screen.getByRole("radio", { name: "List" }));
+    expect(library).toHaveClass("photo-browser--list");
+    expect(within(library).getByText("Public")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "The coast" }));
+    await screen.findByLabelText("Title");
+    expect(library).toHaveClass("photo-browser--strip");
+    expect(screen.queryByRole("radio", { name: "List" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Library/ }));
+    expect(library).toHaveClass("photo-browser--list");
+    expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
+  });
+
+  it("shows a chosen highlight large and jumps to a collapsed section", async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    const views = await screen.findByRole("radiogroup", { name: "Preview view" });
+    expect(within(views).getByRole("radio", { name: "Original" })).toHaveAttribute("aria-checked", "true");
+    await user.click(within(views).getByRole("radio", { name: /Square/ }));
+    expect(within(views).getByRole("radio", { name: /Square/ })).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByRole("button", { name: "Collapse all" }));
+    const frame = screen.getByText("Frame", { selector: "summary span" }).closest("details");
+    expect(frame).not.toHaveAttribute("open");
+    await user.click(within(screen.getByRole("navigation", { name: "Photo sections" })).getByRole("button", { name: "Frame" }));
+    expect(frame).toHaveAttribute("open");
+  });
+
+  it("warns that a replacement loses the current file and lets the curator keep it", async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    await user.upload(
+      await screen.findByLabelText("Replacement file"),
+      new File(["image"], "new.jpg", { type: "image/jpeg" }),
+    );
+    expect(screen.getByText("⚠ The current file will be lost.")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Save changes" })[0]);
+    expect(await screen.findByRole("dialog")).toHaveTextContent("cannot be recovered");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Keep the current file" }));
+    expect(screen.queryByText("⚠ The current file will be lost.")).not.toBeInTheDocument();
+    expect(replacePhoto.execute).not.toHaveBeenCalled();
   });
 });
