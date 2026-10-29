@@ -78,6 +78,14 @@ describe("ApiPhotoRepository", () => {
     ).findAll();
     expect(photos?.[0].getClassification().visibility).toBe("PRIVATE");
   });
+  it("keeps the version from the administrator listing for versioned writes", async () => {
+    const photos = await new ApiPhotoRepository(
+      API_URL,
+      respondWith([{ ...apiPhoto("x"), version: 5 }]),
+      "/photos/manage",
+    ).findAll();
+    expect(photos?.[0].getVersion()).toBe(5);
+  });
   it("keeps the camera named by the administrator listing", async () => {
     const photos = await new ApiPhotoRepository(
       API_URL,

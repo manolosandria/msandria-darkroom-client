@@ -36,6 +36,7 @@ describe("ApiCatalogRepository", () => {
     await repository.saveCategory("Street", "a/b");
     await repository.saveWork({ title: "One work", photoIds: ["a", "b"] });
     await repository.setPhotoCategories("a/b", ["cat"]);
+    await repository.setPhotoCategories("v", ["cat"], 4);
     await repository.remove("collections", "a/b");
     expect(
       fetchFn.mock.calls.every(([, init]) => init.credentials === "include"),
@@ -47,6 +48,10 @@ describe("ApiCatalogRepository", () => {
     expect(fetchFn).toHaveBeenCalledWith(
       "https://api.example/photos/a%2Fb/categories",
       expect.objectContaining({ body: '{"categoryIds":["cat"]}' }),
+    );
+    expect(fetchFn).toHaveBeenCalledWith(
+      "https://api.example/photos/v/categories",
+      expect.objectContaining({ body: '{"categoryIds":["cat"],"version":4}' }),
     );
     expect(fetchFn).toHaveBeenCalledWith(
       "https://api.example/collections/a%2Fb",

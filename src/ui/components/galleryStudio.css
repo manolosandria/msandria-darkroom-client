@@ -441,3 +441,5 @@
     font-size: 0.75rem;
   }
 }
+/* The previous page stays while the next loads, dimmed so the change is visible. */
+.gallery-loading { opacity:.55; transition:opacity .2s; pointer-events:none; }

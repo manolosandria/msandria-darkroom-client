@@ -365,6 +365,9 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
                           editCatalog.setPhotoCategories(
                             photoId,
                             photoCategories,
+                            photos
+                              .find((photo) => photo.getId() === photoId)
+                              ?.getVersion(),
                           ),
                         )
                       }
