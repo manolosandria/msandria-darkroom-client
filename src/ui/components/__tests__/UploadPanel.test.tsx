@@ -175,7 +175,24 @@ describe("Upload workspace", () => {
     });
     fireEvent.load(image);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add square highlight" }),
+      await screen.findByRole("button", { name: "New highlight" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Draw square highlight" }),
+    );
+    const stage = document.querySelector(".highlight-stage") as HTMLElement;
+    stage.setPointerCapture = vi.fn();
+    vi.spyOn(stage, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 600,
+      height: 400,
+    } as DOMRect);
+    fireEvent.pointerDown(stage, { pointerId: 1, clientX: 60, clientY: 40 });
+    fireEvent.pointerMove(stage, { pointerId: 1, clientX: 300, clientY: 300 });
+    fireEvent.pointerUp(stage, { pointerId: 1 });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Accept highlight" }),
     );
     expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
     await userEvent.click(
@@ -235,8 +252,7 @@ it("retries variant linking without uploading a successful file again", async ()
   renderPanel();
   await select();
   await userEvent.click(screen.getByText(/group another interpretation/));
-  await waitFor(() => expect(screen.getByRole("option", { name: "Original" })).toBeInTheDocument());
-  await userEvent.selectOptions(screen.getByLabelText("Variant of"), "original");
+  await userEvent.click(await screen.findByRole("radio", { name: "Original" }));
   await userEvent.click(screen.getByRole("button", { name: "Upload" }));
   await screen.findByText(/The file is uploaded/);
   expect(screen.getByLabelText("Title")).toBeDisabled();

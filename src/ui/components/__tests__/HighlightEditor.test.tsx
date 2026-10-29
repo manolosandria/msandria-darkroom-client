@@ -33,35 +33,90 @@ function Harness({
 
 const stage = () => document.querySelector(".highlight-stage") as HTMLElement;
 
-describe("HighlightEditor", () => {
-  it("offers one shape at a time and keeps the others addable", async () => {
-    render(<Harness />);
-
-    expect(
-      screen.getByRole("button", { name: "Add square highlight" }),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Portrait/ }));
-
-    expect(
-      screen.getByRole("button", { name: "Add portrait highlight" }),
-    ).toBeInTheDocument();
+// The stage is 600 × 400 on screen, so 60 px is a tenth of either side.
+function measure() {
+  const target = stage();
+  target.setPointerCapture = vi.fn();
+  vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+    left: 0,
+    top: 0,
+    width: 600,
+    height: 400,
+  } as DOMRect);
+  return target;
+}
+async function draw(
+  shape: string,
+  from: [number, number],
+  to: [number, number],
+) {
+  await userEvent.click(screen.getByRole("button", { name: "New highlight" }));
+  await userEvent.click(screen.getByRole("button", { name: shape }));
+  const target = measure();
+  fireEvent.pointerDown(target, {
+    pointerId: 1,
+    clientX: from[0],
+    clientY: from[1],
   });
+  fireEvent.pointerMove(target, {
+    pointerId: 1,
+    clientX: to[0],
+    clientY: to[1],
+  });
+  fireEvent.pointerUp(target, { pointerId: 1 });
+}
 
-  // Nothing is cropped automatically: the first crop appears when it is asked for.
-  it("proposes a crop inside the photo and previews it", async () => {
+describe("HighlightEditor", () => {
+  // Nothing is cropped automatically: a crop exists only once drawn and accepted.
+  it("draws a square by dragging and keeps it only when accepted", async () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
-
+    expect(screen.getByText(/No highlights yet/)).toBeInTheDocument();
+    await draw("Draw square highlight", [60, 40], [360, 240]);
+    expect(onChange).not.toHaveBeenCalled();
     await userEvent.click(
-      screen.getByRole("button", { name: "Add square highlight" }),
+      screen.getByRole("button", { name: "Accept highlight" }),
     );
-
-    const { x, y, width, height } = onChange.mock.calls[0][0].square!;
-    expect(x).toBeGreaterThanOrEqual(0);
-    expect(y).toBeGreaterThanOrEqual(0);
-    expect(x + width).toBeLessThanOrEqual(1);
-    expect(y + height).toBeLessThanOrEqual(1);
+    const square = onChange.mock.lastCall![0].square!;
+    // Square in image pixels: 900 × 900 of a 1800 × 1200 photo.
+    expect(square.x).toBeCloseTo(0.1);
+    expect(square.y).toBeCloseTo(0.1);
+    expect(square.width * 1800).toBeCloseTo(square.height * 1200);
     expect(screen.getByAltText("square thumbnail preview")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Square · 1:1" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("discards a drawing on cancel and keeps it inside the photo", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await draw("Draw portrait highlight", [540, 360], [900, 900]);
+    expect(
+      screen.getByRole("button", { name: "Accept highlight" }),
+    ).toBeEnabled();
+    const box = document.querySelector(".highlight-selection") as HTMLElement;
+    expect(
+      parseFloat(box.style.left) + parseFloat(box.style.width),
+    ).toBeLessThanOrEqual(100.0001);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel highlight" }),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(document.querySelector(".highlight-selection")).toBeNull();
+  });
+
+  it("creates a free custom highlight with its own size", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await draw("Draw custom highlight", [0, 0], [300, 100]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Accept highlight" }),
+    );
+    expect(onChange.mock.lastCall![0].custom![0]).toMatchObject({
+      name: "Detail 1",
+      crop: { x: 0, y: 0, width: 0.5, height: 0.25 },
+    });
   });
 
   it("marks the shapes that already have a crop", async () => {
@@ -70,13 +125,15 @@ describe("HighlightEditor", () => {
         initial={{ landscape: { x: 0, y: 0, width: 1, height: 0.6 } }}
       />,
     );
-
+    await userEvent.click(
+      screen.getByRole("button", { name: "New highlight" }),
+    );
     expect(
-      screen.getByRole("button", { name: /Landscape · 3:2 ✓/ }),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: "Draw landscape highlight" }),
+    ).toHaveTextContent("✓");
     expect(
-      screen.getByRole("button", { name: "Square · 1:1" }),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: "Draw square highlight" }),
+    ).not.toHaveTextContent("✓");
   });
 
   it("removes only the shape on screen", async () => {
@@ -119,7 +176,7 @@ describe("HighlightEditor", () => {
     expect(y + height).toBeLessThanOrEqual(1);
   });
 
-  it("moves the crop where it is dragged", async () => {
+  it("moves the crop where it is dragged and reverts it", async () => {
     const onChange = vi.fn();
     render(
       <Harness
@@ -127,14 +184,10 @@ describe("HighlightEditor", () => {
         onChange={onChange}
       />,
     );
-    const target = stage();
-    target.setPointerCapture = vi.fn();
-    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 600,
-      height: 400,
-    } as DOMRect);
+    expect(
+      screen.getByRole("button", { name: "Revert highlight" }),
+    ).toBeDisabled();
+    const target = measure();
 
     fireEvent.pointerDown(target, { pointerId: 1, clientX: 300, clientY: 200 });
 
@@ -142,6 +195,35 @@ describe("HighlightEditor", () => {
     expect(onChange).toHaveBeenCalledWith({
       square: expect.objectContaining({ x: 0.3, y: 0.2 }),
     });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Revert highlight" }),
+    );
+    expect(onChange.mock.lastCall![0].square).toEqual({
+      x: 0,
+      y: 0,
+      width: 0.4,
+      height: 0.6,
+    });
+  });
+
+  it("resizes from a corner and keeps the proportion of the shape", async () => {
+    const onChange = vi.fn();
+    render(
+      <Harness
+        initial={{ square: { x: 0, y: 0, width: 0.2, height: 0.3 } }}
+        onChange={onChange}
+      />,
+    );
+    const target = measure();
+    const corner = document.querySelector(
+      ".highlight-handle--se",
+    ) as HTMLElement;
+    fireEvent.pointerDown(corner, { pointerId: 1, clientX: 120, clientY: 120 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 240, clientY: 120 });
+    const square = onChange.mock.lastCall![0].square!;
+    expect(square).toMatchObject({ x: 0, y: 0 });
+    expect(square.width).toBeCloseTo(0.4);
+    expect(square.width * 1800).toBeCloseTo(square.height * 1200);
   });
 
   it("stays put while the photo is being published", async () => {
@@ -155,6 +237,9 @@ describe("HighlightEditor", () => {
     expect(
       screen.getByRole("button", { name: "Remove square highlight" }),
     ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New highlight" }),
+    ).toBeDisabled();
   });
 });
 
@@ -167,7 +252,7 @@ it("keeps independent custom sizes, names and primary crops", async () => {
     />,
   );
   await userEvent.click(
-    screen.getByRole("button", { name: "Add custom highlight" }),
+    screen.getByRole("button", { name: "Duplicate as custom highlight" }),
   );
   fireEvent.change(screen.getByLabelText("Highlight name"), {
     target: { value: "Eye detail" },
@@ -178,8 +263,9 @@ it("keeps independent custom sizes, names and primary crops", async () => {
   fireEvent.change(screen.getByLabelText("Crop height (px)"), {
     target: { value: "200" },
   });
+  await userEvent.click(screen.getByRole("button", { name: "Square · 1:1" }));
   await userEvent.click(
-    screen.getByRole("button", { name: "Add custom highlight" }),
+    screen.getByRole("button", { name: "Duplicate as custom highlight" }),
   );
   let saved = onChange.mock.lastCall![0] as PhotoHighlights;
   expect(saved.custom).toHaveLength(2);
@@ -231,7 +317,7 @@ it("caps custom crops and disables additions during saving", () => {
     />,
   );
   expect(
-    screen.getByRole("button", { name: "Add custom highlight" }),
+    screen.getByRole("button", { name: "Duplicate as custom highlight" }),
   ).toBeDisabled();
 });
 

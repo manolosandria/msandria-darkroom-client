@@ -5,6 +5,8 @@ export type PhotoPageQuery = {
   limit?: number;
   seed?: string;
   category?: string;
+  /** Category groups separated by "|", ids by ",": a photo matches one id of each group. */
+  categories?: string;
   collection?: string;
   search?: string;
   target?: "gallery" | "home" | "collection";

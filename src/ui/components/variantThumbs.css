@@ -1,0 +1,62 @@
+/* Variant thumbnails shared by Gallery tiles, collection mosaics and the editor. */
+.variant-thumbs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.variant-thumbs button {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: #ddd;
+  cursor: pointer;
+  opacity: 0.75;
+  box-shadow: 0 0 0 1.5px #fffc;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.variant-thumbs button:hover,
+.variant-thumbs button:focus-visible {
+  opacity: 1;
+  transform: scale(1.12);
+}
+.variant-thumbs button[aria-checked="true"] {
+  opacity: 1;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0008;
+}
+.gallery-tile__variants.variant-thumbs,
+.catalog-variants.variant-thumbs {
+  position: absolute;
+  left: 8px;
+  right: auto;
+  bottom: 8px;
+  z-index: 2;
+  background: #0007;
+  backdrop-filter: blur(4px);
+  font: inherit;
+}
+.gallery-tiles--random .gallery-tile__variants.variant-thumbs {
+  inset: auto auto calc(var(--gallery-gap) / 2 + 8px) calc(var(--gallery-gap) / 2 + 8px);
+}
+.collection-develop__variants.variant-thumbs {
+  padding: 2px;
+}
+.collection-develop__variants.variant-thumbs button {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  border-radius: 0.4rem;
+  box-shadow: 0 0 0 1px #0002;
+}
+.collection-develop__variants.variant-thumbs button[aria-checked="true"] {
+  box-shadow: 0 0 0 3px #4d6b3a;
+}
+.collection-develop__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}

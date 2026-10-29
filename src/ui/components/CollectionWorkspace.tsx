@@ -2,7 +2,7 @@
 
 import styles from "./EditorFeedback.module.css";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Catalog,
   CatalogCollection,
@@ -12,6 +12,8 @@ import {
 import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { PhotoImage } from "./PhotoImage";
+import { InspectorSection } from "./InspectorSection";
+import { VariantThumbs } from "./VariantThumbs";
 import { PhotoPicker } from "./PhotoPicker";
 import {
   CollectionCanvas,
@@ -25,6 +27,7 @@ const empty = (): CollectionDraft => ({
   title: "",
   description: "",
   coverPhotoId: null,
+  showVariants: false,
   categoryIds: [],
   entries: [],
 });
@@ -35,6 +38,7 @@ const fromCollection = (collection?: CatalogCollection): CollectionDraft =>
         title: collection.title,
         description: collection.description ?? "",
         coverPhotoId: collection.coverPhotoId ?? null,
+        showVariants: collection.showVariants ?? false,
         categoryIds: collection.categories.map((category) => category.id),
         entries: collection.entries.map(
           ({ photoId, columns, rows, showTitle }) => ({
@@ -302,6 +306,13 @@ function CollectionEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [openSections, setOpenSections] = useState<string[]>([
+    "photo",
+    "details",
+    "categories",
+    "display",
+  ]);
+  const prefix = useId();
   const { confirm } = useEditingWorkspace();
   const included = draft.entries.filter(
     (entry) => !excluded.includes(entry.photoId),
@@ -368,7 +379,10 @@ function CollectionEditor({
     setError("");
     setNotice("");
     try {
-      const saved = await manageCatalog.saveCollection(payload, id || undefined);
+      const saved = await manageCatalog.saveCollection(
+        payload,
+        id || undefined,
+      );
       const next = id ? { ...payload, version: saved.version } : empty();
       setBaseline(next);
       setDraft(next);
@@ -406,9 +420,46 @@ function CollectionEditor({
   if (!active) return null;
   const index = draft.entries.findIndex((entry) => entry.photoId === selected);
   const entry = draft.entries[index];
+  const work = entry
+    ? catalog.works.find((item) =>
+        item.variants.some((v) => v.photoId === entry.photoId),
+      )
+    : undefined;
+  function chooseVariant(nextId: string) {
+    if (!entry) return;
+    update({
+      entries: draft.entries.map((item) =>
+        item.photoId === entry.photoId ? { ...item, photoId: nextId } : item,
+      ),
+      coverPhotoId:
+        draft.coverPhotoId === entry.photoId ? nextId : draft.coverPhotoId,
+    });
+    setExcluded((previous) =>
+      previous.map((id) => (id === entry.photoId ? nextId : id)),
+    );
+    setSelected(nextId);
+  }
+  const sectionOpen = (key: string) => openSections.includes(key);
+  function toggleSection(key: string, open: boolean) {
+    setOpenSections((previous) =>
+      open
+        ? previous.includes(key)
+          ? previous
+          : [...previous, key]
+        : previous.filter((item) => item !== key),
+    );
+  }
+  function jump(key: string) {
+    toggleSection(key, true);
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`${prefix}-${key}`)
+        ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
+    );
+  }
   return (
     <form
-      className="studio-editor"
+      className="studio-editor collection-develop"
       onSubmit={async (event) => {
         event.preventDefault();
         if (
@@ -462,43 +513,72 @@ function CollectionEditor({
           </button>
         </div>
         {error && <p role="alert">{error}</p>}
-        {conflict && <button type="button" disabled={busy} onClick={async () => {
-          if (!(await confirm("Reload collection?", "Discard this collection's edits and load the latest saved composition?"))) return;
-          setBusy(true);
-          try {
-            const latest = (await manageCatalog.load()).collections.find(item => item.id === id);
-            if (!latest) throw new Error("This collection was removed.");
-            const next = fromCollection(latest);
-            setBaseline(next); setDraft(next); setExcluded([]); setConflict(false); setError("");
-            await refresh();
-          } catch { setError("Could not reload the collection. Your edits are kept."); }
-          finally { setBusy(false); }
-        }}>Reload state</button>}
+        {conflict && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              if (
+                !(await confirm(
+                  "Reload collection?",
+                  "Discard this collection's edits and load the latest saved composition?",
+                ))
+              )
+                return;
+              setBusy(true);
+              try {
+                const latest = (await manageCatalog.load()).collections.find(
+                  (item) => item.id === id,
+                );
+                if (!latest) throw new Error("This collection was removed.");
+                const next = fromCollection(latest);
+                setBaseline(next);
+                setDraft(next);
+                setExcluded([]);
+                setConflict(false);
+                setError("");
+                await refresh();
+              } catch {
+                setError(
+                  "Could not reload the collection. Your edits are kept.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Reload state
+          </button>
+        )}
         {notice && <p role="status">{notice}</p>}
-        <div className="studio-split">
-          <div className="studio-main">
-            <PhotoPicker
-              catalog={catalog}
-              photos={photos.filter(
-                (photo) =>
-                  !draft.entries.some((item) => item.photoId === photo.getId()),
-              )}
-              onPick={(photo) => {
-                update({
-                  entries: [
-                    ...draft.entries,
-                    {
-                      photoId: photo.getId(),
-                      columns: 1,
-                      rows: 1,
-                      showTitle: true,
-                    },
-                  ],
-                });
-                setSelected(photo.getId());
-              }}
-            />
-            <p className="upload-muted studio-hint">
+        <PhotoPicker
+          catalog={catalog}
+          photos={photos.filter(
+            (photo) =>
+              !draft.entries.some((item) => item.photoId === photo.getId()),
+          )}
+          onPick={(photo) => {
+            update({
+              entries: [
+                ...draft.entries,
+                {
+                  photoId: photo.getId(),
+                  columns: 1,
+                  rows: 1,
+                  showTitle: true,
+                },
+              ],
+            });
+            setSelected(photo.getId());
+            toggleSection("photo", true);
+          }}
+        />
+        <div className="collection-develop__layout">
+          <section
+            className="collection-develop__stage"
+            aria-label="Composition"
+          >
+            <p className="collection-develop__hint">
               Drag a photo to change its priority, or pull its edges or corner
               to resize it. The {MOSAIC_COLUMNS}-column canvas keeps the same
               composition on phones.
@@ -517,7 +597,10 @@ function CollectionEditor({
                 selectedId={selected}
                 coverId={payload.coverPhotoId ?? null}
                 excluded={excluded}
-                onSelect={setSelected}
+                onSelect={(photoId) => {
+                  setSelected(photoId);
+                  if (photoId) toggleSection("photo", true);
+                }}
                 onMove={move}
                 onResize={(position, columns, rows) =>
                   updateEntry(draft.entries[position].photoId, {
@@ -531,88 +614,91 @@ function CollectionEditor({
                 Add photos to start the composition.
               </p>
             )}
-          </div>
-          <aside
-            className="studio-panel"
-            aria-label={entry ? "Photo details" : "Collection details"}
-          >
-            {entry ? (
-              <>
-                {catalog.works.find((work) =>
-                  work.variants.some((v) => v.photoId === entry.photoId),
-                ) && (
-                  <label className="studio-fields">
-                    Collection variant
-                    <select
-                      value={entry.photoId}
-                      onChange={(event) => {
-                        const nextId = event.target.value;
-                        update({
-                          entries: draft.entries.map((item) =>
-                            item.photoId === entry.photoId
-                              ? { ...item, photoId: nextId }
-                              : item,
-                          ),
-                          coverPhotoId:
-                            draft.coverPhotoId === entry.photoId
-                              ? nextId
-                              : draft.coverPhotoId,
-                        });
-                        setExcluded((previous) =>
-                          previous.map((id) =>
-                            id === entry.photoId ? nextId : id,
-                          ),
-                        );
-                        setSelected(nextId);
-                      }}
-                    >
-                      {catalog.works
-                        .find((work) =>
-                          work.variants.some(
-                            (v) => v.photoId === entry.photoId,
-                          ),
-                        )!
-                        .variants.map((v) => {
-                          const variant = findPhoto(photos, v.photoId);
-                          return (
-                            variant && (
-                              <option
-                                key={v.photoId}
-                                value={v.photoId}
-                                disabled={
-                                  v.photoId !== entry.photoId &&
-                                  draft.entries.some(
-                                    (item) => item.photoId === v.photoId,
-                                  )
-                                }
-                              >
-                                {variant.getTitle()}
-                              </option>
-                            )
-                          );
-                        })}
-                    </select>
-                  </label>
+          </section>
+          <div className="photo-develop__inspector collection-develop__inspector">
+            <nav
+              className="photo-develop__tabs"
+              aria-label="Collection sections"
+            >
+              {COLLECTION_SECTIONS.map((section) => (
+                <button
+                  type="button"
+                  key={section.id}
+                  onClick={() => jump(section.id)}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+            <InspectorSection
+              id={`${prefix}-photo`}
+              label="Selected photo"
+              summary={
+                entry ? `${index + 1} of ${draft.entries.length}` : "None"
+              }
+              open={sectionOpen("photo")}
+              onToggle={(open) => toggleSection("photo", open)}
+            >
+              <aside
+                aria-label={entry ? "Photo details" : "Collection details"}
+              >
+                {entry ? (
+                  <>
+                    {work && (
+                      <div className="studio-fields">
+                        <span className="collection-develop__label">
+                          Collection variant
+                        </span>
+                        <VariantThumbs
+                          className="collection-develop__variants"
+                          label="Collection variant"
+                          variants={work.variants.flatMap((v) => {
+                            const variant = findPhoto(photos, v.photoId);
+                            return variant &&
+                              (v.photoId === entry.photoId ||
+                                !draft.entries.some(
+                                  (item) => item.photoId === v.photoId,
+                                ))
+                              ? [variant]
+                              : [];
+                          })}
+                          selectedId={entry.photoId}
+                          onSelect={chooseVariant}
+                        />
+                      </div>
+                    )}
+                    <EntryDetails
+                      entry={entry}
+                      index={index}
+                      count={draft.entries.length}
+                      photo={findPhoto(photos, entry.photoId)}
+                      isCover={payload.coverPhotoId === entry.photoId}
+                      removed={excluded.includes(entry.photoId)}
+                      onBack={() => setSelected(null)}
+                      onMove={(offset) => move(index, index + offset)}
+                      onChange={(next) => updateEntry(entry.photoId, next)}
+                      onCover={(cover) =>
+                        update({ coverPhotoId: cover ? entry.photoId : null })
+                      }
+                      onToggleRemoved={() =>
+                        setExcluded(toggle(excluded, entry.photoId))
+                      }
+                    />
+                  </>
+                ) : (
+                  <p className="upload-muted">
+                    Select a photo in the composition to resize it, hide its
+                    title or use it as the cover.
+                  </p>
                 )}
-                <EntryDetails
-                  entry={entry}
-                  index={index}
-                  count={draft.entries.length}
-                  photo={findPhoto(photos, entry.photoId)}
-                  isCover={payload.coverPhotoId === entry.photoId}
-                  removed={excluded.includes(entry.photoId)}
-                  onBack={() => setSelected(null)}
-                  onMove={(offset) => move(index, index + offset)}
-                  onChange={(next) => updateEntry(entry.photoId, next)}
-                  onCover={(cover) =>
-                    update({ coverPhotoId: cover ? entry.photoId : null })
-                  }
-                  onToggleRemoved={() =>
-                    setExcluded(toggle(excluded, entry.photoId))
-                  }
-                />
-              </>
-            ) : (
+              </aside>
+            </InspectorSection>
+            <InspectorSection
+              id={`${prefix}-details`}
+              label="Details"
+              open={sectionOpen("details")}
+              onToggle={(open) => toggleSection("details", open)}
+            >
               <div className="studio-fields">
                 <label>
                   Collection title
@@ -634,76 +720,111 @@ function CollectionEditor({
                     }
                   />
                 </label>
-                <fieldset>
-                  <legend>Categories</legend>
-                  <div className="studio-checks">
-                    {catalog.categories.map((category) => (
-                      <label key={category.id} className="studio-check">
-                        <input
-                          type="checkbox"
-                          checked={draft.categoryIds.includes(category.id)}
-                          onChange={() =>
-                            update({
-                              categoryIds: toggle(
-                                draft.categoryIds,
-                                category.id,
-                              ),
-                            })
-                          }
-                        />
-                        {category.name}
-                      </label>
-                    ))}
-                  </div>
-                  {!catalog.categories.length && (
-                    <p className="upload-muted">
-                      Create one in the Categories tab to classify this
-                      collection.
-                    </p>
-                  )}
-                </fieldset>
-                <p className="upload-muted">
-                  Select a photo in the composition to resize it, hide its title
-                  or use it as the cover.
-                </p>
-                {id && (
-                  <button
-                    type="button"
-                    className="studio-danger"
-                    onClick={async () => {
-                      if (
-                        !(await confirm(
-                          "Delete collection?",
-                          "Remove this collection? Photo files and comments will remain.",
-                        ))
-                      )
-                        return;
-                      setBusy(true);
-                      setError("");
-                      try {
-                        await manageCatalog.remove("collections", id);
-                        onDeleted();
-                        await refresh();
-                      } catch {
-                        setError(
-                          "Could not delete or refresh this collection.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    Delete collection
-                  </button>
-                )}
               </div>
+            </InspectorSection>
+            <InspectorSection
+              id={`${prefix}-categories`}
+              label="Categories"
+              summary={String(existingCategoryIds(draft.categoryIds).length)}
+              open={sectionOpen("categories")}
+              onToggle={(open) => toggleSection("categories", open)}
+            >
+              <fieldset className="studio-fields">
+                <legend className="sr-only">Categories</legend>
+                <div className="studio-checks">
+                  {catalog.categories.map((category) => (
+                    <label key={category.id} className="studio-check">
+                      <input
+                        type="checkbox"
+                        checked={draft.categoryIds.includes(category.id)}
+                        onChange={() =>
+                          update({
+                            categoryIds: toggle(draft.categoryIds, category.id),
+                          })
+                        }
+                      />
+                      {category.name}
+                    </label>
+                  ))}
+                </div>
+                {!catalog.categories.length && (
+                  <p className="upload-muted">
+                    Create one in the Categories tab to classify this
+                    collection.
+                  </p>
+                )}
+              </fieldset>
+            </InspectorSection>
+            <InspectorSection
+              id={`${prefix}-display`}
+              label="Display"
+              summary={draft.showVariants ? "Variants" : undefined}
+              open={sectionOpen("display")}
+              onToggle={(open) => toggleSection("display", open)}
+            >
+              <label className="studio-check">
+                <input
+                  type="checkbox"
+                  checked={draft.showVariants === true}
+                  onChange={(event) =>
+                    update({ showVariants: event.target.checked })
+                  }
+                />
+                Let visitors switch variants in this collection
+              </label>
+              <p className="upload-muted">
+                Works with several variants show small thumbnails under their
+                photo in the public mosaic.
+              </p>
+            </InspectorSection>
+            {id && (
+              <InspectorSection
+                id={`${prefix}-danger`}
+                label="Delete"
+                open={sectionOpen("danger")}
+                onToggle={(open) => toggleSection("danger", open)}
+              >
+                <button
+                  type="button"
+                  className="studio-danger"
+                  onClick={async () => {
+                    if (
+                      !(await confirm(
+                        "Delete collection?",
+                        "Remove this collection? Photo files and comments will remain.",
+                      ))
+                    )
+                      return;
+                    setBusy(true);
+                    setError("");
+                    try {
+                      await manageCatalog.remove("collections", id);
+                      onDeleted();
+                      await refresh();
+                    } catch {
+                      setError("Could not delete or refresh this collection.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Delete collection
+                </button>
+              </InspectorSection>
             )}
-          </aside>
+          </div>
         </div>
       </fieldset>
     </form>
   );
 }
+
+const COLLECTION_SECTIONS = [
+  { id: "photo", label: "Photo" },
+  { id: "details", label: "Details" },
+  { id: "categories", label: "Categories" },
+  { id: "display", label: "Display" },
+] as const;
 
 function EntryDetails({
   entry,

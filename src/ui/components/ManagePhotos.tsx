@@ -1,18 +1,22 @@
 "use client";
 import "./catalogStudio.css";
+import "./photoStudio.css";
 
 import styles from "./EditorFeedback.module.css";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   PublishedPhoto,
   PhotoUploadError,
 } from "@/src/domain/repositories/PhotoRepository";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { OptimizationIssueList } from "./OptimizationIssueList";
-import { Photo } from "@/src/domain/entities/Photo";
+import { Photo, PhotoVisibility } from "@/src/domain/entities/Photo";
+import {
+  Highlight,
+  PhotoHighlights,
+} from "@/src/domain/entities/PhotoHighlights";
 import {
   getManagedPhotos,
   getPhotoById,
@@ -23,15 +27,34 @@ import {
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
-import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
+import {
+  cameraName,
+  filterPhotos,
+  PhotoFilters,
+  usePhotoFilter,
+} from "./PhotoFilters";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { FrameFields } from "./FrameFields";
+import { PhotoImage } from "./PhotoImage";
 import {
   PHOTO_TITLE_POSITIONS,
   PhotoTitlePosition,
 } from "@/src/domain/entities/PhotoTitlePosition";
+import { useSessionValue } from "./SessionProvider";
+import { VariantAssignment } from "./VariantAssignment";
+import { InspectorSection } from "./InspectorSection";
+import {
+  PhotoCategoryField,
+  PhotoCollectionField,
+  PhotoVisibilityField,
+} from "./PhotoClassificationFields";
+import {
+  EditingBoundary,
+  useEditingWorkspace,
+  useUnsavedEditor,
+} from "./EditingWorkspace";
 
 const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   BOTTOM_LEFT: "Bottom left",
@@ -39,20 +62,19 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   TOP_LEFT: "Top left",
   TOP_RIGHT: "Top right",
 };
-import { useSessionValue } from "./SessionProvider";
-import { VariantAssignment } from "./VariantAssignment";
-import { PhotoClassificationFields } from "./PhotoClassificationFields";
-import {
-  EditingBoundary,
-  useEditingWorkspace,
-  useUnsavedEditor,
-} from "./EditingWorkspace";
+
+const VISIBILITY_LABELS: Record<PhotoVisibility, string> = {
+  PUBLIC: "Public",
+  COLLECTIONS_ONLY: "Collections only",
+  PRIVATE: "Private",
+  SELECT: "Select",
+};
 
 export default function ManagePhotos() {
   const session = useSessionValue();
   return (
     <main className="upload-workspace">
-      <div className="upload-container">
+      <div className="upload-container photo-studio-container">
         <div className="upload-heading">
           <span className="upload-eyebrow">THE DARKROOM / MANAGE</span>
           <h1>Refine your photographs.</h1>
@@ -80,21 +102,19 @@ export default function ManagePhotos() {
 function PhotoManager() {
   const [pendingOnly, setPendingOnly] = useState(false);
   return (
-    <>
-      <label className="block my-4">
-        <input
-          type="checkbox"
-          checked={pendingOnly}
-          onChange={(event) => setPendingOnly(event.target.checked)}
-        />{" "}
-        Only photos needing optimization
-      </label>
-      <PhotoLibrary pendingOnly={pendingOnly} />
-    </>
+    <PhotoLibrary pendingOnly={pendingOnly} onPendingOnly={setPendingOnly} />
   );
 }
 
-function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
+type LibraryView = "grid" | "list";
+
+function PhotoLibrary({
+  pendingOnly,
+  onPendingOnly,
+}: {
+  pendingOnly: boolean;
+  onPendingOnly: (value: boolean) => void;
+}) {
   const loadPhotos = useCallback(
     async () => ({
       entries: pendingOnly
@@ -117,6 +137,9 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
   const [visited, setVisited] = useState<Record<string, PublishedPhoto>>({});
   const [filter, setFilter] = usePhotoFilter();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [view, setView] = useState<LibraryView>("grid");
+  const [size, setSize] = useState(200);
+  const viewName = useId();
   useEffect(() => {
     // Categories only narrow the list; without them the other filters still work.
     manageCatalog.load().then(setCatalog, () => setCatalog(null));
@@ -136,26 +159,129 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
     ),
   );
   const entries = listed.filter((entry) => shown.has(entry.photo));
+  const photos = listed.map((entry) => entry.photo);
+  function open(entry: PublishedPhoto) {
+    const { photo, optimizationIssues } = entry;
+    setSelected(photo);
+    setVisited((previous) => ({
+      ...previous,
+      [photo.getId()]: previous[photo.getId()] ?? {
+        photo,
+        optimizationIssues,
+      },
+    }));
+  }
+  const mode = selected ? "strip" : view;
   return (
-    <div className="manage-layout">
-      <div className="studio-card photo-library-card">
-        <PhotoFilters
-          label="Published photos"
-          photos={listed.map((entry) => entry.photo)}
-          catalog={catalog}
-          filter={filter}
-          onChange={setFilter}
-          withCamera
-        />
-        <p className="photo-library-count" aria-live="polite">
-          {entries.length} of {listed.length}{" "}
-          {listed.length === 1 ? "photo" : "photos"}
-        </p>
-        <nav className="manage-library" aria-label="Published photos">
+    <div className={`photo-studio ${selected ? "photo-studio--editing" : ""}`}>
+      <div className="studio-card photo-studio__library">
+        <div className="photo-studio__toolbar">
+          {selected && (
+            <button
+              type="button"
+              className="photo-studio__back"
+              onClick={() => setSelected(null)}
+            >
+              <LibraryIcon view="grid" /> Library
+            </button>
+          )}
+          <PhotoFilters
+            label="Published photos"
+            photos={photos}
+            catalog={catalog}
+            filter={filter}
+            onChange={setFilter}
+            withCamera
+          />
+          <label className="photo-studio__pending">
+            <input
+              type="checkbox"
+              aria-label="Only photos needing optimization"
+              checked={pendingOnly}
+              onChange={(event) => onPendingOnly(event.target.checked)}
+            />
+            <span aria-hidden="true">⚠</span> Needs optimization
+          </label>
+          {!selected && (
+            <>
+              <fieldset
+                className="photo-studio__views"
+                role="radiogroup"
+                aria-label="Library view"
+              >
+                {(["grid", "list"] as const).map((option) => (
+                  <label
+                    key={option}
+                    title={option === "grid" ? "Grid" : "List"}
+                  >
+                    <input
+                      type="radio"
+                      name={viewName}
+                      checked={view === option}
+                      onChange={() => setView(option)}
+                    />
+                    <LibraryIcon view={option} />
+                    <span>{option === "grid" ? "Grid" : "List"}</span>
+                  </label>
+                ))}
+              </fieldset>
+              {view === "grid" && (
+                <label className="photo-studio__size">
+                  <span className="sr-only">Thumbnail size</span>
+                  <svg
+                    viewBox="0 0 20 20"
+                    width="14"
+                    height="14"
+                    aria-hidden="true"
+                  >
+                    <rect
+                      x="5"
+                      y="5"
+                      width="10"
+                      height="10"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <input
+                    type="range"
+                    min={130}
+                    max={340}
+                    step={10}
+                    value={size}
+                    onChange={(event) => setSize(Number(event.target.value))}
+                  />
+                  <svg
+                    viewBox="0 0 20 20"
+                    width="20"
+                    height="20"
+                    aria-hidden="true"
+                  >
+                    <rect
+                      x="2"
+                      y="2"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </label>
+              )}
+            </>
+          )}
+          <p className="photo-library-count" aria-live="polite">
+            {entries.length} of {listed.length}{" "}
+            {listed.length === 1 ? "photo" : "photos"}
+          </p>
+        </div>
+        <nav
+          className={`photo-browser photo-browser--${mode}`}
+          aria-label="Published photos"
+          style={{ "--photo-browser-size": `${size}px` } as React.CSSProperties}
+        >
           {loading && <p role="status">Loading photographs…</p>}
           {error && <ErrorMessage message={error} onRetry={retry} />}
-          {entries.length === 0 && (
-            <p>
+          {!loading && entries.length === 0 && (
+            <p className="photo-browser__empty">
               {listed.length
                 ? "No photos match these filters."
                 : pendingOnly
@@ -163,35 +289,24 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
                   : "No photos published yet."}
             </p>
           )}
-          {entries.map(({ photo, optimizationIssues }) => (
-            <button
-              type="button"
-              key={photo.getId()}
-              aria-pressed={selected?.getId() === photo.getId()}
-              onClick={() => {
-                setSelected(photo);
-                setVisited((previous) => ({
-                  ...previous,
-                  [photo.getId()]: previous[photo.getId()] ?? {
-                    photo,
-                    optimizationIssues,
-                  },
-                }));
-              }}
-            >
-              <span className="manage-thumbnail">
-                <Image
-                  src={photo.urlForWidth(160)}
-                  alt=""
-                  width={photo.getWidth()}
-                  height={photo.getHeight()}
-                  unoptimized
-                  sizes="64px"
-                  style={thumbnailStyle(photo)}
-                />
-              </span>
-              <span>{photo.getTitle()}</span>
-            </button>
+          {mode === "list" && entries.length > 0 && (
+            <div className="photo-browser__head" aria-hidden="true">
+              <span />
+              <span>Title</span>
+              <span>Visibility</span>
+              <span>Size</span>
+              <span>Camera</span>
+              <span>Published</span>
+            </div>
+          )}
+          {entries.map((entry) => (
+            <LibraryItem
+              key={entry.photo.getId()}
+              entry={entry}
+              mode={mode}
+              selected={selected?.getId() === entry.photo.getId()}
+              onOpen={() => open(entry)}
+            />
           ))}
         </nav>
       </div>
@@ -203,6 +318,7 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
             <PhotoDetailEditor
               active={selected?.getId() === id}
               photo={current.photo}
+              photos={photos}
               revised={Boolean(revisions[id])}
               issues={current.optimizationIssues}
               onSaved={(updated, optimizationIssues) => {
@@ -222,24 +338,155 @@ function PhotoLibrary({ pendingOnly }: { pendingOnly: boolean }) {
           </div>
         );
       })}
-      {!selected && (
-        <p className="upload-muted">
-          Select a photograph to edit its details and highlights.
-        </p>
-      )}
     </div>
+  );
+}
+
+function LibraryIcon({ view }: { view: LibraryView }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      {view === "grid" ? (
+        <>
+          <rect x="2.5" y="2.5" width="6" height="6" />
+          <rect x="11.5" y="2.5" width="6" height="6" />
+          <rect x="2.5" y="11.5" width="6" height="6" />
+          <rect x="11.5" y="11.5" width="6" height="6" />
+        </>
+      ) : (
+        <>
+          <rect x="2.5" y="3" width="4" height="4" />
+          <path d="M9 5h9" />
+          <rect x="2.5" y="13" width="4" height="4" />
+          <path d="M9 15h9" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+const formatDate = (date: Date) =>
+  date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+function LibraryItem({
+  entry: { photo, optimizationIssues },
+  mode,
+  selected,
+  onOpen,
+}: {
+  entry: PublishedPhoto;
+  mode: LibraryView | "strip";
+  selected: boolean;
+  onOpen: () => void;
+}) {
+  const visibility = photo.getClassification().visibility;
+  const pending = optimizationIssues.filter((issue) =>
+    issue.isPending(),
+  ).length;
+  const badges = (
+    <span className="photo-browser__badges" aria-hidden="true">
+      {visibility !== "PUBLIC" && (
+        <span
+          data-visibility={visibility}
+          title={VISIBILITY_LABELS[visibility]}
+        >
+          {visibility === "PRIVATE"
+            ? "🔒"
+            : visibility === "SELECT"
+              ? "★"
+              : "▣"}
+        </span>
+      )}
+      {pending > 0 && (
+        <span data-warning title={`${pending} pending optimization`}>
+          ⚠
+        </span>
+      )}
+    </span>
+  );
+  return (
+    <button
+      type="button"
+      className="photo-browser__item"
+      aria-pressed={selected}
+      aria-label={photo.getTitle()}
+      title={photo.getTitle()}
+      onClick={onOpen}
+    >
+      <span className="photo-browser__thumb">
+        {mode === "grid" ? (
+          <PhotoImage
+            photo={photo}
+            maxWidth={640}
+            fallbackSizes="240px"
+            className="object-contain"
+          />
+        ) : (
+          <PhotoImage
+            photo={photo}
+            maxWidth={160}
+            fallbackSizes="80px"
+            className="object-cover"
+            crop={photo.getHighlights().square}
+          />
+        )}
+        {mode !== "list" && badges}
+      </span>
+      {mode === "grid" && (
+        <span className="photo-browser__caption">
+          <strong>{photo.getTitle()}</strong>
+          <small>
+            {photo.getWidth()} × {photo.getHeight()}
+          </small>
+        </span>
+      )}
+      {mode === "list" && (
+        <>
+          <strong>{photo.getTitle()}</strong>
+          <span>
+            <span
+              className="photo-browser__visibility"
+              data-visibility={visibility}
+            >
+              {VISIBILITY_LABELS[visibility]}
+            </span>
+            {pending > 0 && (
+              <span className="photo-browser__warning"> ⚠ {pending}</span>
+            )}
+          </span>
+          <span>
+            {photo.getWidth()} × {photo.getHeight()}
+          </span>
+          <span>{cameraName(photo) || "—"}</span>
+          <span>{formatDate(photo.getCreatedAt())}</span>
+        </>
+      )}
+    </button>
   );
 }
 
 // A listing item is never used to initialize an editor: it has no description.
 function PhotoDetailEditor({
   photo,
+  photos,
   onSaved,
   issues,
   revised,
   active,
 }: {
   photo: Photo;
+  photos: Photo[];
   revised: boolean;
   active: boolean;
   issues: PhotoOptimizationIssue[];
@@ -259,6 +506,7 @@ function PhotoDetailEditor({
       active={active}
       key={`${(revised && !freshDetail ? photo : data).getId()}:${(revised && !freshDetail ? photo : data).getVersion()}`}
       photo={revised && !freshDetail ? photo : data}
+      photos={photos}
       initialSaved={revised && !freshDetail}
       issues={issues}
       onSaved={(updated, nextIssues) => {
@@ -273,29 +521,28 @@ function PhotoDetailEditor({
   ) : null;
 }
 
-function thumbnailStyle(photo: Photo): React.CSSProperties {
-  const crop = photo.getHighlights().square;
-  if (!crop)
-    return {
-      position: "absolute",
-      width: "100%",
-      height: "100%",
-      objectFit: "cover",
-    };
-  return {
-    position: "absolute",
-    maxWidth: "none",
-    width: `${100 / crop.width}%`,
-    height: `${100 / crop.height}%`,
-    left: `${(-crop.x / crop.width) * 100}%`,
-    top: `${(-crop.y / crop.height) * 100}%`,
-    right: "auto",
-    bottom: "auto",
-  };
-}
+const SECTIONS = [
+  { id: "details", label: "Details" },
+  { id: "visibility", label: "Visibility" },
+  { id: "categories", label: "Categories" },
+  { id: "collections", label: "Collections" },
+  { id: "variants", label: "Variants" },
+  { id: "frame", label: "Frame" },
+  { id: "highlights", label: "Highlights" },
+  { id: "file", label: "File" },
+] as const;
+type SectionId = (typeof SECTIONS)[number]["id"];
+const DEFAULT_OPEN: SectionId[] = [
+  "details",
+  "visibility",
+  "categories",
+  "collections",
+  "highlights",
+];
 
 function PhotoEditor({
   photo,
+  photos,
   onSaved,
   issues,
   onReload,
@@ -303,6 +550,7 @@ function PhotoEditor({
   active,
 }: {
   photo: Photo;
+  photos: Photo[];
   issues: PhotoOptimizationIssue[];
   onSaved: (photo: Photo, issues?: PhotoOptimizationIssue[]) => void;
   onReload: () => void;
@@ -323,9 +571,13 @@ function PhotoEditor({
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [saved, setSaved] = useState(initialSaved);
+  const [openSections, setOpenSections] = useState<SectionId[]>(DEFAULT_OPEN);
+  const [current, setCurrent] = useState<SectionId>("details");
+  const [stageView, setStageView] = useState("original");
   const { confirm } = useEditingWorkspace();
   const form = useRef<HTMLFormElement>(null);
   const [resetKey, setResetKey] = useState(0);
+  const prefix = useId();
   const dirty =
     Boolean(file) ||
     title !== photo.getTitle() ||
@@ -397,6 +649,25 @@ function PhotoEditor({
     }
   }
   useUnsavedEditor(dirty, { label: photo.getTitle(), save: persist, discard });
+  const changed = () => setSaved(false);
+  function toggleSection(id: SectionId, open: boolean) {
+    setOpenSections((previous) =>
+      open
+        ? previous.includes(id)
+          ? previous
+          : [...previous, id]
+        : previous.filter((item) => item !== id),
+    );
+  }
+  function jump(id: SectionId) {
+    toggleSection(id, true);
+    setCurrent(id);
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`${prefix}-${id}`)
+        ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
+    );
+  }
   const actions = () => (
     <div className={styles.actions}>
       <button type="submit" className="upload-primary" disabled={saving}>
@@ -420,117 +691,262 @@ function PhotoEditor({
       </button>
     </div>
   );
+  const section = (
+    id: SectionId,
+    children: React.ReactNode,
+    options: { lazy?: boolean; summary?: React.ReactNode } = {},
+  ) => (
+    <InspectorSection
+      id={`${prefix}-${id}`}
+      label={SECTIONS.find((item) => item.id === id)!.label}
+      summary={options.summary}
+      open={openSections.includes(id)}
+      lazy={options.lazy}
+      onToggle={(open) => toggleSection(id, open)}
+    >
+      {children}
+    </InspectorSection>
+  );
   if (!active) return null;
+  const pending = report.filter((issue) => issue.isPending()).length;
   return (
     <form
-      className="upload-card manage-editor"
+      className="photo-develop"
       ref={form}
       onSubmit={async (event) => {
         event.preventDefault();
         if (saving || !form.current?.checkValidity()) return;
         if (
           await confirm(
-            "Save photo changes?",
-            'Save changes to "' + title + '"?',
+            file ? "Replace the file and save?" : "Save photo changes?",
+            file
+              ? `The current file of "${title}" will be replaced by ${file.name}. The previous file cannot be recovered.`
+              : 'Save changes to "' + title + '"?',
           )
         )
           await persist();
       }}
     >
-      <fieldset className="upload-fields" disabled={saving}>
-        {actions()}
-        <VariantAssignment
-          photoId={photo.getId()}
-          title={photo.getTitle()}
-          disabled={saving}
-        />
-        <PhotoClassificationFields
-          value={classification}
-          onChange={(next) => {
-            setClassification(next);
-            setSaved(false);
-          }}
-          disabled={saving}
-        />
-        {report.length > 0 && <OptimizationIssueList issues={report} />}
-        <label>
-          Replacement file
-          <input
-            key={`${photo.urlForWidth(320)}:${resetKey}`}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
-              setSaved(false);
-            }}
-          />
-        </label>
-        {file && (
-          <p>
-            Replace with {file.name}. The record, publication date, frame and
-            highlights are preserved. Review crops and frame after replacing.
-          </p>
-        )}
-        <label>
-          Title
-          <input
-            required
-            value={title}
-            onChange={(event) => {
-              setTitle(event.target.value);
-              setSaved(false);
-            }}
-          />
-        </label>
-        <label>
-          Description
-          <textarea
-            rows={3}
-            value={description}
-            onChange={(event) => {
-              setDescription(event.target.value);
-              setSaved(false);
-            }}
-          />
-        </label>
-        <label>
-          Title corner in the viewer
-          <select
-            value={titlePosition}
-            onChange={(event) => {
-              setTitlePosition(event.target.value as PhotoTitlePosition);
-              setSaved(false);
-            }}
-          >
-            {PHOTO_TITLE_POSITIONS.map((position) => (
-              <option key={position} value={position}>
-                {TITLE_POSITION_LABELS[position]}
-              </option>
+      <PhotoStage
+        chosen={stageView}
+        onChoose={setStageView}
+        photo={photo}
+        title={title}
+        highlights={highlights}
+        titlePosition={titlePosition}
+        visibility={classification.visibility}
+      />
+      <div className="photo-develop__inspector">
+        <div className="photo-develop__header">
+          <div className="photo-develop__heading">
+            <h2>{title || photo.getTitle()}</h2>
+            {dirty && <span className="studio-dirty">Unsaved</span>}
+          </div>
+          {actions()}
+          <nav className="photo-develop__tabs" aria-label="Photo sections">
+            {SECTIONS.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                aria-current={current === item.id ? "true" : undefined}
+                onClick={() => jump(item.id)}
+              >
+                {item.label}
+                {item.id === "file" && pending > 0 && (
+                  <span className="photo-develop__tab-badge">{pending}</span>
+                )}
+              </button>
             ))}
-          </select>
-        </label>
-        <FrameFields
-          src={photo.urlForWidth(640)}
-          width={photo.getWidth()}
-          height={photo.getHeight()}
-          value={frame}
-          onChange={(next) => {
-            setFrame(next);
-            setSaved(false);
-          }}
-          disabled={saving}
-        />
-        <HighlightEditor
-          src={photo.urlForWidth(960)}
-          width={photo.getWidth()}
-          height={photo.getHeight()}
-          value={highlights}
-          onChange={(next) => {
-            setHighlights(next);
-            setSaved(false);
-          }}
-          disabled={saving}
-        />
+          </nav>
+          <div className="photo-develop__expand">
+            <button
+              type="button"
+              onClick={() => setOpenSections(SECTIONS.map((item) => item.id))}
+            >
+              Expand all
+            </button>
+            <button type="button" onClick={() => setOpenSections([])}>
+              Collapse all
+            </button>
+          </div>
+        </div>
+        <fieldset className="photo-develop__sections" disabled={saving}>
+          {section(
+            "details",
+            <div className="photo-develop__fields">
+              <label>
+                Title
+                <input
+                  required
+                  value={title}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    changed();
+                  }}
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(event) => {
+                    setDescription(event.target.value);
+                    changed();
+                  }}
+                />
+              </label>
+              <TitleCorner
+                photo={photo}
+                value={titlePosition}
+                onChange={(next) => {
+                  setTitlePosition(next);
+                  changed();
+                }}
+              />
+            </div>,
+          )}
+          {section(
+            "visibility",
+            <PhotoVisibilityField
+              value={classification}
+              onChange={(next) => {
+                setClassification(next);
+                changed();
+              }}
+              disabled={saving}
+            />,
+            { summary: VISIBILITY_LABELS[classification.visibility] },
+          )}
+          {section(
+            "categories",
+            <PhotoCategoryField
+              value={classification}
+              onChange={(next) => {
+                setClassification(next);
+                changed();
+              }}
+              disabled={saving}
+            />,
+            { summary: String(classification.categoryNames.length) },
+          )}
+          {section(
+            "collections",
+            <PhotoCollectionField
+              value={classification}
+              photos={photos}
+              onChange={(next) => {
+                setClassification(next);
+                changed();
+              }}
+              disabled={saving}
+            />,
+            { summary: String(classification.collections.length) },
+          )}
+          {section(
+            "variants",
+            <VariantAssignment
+              inline
+              photoId={photo.getId()}
+              title={photo.getTitle()}
+              disabled={saving}
+            />,
+            { lazy: true },
+          )}
+          {section(
+            "frame",
+            <FrameFields
+              src={photo.urlForWidth(640)}
+              width={photo.getWidth()}
+              height={photo.getHeight()}
+              value={frame}
+              onChange={(next) => {
+                setFrame(next);
+                changed();
+              }}
+              disabled={saving}
+            />,
+            { summary: frame ? "On" : "Off" },
+          )}
+          {section(
+            "highlights",
+            <HighlightEditor
+              src={photo.urlForWidth(960)}
+              width={photo.getWidth()}
+              height={photo.getHeight()}
+              value={highlights}
+              onChange={(next) => {
+                setHighlights(next);
+                changed();
+              }}
+              onActiveChange={(key) => setStageView(key ?? "original")}
+              disabled={saving}
+            />,
+            { summary: String(highlightViews(highlights).length - 1) },
+          )}
+          {section(
+            "file",
+            <div className="replace-file">
+              {report.length > 0 ? (
+                <OptimizationIssueList issues={report} />
+              ) : (
+                <p className="upload-muted">
+                  No optimization notes for this file.
+                </p>
+              )}
+              <p className="upload-muted">
+                {photo.getWidth()} × {photo.getHeight()} px stored. A new export
+                keeps the record, publication date, relations, frame and
+                highlights; review the crops if the proportions change.
+              </p>
+              <label className="replace-file__button">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  aria-hidden="true"
+                >
+                  <path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4M12 4v11M7 9l5-5 5 5" />
+                </svg>
+                {file ? "Choose another file…" : "Replace file…"}
+                <input
+                  key={`${photo.urlForWidth(320)}:${resetKey}`}
+                  className="sr-only"
+                  type="file"
+                  aria-label="Replacement file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    setFile(event.target.files?.[0] ?? null);
+                    changed();
+                  }}
+                />
+              </label>
+              {file && (
+                <div className="replace-file__warning">
+                  <strong>⚠ The current file will be lost.</strong>
+                  <p>
+                    Saving replaces it with <em>{file.name}</em>, and the
+                    previous file cannot be recovered. Title, classification,
+                    frame and highlights are kept.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setResetKey((value) => value + 1);
+                    }}
+                  >
+                    Keep the current file
+                  </button>
+                </div>
+              )}
+            </div>,
+            { summary: pending ? `⚠ ${pending}` : undefined },
+          )}
+        </fieldset>
         {error && (
           <p role="alert" className="upload-error">
             {error}
@@ -543,7 +959,182 @@ function PhotoEditor({
           </button>
         )}
         {actions()}
-      </fieldset>
+      </div>
     </form>
+  );
+}
+
+type StageView = { key: string; label: string; crop?: Highlight };
+
+function highlightViews(highlights: PhotoHighlights): StageView[] {
+  return [
+    { key: "original", label: "Original" },
+    ...(["square", "landscape", "portrait"] as const)
+      .filter((kind) => highlights[kind])
+      .map((kind) => ({
+        key: kind,
+        label: kind[0].toUpperCase() + kind.slice(1),
+        crop: highlights[kind],
+      })),
+    ...(highlights.custom ?? []).map((item) => ({
+      key: `custom:${item.id}`,
+      label: item.name,
+      crop: item.crop,
+    })),
+  ];
+}
+
+// The large preview: the whole photo, or any of its highlights shown big.
+function PhotoStage({
+  chosen,
+  onChoose,
+  photo,
+  title,
+  highlights,
+  titlePosition,
+  visibility,
+}: {
+  chosen: string;
+  onChoose: (key: string) => void;
+  photo: Photo;
+  title: string;
+  highlights: PhotoHighlights;
+  titlePosition: PhotoTitlePosition;
+  visibility: PhotoVisibility;
+}) {
+  const views = highlightViews(highlights);
+  const view = views.find((item) => item.key === chosen) ?? views[0];
+  const ratio = view.crop
+    ? (photo.getAspectRatio() * view.crop.width) / view.crop.height
+    : photo.getAspectRatio();
+  const camera = cameraName(photo);
+  return (
+    <section className="photo-stage" aria-label="Photo preview">
+      <div
+        className="photo-stage__views"
+        role="radiogroup"
+        aria-label="Preview view"
+      >
+        {views.map((item) => (
+          <button
+            type="button"
+            role="radio"
+            key={item.key}
+            aria-checked={item.key === view.key}
+            onClick={() => onChoose(item.key)}
+          >
+            {item.crop && (
+              <span
+                className="photo-stage__shape"
+                style={{
+                  aspectRatio: `${(photo.getAspectRatio() * item.crop.width) / item.crop.height}`,
+                }}
+                aria-hidden="true"
+              />
+            )}
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="photo-stage__canvas">
+        <div
+          className="photo-stage__image"
+          style={{
+            aspectRatio: `${ratio}`,
+            width: `min(100%, calc(var(--stage-height) * ${ratio}))`,
+          }}
+        >
+          <PhotoImage
+            photo={photo}
+            maxWidth={1920}
+            fallbackSizes="60vw"
+            className="object-cover"
+            crop={view.crop}
+          />
+          {!view.crop && (
+            <span
+              className={`photo-stage__title photo-stage__title--${titlePosition.toLowerCase().replace("_", "-")}`}
+            >
+              {title}
+            </span>
+          )}
+        </div>
+      </div>
+      <dl className="photo-stage__meta">
+        <div>
+          <dt>Size</dt>
+          <dd>
+            {photo.getWidth()} × {photo.getHeight()}
+          </dd>
+        </div>
+        <div>
+          <dt>Visibility</dt>
+          <dd>{VISIBILITY_LABELS[visibility]}</dd>
+        </div>
+        {camera && (
+          <div>
+            <dt>Camera</dt>
+            <dd>{camera}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Published</dt>
+          <dd>{formatDate(photo.getCreatedAt())}</dd>
+        </div>
+        <Link href={`/photo/${photo.getId()}`} target="_blank">
+          Open in viewer ↗
+        </Link>
+      </dl>
+    </section>
+  );
+}
+
+// Four corners of a small copy of the photo: the title sits in the chosen one.
+function TitleCorner({
+  photo,
+  value,
+  onChange,
+}: {
+  photo: Photo;
+  value: PhotoTitlePosition;
+  onChange: (value: PhotoTitlePosition) => void;
+}) {
+  const name = useId();
+  return (
+    <fieldset
+      className="title-corner"
+      role="radiogroup"
+      aria-label="Title corner in the viewer"
+    >
+      <legend>Title corner in the viewer</legend>
+      <div
+        className="title-corner__photo"
+        style={{ aspectRatio: `${photo.getAspectRatio()}` }}
+      >
+        <PhotoImage
+          photo={photo}
+          maxWidth={320}
+          fallbackSizes="180px"
+          className="object-cover"
+        />
+        {PHOTO_TITLE_POSITIONS.map((position) => (
+          <label
+            key={position}
+            className={`title-corner__spot title-corner__spot--${position.toLowerCase().replace("_", "-")}`}
+            title={TITLE_POSITION_LABELS[position]}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={position}
+              aria-label={TITLE_POSITION_LABELS[position]}
+              checked={value === position}
+              onChange={() => onChange(position)}
+            />
+            <span aria-hidden="true">Aa</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

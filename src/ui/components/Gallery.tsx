@@ -10,6 +10,7 @@ import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { GalleryVisitorControls } from "./GalleryVisitorControls";
 import { GalleryTiles } from "./GalleryTiles";
 import { GalleryFilters } from "./GalleryFilters";
+import { groupGalleryCategories } from "./galleryCategoryGroups";
 import {
   defaultGallerySettings,
   GallerySettings,
@@ -47,7 +48,7 @@ export default function Gallery({
   const settings = previewSettings ?? storedSettings;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState(false);
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [display, setDisplay] = useState<{
     layout?: string;
     crops?: string;
@@ -69,7 +70,7 @@ export default function Gallery({
   useEffect(() => {
     queueMicrotask(() => {
       const state = readGalleryState(!previewSettings);
-      setCategoryId(state.category);
+      setCategoryIds(state.categories);
       setQuery(state.search);
       setSettledSearch(state.search);
       setPage(state.page);
@@ -80,10 +81,30 @@ export default function Gallery({
     // Read once on arrival; a preview's settings change does not reset the place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadCatalog]);
-  const ready = seed !== "" && settingsReady;
-  const categoryStyle = settings.categories.find(
-    (item) => item.categoryId === categoryId,
-  );
+  // Chosen categories wait for the catalog, which says which group each belongs to.
+  const ready =
+    seed !== "" &&
+    settingsReady &&
+    (categoryIds.length === 0 || Boolean(catalog) || catalogError);
+  const categoryGroups = catalog
+    ? groupGalleryCategories(catalog.categories, settings.categories)
+        .map((group) =>
+          group.categories
+            .filter((category) => categoryIds.includes(category.id))
+            .map((category) => category.id),
+        )
+        .filter((ids) => ids.length > 0)
+    : categoryIds.map((id) => [id]);
+  const categoriesParam =
+    categoryGroups.map((ids) => ids.join(",")).join("|") || undefined;
+  // The first chosen category with its own look themes the whole page.
+  const categoryStyle = categoryIds
+    .map((id) =>
+      settings.categories.find(
+        (item) => item.categoryId === id && item.customize,
+      ),
+    )
+    .find(Boolean);
   const appearance = categoryStyle?.customize
     ? categoryStyle.appearance
     : settings.appearance;
@@ -104,12 +125,12 @@ export default function Gallery({
   useEffect(() => {
     if (ready && !previewSettings)
       writeGalleryState({
-        category: categoryId,
+        categories: categoryIds,
         search: settledSearch,
         page,
         display,
       });
-  }, [ready, previewSettings, categoryId, settledSearch, page, display]);
+  }, [ready, previewSettings, categoryIds, settledSearch, page, display]);
   useEffect(() => {
     const timer = setTimeout(() => setSettledSearch(query.trim()), 350);
     return () => clearTimeout(timer);
@@ -128,7 +149,7 @@ export default function Gallery({
           page,
           limit: 12,
           seed,
-          category: categoryId || undefined,
+          categories: categoriesParam,
           search: settledSearch,
           layout,
           crops,
@@ -138,7 +159,7 @@ export default function Gallery({
     } finally {
       if (abort.current === controller) pageLock.current = false;
     }
-  }, [browsePhotos, page, seed, categoryId, settledSearch, layout, crops]);
+  }, [browsePhotos, page, seed, categoriesParam, settledSearch, layout, crops]);
   useEffect(() => () => abort.current?.abort(), []);
   const {
     data: result,
@@ -208,23 +229,37 @@ export default function Gallery({
         <div className="gallery-tools">
           <label className="gallery-search">
             Search the archive
-            <input
-              type="search"
-              placeholder="Photo title or category"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-            />
+            <span className="gallery-search__field">
+              <svg
+                viewBox="0 0 20 20"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                aria-hidden="true"
+              >
+                <circle cx="8.5" cy="8.5" r="5.5" />
+                <path d="M13 13l4.5 4.5" />
+              </svg>
+              <input
+                type="search"
+                placeholder="Photo title or category"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </span>
           </label>
           {catalog && (
             <GalleryFilters
               categories={catalog.categories}
               settings={settings}
-              selected={categoryId}
-              onSelect={(id) => {
-                setCategoryId(id);
+              selected={categoryIds}
+              onChange={(ids) => {
+                setCategoryIds(ids);
                 setPage(1);
               }}
             />

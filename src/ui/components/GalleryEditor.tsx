@@ -14,7 +14,9 @@ import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { groupGalleryCategories } from "./galleryCategoryGroups";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
-import { GalleryPaletteLibrary } from "./GalleryPaletteLibrary";
+import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
+import { GALLERY_SETTINGS_SAVED } from "./PaletteManager";
+import { DisplayIcon } from "./DisplayIcon";
 import "./homeBannerEditor.css";
 import "./galleryStudio.css";
 
@@ -60,6 +62,18 @@ function Editor() {
   useEffect(() => {
     void load();
   }, []);
+  // Palettes saved in their own tab arrive with the new version; the rest of a draft stays.
+  useEffect(() => {
+    const adopt = (event: Event) => {
+      const settings = (event as CustomEvent<GallerySettings>).detail;
+      if (!settings) return;
+      const patch = { palettes: settings.palettes, version: settings.version };
+      setSaved((previous) => (previous ? { ...previous, ...patch } : previous));
+      setDraft((previous) => ({ ...previous, ...patch }));
+    };
+    window.addEventListener(GALLERY_SETTINGS_SAVED, adopt);
+    return () => window.removeEventListener(GALLERY_SETTINGS_SAVED, adopt);
+  }, []);
   async function save() {
     if (lock.current) return false;
     lock.current = true;
@@ -71,6 +85,9 @@ function Editor() {
       setSaved(result);
       setDraft(result);
       setNotice("Gallery design saved.");
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_SETTINGS_SAVED, { detail: result }),
+      );
       return true;
     } catch (failure) {
       setError((failure as Error).message);
@@ -172,120 +189,8 @@ function Editor() {
               await save();
             }}
           >
-            <fieldset disabled={busy}>
-              <legend>Introduction</legend>
-              <p>
-                Empty text is hidden. Remove every block to show only the
-                filters and photographs.
-              </p>
-              {draft.blocks.map((block, index) => (
-                <div className="gallery-editor-block" key={index}>
-                  <label>
-                    Text {index + 1}
-                    <textarea
-                      maxLength={1000}
-                      value={block.text}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.map((item, i) =>
-                            i === index
-                              ? { ...item, text: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Role {index + 1}
-                    <select
-                      value={block.kind}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.map((item, i) =>
-                            i === index
-                              ? { ...item, kind: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    >
-                      <option value="eyebrow">Eyebrow</option>
-                      <option value="title">Title</option>
-                      <option value="body">Description</option>
-                    </select>
-                  </label>
-                  <label>
-                    Text size {index + 1} · {block.size}px
-                    <input
-                      type="range"
-                      min={10}
-                      max={100}
-                      value={block.size}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.map((item, i) =>
-                            i === index
-                              ? { ...item, size: Number(event.target.value) }
-                              : item,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Text font {index + 1}
-                    <select
-                      value={block.font}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.map((item, i) =>
-                            i === index
-                              ? { ...item, font: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    >
-                      <option value="inherit">Use gallery font</option>
-                      <FontOptions />
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        blocks: draft.blocks.filter((_, i) => i !== index),
-                      })
-                    }
-                  >
-                    Remove text {index + 1}
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                disabled={draft.blocks.length >= 12}
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    blocks: [
-                      ...draft.blocks,
-                      { kind: "body", text: "", size: 17, font: "inherit" },
-                    ],
-                  })
-                }
-              >
-                Add text
-              </button>
-            </fieldset>
-            <fieldset disabled={busy}>
-              <legend>Category & appearance</legend>
+            <fieldset disabled={busy} className="gallery-editor-style">
+              <legend>Type & color</legend>
               <label>
                 Edit style for
                 <select
@@ -323,7 +228,7 @@ function Editor() {
                       )}
                     </select>
                   </label>
-                  <label>
+                  <label className="gallery-editor-check">
                     <input
                       type="checkbox"
                       checked={category?.customize ?? false}
@@ -339,11 +244,173 @@ function Editor() {
                   </p>
                 </>
               )}
-              <AppearanceFields
+              <TypeColorFields
                 value={appearance}
                 disabled={!!target && !category?.customize}
                 onChange={changeAppearance}
               />
+              <details className="palette-drawer">
+                <summary>
+                  <PaletteSwatch colors={appearance} />
+                  <span>Palettes</span>
+                  <small>
+                    {(draft.palettes ?? defaultGalleryPalettes).length} saved
+                  </small>
+                </summary>
+                <GalleryPaletteLibrary
+                  palettes={draft.palettes ?? defaultGalleryPalettes}
+                  appearance={appearance}
+                  disabled={busy}
+                  applyDisabled={!!target && !category?.customize}
+                  onChange={(palettes) => {
+                    setDraft((previous) => ({ ...previous, palettes }));
+                    setNotice("");
+                  }}
+                  onApply={(colors) =>
+                    changeAppearance({ ...appearance, ...colors })
+                  }
+                />
+                <p className="palette-drawer__note">
+                  Curator → Palettes shows where each color goes.
+                </p>
+              </details>
+            </fieldset>
+            <ArrangementFields
+              value={appearance}
+              disabled={busy || (!!target && !category?.customize)}
+              onChange={changeAppearance}
+            />
+            <fieldset disabled={busy}>
+              <legend>Introduction</legend>
+              <p>
+                Empty text is hidden. Remove every block to show only the
+                filters and photographs.
+              </p>
+              <ol className="gallery-editor-blocks">
+                {draft.blocks.map((block, index) => (
+                  <li
+                    className="gallery-editor-block"
+                    data-kind={block.kind}
+                    key={index}
+                  >
+                    <div className="gallery-editor-block__head">
+                      <span className="gallery-editor-block__number">
+                        {index + 1}
+                      </span>
+                      <strong>{BLOCK_KINDS[block.kind] ?? block.kind}</strong>
+                      <button
+                        type="button"
+                        className="gallery-editor-block__remove"
+                        aria-label={`Remove text ${index + 1}`}
+                        title="Remove this text"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            blocks: draft.blocks.filter((_, i) => i !== index),
+                          })
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <label>
+                      Text {index + 1}
+                      <textarea
+                        maxLength={1000}
+                        value={block.text}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            blocks: draft.blocks.map((item, i) =>
+                              i === index
+                                ? { ...item, text: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <div className="gallery-editor-block__row">
+                      <label>
+                        Role {index + 1}
+                        <select
+                          value={block.kind}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              blocks: draft.blocks.map((item, i) =>
+                                i === index
+                                  ? { ...item, kind: event.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                        >
+                          {Object.entries(BLOCK_KINDS).map(([kind, label]) => (
+                            <option key={kind} value={kind}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Text font {index + 1}
+                        <select
+                          value={block.font}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              blocks: draft.blocks.map((item, i) =>
+                                i === index
+                                  ? { ...item, font: event.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                        >
+                          <option value="inherit">Use gallery font</option>
+                          <FontOptions />
+                        </select>
+                      </label>
+                    </div>
+                    <label>
+                      Text size {index + 1} · {block.size}px
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={block.size}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            blocks: draft.blocks.map((item, i) =>
+                              i === index
+                                ? { ...item, size: Number(event.target.value) }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                className="gallery-editor-add"
+                disabled={draft.blocks.length >= 12}
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    blocks: [
+                      ...draft.blocks,
+                      { kind: "body", text: "", size: 17, font: "inherit" },
+                    ],
+                  })
+                }
+              >
+                + Add text
+              </button>
             </fieldset>
             <GalleryOptionsEditor
               value={draft.visitorOptions}
@@ -352,19 +419,6 @@ function Editor() {
                 setDraft((previous) => ({ ...previous, visitorOptions }));
                 setNotice("");
               }}
-            />
-            <GalleryPaletteLibrary
-              palettes={draft.palettes ?? defaultGalleryPalettes}
-              appearance={appearance}
-              disabled={busy}
-              applyDisabled={!!target && !category?.customize}
-              onChange={(palettes) => {
-                setDraft((previous) => ({ ...previous, palettes }));
-                setNotice("");
-              }}
-              onApply={(colors) =>
-                changeAppearance({ ...appearance, ...colors })
-              }
             />
             <div className="banner-editor__actions">
               <button disabled={busy || !dirty} type="submit">
@@ -408,24 +462,40 @@ function Editor() {
             </div>
           </form>
           <section
-            className="banner-editor__preview"
+            className="banner-editor__preview device-preview"
             aria-label="Gallery preview"
           >
-            <div className="banner-editor__preview-bar">
+            <div className="device-preview__bar">
               <h2>Live preview</h2>
-              <button
-                type="button"
-                aria-pressed={mobile}
-                onClick={() => setMobile(!mobile)}
+              <div
+                className="device-switch"
+                role="radiogroup"
+                aria-label="Preview device"
               >
-                {mobile ? "Show desktop" : "Show mobile"}
-              </button>
+                {(["desktop", "mobile"] as const).map((device) => (
+                  <button
+                    key={device}
+                    type="button"
+                    role="radio"
+                    aria-checked={mobile === (device === "mobile")}
+                    title={device === "mobile" ? "Phone" : "Desktop monitor"}
+                    onClick={() => setMobile(device === "mobile")}
+                  >
+                    <DisplayIcon kind={device} />
+                    <span>{device === "mobile" ? "Phone" : "Desktop"}</span>
+                  </button>
+                ))}
+              </div>
               <span>Unsaved preview</span>
             </div>
             <div
-              className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
+              className={`device-frame device-frame--${mobile ? "mobile" : "desktop"}`}
             >
-              <Gallery settings={draft} />
+              <div
+                className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
+              >
+                <Gallery settings={draft} />
+              </div>
             </div>
           </section>
         </div>
@@ -442,18 +512,26 @@ function FontOptions() {
     </>
   );
 }
-function AppearanceFields({
-  value,
-  disabled,
-  onChange,
-}: {
+const BLOCK_KINDS: Record<string, string> = {
+  eyebrow: "Eyebrow",
+  title: "Title",
+  body: "Description",
+};
+type AppearanceProps = {
   value: GalleryAppearance;
   disabled: boolean;
   onChange: (value: GalleryAppearance) => void;
-}) {
+};
+const COLOR_HINTS = {
+  background: "Page",
+  text: "Text",
+  accent: "Accent",
+  surface: "Surface",
+};
+function TypeColorFields({ value, disabled, onChange }: AppearanceProps) {
   return (
-    <fieldset disabled={disabled}>
-      <legend>Palette, type & photographs</legend>
+    <fieldset disabled={disabled} className="gallery-editor-type">
+      <legend className="sr-only">Type and colors</legend>
       <label>
         Gallery font
         <select
@@ -463,21 +541,29 @@ function AppearanceFields({
           <FontOptions />
         </select>
       </label>
-      <div className="banner-editor__colors">
+      <div className="gallery-editor-colors">
         {(["background", "text", "accent", "surface"] as const).map((key) => (
           <label key={key}>
-            {key}
             <input
               type="color"
+              aria-label={key}
               value={value[key]}
               onChange={(event) =>
                 onChange({ ...value, [key]: event.target.value })
               }
             />
-            <span>{value[key]}</span>
+            <span>{COLOR_HINTS[key]}</span>
+            <small>{value[key]}</small>
           </label>
         ))}
       </div>
+    </fieldset>
+  );
+}
+function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
+  return (
+    <fieldset disabled={disabled}>
+      <legend>Photographs</legend>
       <label>
         Photo arrangement
         <select

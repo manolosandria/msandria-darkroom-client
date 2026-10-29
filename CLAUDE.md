@@ -251,7 +251,7 @@ clicking, selecting or dragging inside it neither hides the controls nor swipes.
 
 Each photo chooses the corner of its title (`titlePosition`: bottom left by default,
 bottom right, top left or top right) so it does not get lost over a bright or busy
-area. It is set in `/manage` under **Title corner in the viewer** and saved with the
+area. It is set in `/manage` under **Title corner in the viewer**, by choosing a corner on a small copy of the photo, and saved with the
 other edits.
 
 ## Responsive photo delivery
@@ -297,7 +297,8 @@ On `/manage`, **Only photos needing optimization** queries admin-only
 `FIXED_ON_UPLOAD` entries remain history rather than pending work. An empty result
 is shown as a completed queue.
 
-Choose a **Replacement file** and save to submit the file and edits together using
+**Replace file…**, the last section of the editor, chooses a replacement; a warning says the current file
+will be lost and **Keep the current file** withdraws it. Save to submit the file and edits together using
 `POST /photos/:id/file`. The API preserves the record, publication date, relations,
 frame and existing crops, and returns new dimensions, renditions and optimization
 results. Review crops after changing image proportions. Failures preserve the file
@@ -380,8 +381,8 @@ form data. Drafts and replacement files remain in memory only.
 collection editors; `CollectionCanvas` is the editable mosaic (drag to reorder,
 edges and corner to resize, click to select), and every pointer gesture has a
 side-panel equivalent. Photos are added from `PhotoPicker`, a horizontal strip of
-lazily loaded thumbnails capped at 160 px, and the Photos tab's library sits in a
-scrolling card; both use `PhotoFilters` (title search ignoring case and accents,
+lazily loaded thumbnails capped at 160 px, and the Photos tab's library is a grid, list or
+filmstrip; both use `PhotoFilters` (title search ignoring case and accents,
 category from the catalog, and on Photos the camera from the admin listing). Their
 administrative images are capped at 160 px for thumbnails (the API's smallest
 rendition), 320 px for collection cards, 640 px for the
@@ -544,3 +545,67 @@ references are distinct from the bounded photo payload.
 Node is pinned to 24.22.1 LTS in both repositories. Turbopack's experimental workerThreads
 plugin runtime avoids the failing local PostCSS child-process socket handshake on
 Windows; retain the default Turbopack build and review this option with Next upgrades.
+
+## Photos and Variants studios
+
+**Photos** (`ManagePhotos`) opens on the library: a grid of whole photos, sized with a
+slider, or a list with visibility, size, camera and publication date. Search, category,
+camera and **Needs optimization** sit above it. Opening a photo turns the library into a
+filmstrip and shows the editor: a dark stage on the left with the photo large (its title
+in the chosen corner) and chips to show any highlight large instead, and an inspector on
+the right. The inspector's sections (Details, Visibility, Categories, Collections,
+Variants, Frame, Highlights, File) are disclosures; tabs in its sticky header open and
+scroll to one, and **Expand all**/**Collapse all** act on every one. Variants mounts on
+first opening, so its catalog loads only then.
+
+`PhotoClassificationFields` exports its parts (`PhotoVisibilityField`,
+`PhotoCategoryField`, `PhotoCollectionField`); Upload still uses the whole set.
+Visibility is four cards, categories add with a click from the existing ones, and
+collections are a disclosure of cover cards that toggle membership, with the order
+beside each chosen one (covers come from the `photos` passed in, else an initial).
+`VariantAssignment` picks the related photo from thumbnails; `inline` shows it open and
+loads at once.
+
+**Variants** (`VariantStudio`) lists works on the left, shows the open work as a large
+drop zone and the library as a strip below. Photos join a work by dragging, by ticking
+them in the strip, or by dropping image files (or **Upload files…**), which are
+uploaded through `UploadPhoto` with the visibility of the work's first photo and added
+to the draft. The work is saved only with **Save variants**.
+
+Gallery's visitor controls are segmented icon buttons (native radios), and the Gallery
+studio previews inside a monitor or a phone chosen with two device buttons.
+
+## Highlights, palettes and filters
+
+`HighlightEditor` shows every highlight as a thumbnail; choosing one selects it on the
+stage, where it moves with the pointer and resizes from its corners (a custom one from
+its edges too), keeping a main shape's proportion. The green **+** offers the four
+shapes (square, landscape, portrait, free); the curator draws the crop on the photo and
+then accepts or cancels it, so nothing is created by a click alone. **Revert** puts back
+the crop the highlight had when the editor opened or it was accepted. The sliders stay
+under **Precise size and position** for keyboard use. In Photos, choosing a highlight
+also shows it large on the stage (`onActiveChange`).
+
+Gallery's categories can be combined: the query sends `categories`, groups separated by
+`|` and ids by `,`, and the API returns photos with any category of each chosen group.
+The URL keeps them comma-separated in `category`, so a single `?category=` link still
+works. The round reset icon clears every filter; the chosen ones show as chips. The first
+chosen category with its own look themes the page. The display controls are icons with
+the chosen option written underneath, and every control shares one height, radius and
+surface from the theme variables.
+
+Variants show as small round thumbnails (`VariantThumbs`) on Gallery tiles, at the
+bottom of the viewer, and in a collection mosaic only when the collection's
+`showVariants` is on (Collections → Display).
+
+**Palettes** (`PaletteManager`) is a Curator tab that edits the gallery's palette library
+and shows, on a small drawing of the page, where each of the four colors goes. It saves
+the same settings document as the Gallery studio: each announces its save
+(`curator:gallery-settings-saved`) and the other adopts the new palettes and version.
+In the Gallery studio, **Type & color** comes first, with the palette drawer under the
+colors; the introduction texts are numbered cards.
+
+In Photos → Categories, typing narrows the existing categories shown as buttons and
+offers **Create** for a new name; there is no dropdown. The Collections editor follows the
+Photos layout: the photo strip on top, the composition on a dark stage and an inspector
+of sections (Selected photo, Details, Categories, Display).

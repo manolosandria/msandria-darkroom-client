@@ -8,6 +8,8 @@ export type CollectionEntry = {
 };
 export type CollectionDraft = {
   version?: number;
+  /** Whether the public mosaic lets visitors switch each work's variant. */
+  showVariants?: boolean;
   coverPhotoId?: string | null;
   title: string;
   description?: string | null;
@@ -16,6 +18,7 @@ export type CollectionDraft = {
 };
 export type CatalogCollection = {
   version?: number;
+  showVariants?: boolean;
   coverPhotoId?: string | null;
   id: string;
   title: string;

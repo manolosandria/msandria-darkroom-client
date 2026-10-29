@@ -17,7 +17,11 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
         collections: [],
         works: [],
         photos: [],
-        categories: [{ id: "street", name: "Street" }],
+        categories: [
+          { id: "street", name: "Street" },
+          { id: "animal", name: "Animal" },
+          { id: "color", name: "Color" },
+        ],
       }),
   },
 }));
@@ -107,13 +111,32 @@ describe("Gallery server pagination", () => {
     await user.click(screen.getByRole("button", { name: "Street" }));
     await waitFor(() =>
       expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
-        category: "street",
+        categories: "street",
       }),
     );
-    await user.selectOptions(
-      screen.getByLabelText("Distribution"),
-      "justified",
+    // Any of a group, and one of every group chosen.
+    await user.click(screen.getByRole("button", { name: "Animal" }));
+    await user.click(screen.getByRole("button", { name: /Color & treatment/ }));
+    await user.click(screen.getByRole("button", { name: "Color" }));
+    await waitFor(() =>
+      expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
+        categories: "street,animal|color",
+      }),
     );
+    expect(
+      within(screen.getByRole("list", { name: "Active filters" })).getAllByRole(
+        "button",
+      ),
+    ).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: "Clear all filters" }));
+    await waitFor(() =>
+      expect(execute.mock.calls.at(-1)?.[0].categories).toBeUndefined(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("radio", { name: "Natural proportions" }));
+    expect(screen.getAllByText("Natural proportions").length).toBeGreaterThan(1);
     await waitFor(() =>
       expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
         layout: "justified",
@@ -148,9 +171,11 @@ describe("Gallery server pagination", () => {
       />,
     );
     await screen.findByText("No photos in this selection.");
-    expect(screen.getByLabelText("Distribution")).toHaveValue("justified");
     expect(
-      within(screen.getByLabelText("View shapes")).getAllByRole("option"),
+      screen.getByRole("radio", { name: "Natural proportions" }),
+    ).toBeChecked();
+    expect(
+      within(screen.getByRole("radiogroup", { name: "View shapes" })).getAllByRole("radio"),
     ).toHaveLength(1);
     expect(
       screen.queryByRole("navigation", { name: "Gallery pagination" }),
@@ -167,7 +192,7 @@ describe("Gallery server pagination", () => {
     expect(execute.mock.calls[0][0]).toMatchObject({
       page: 2,
       seed: "42",
-      category: "street",
+      categories: "street",
       search: "night",
     });
     expect(screen.getByRole("searchbox")).toHaveValue("night");
