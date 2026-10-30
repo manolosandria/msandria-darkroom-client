@@ -3,7 +3,7 @@ import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { getPhotoById as defaultGetPhotoById } from "@/src/infrastructure/photoServices";
 import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import { rememberViewerSequence } from "@/src/ui/viewerSequence";
-import { BannerDragHandle } from "./BannerDragHandle";
+import { ArrangeTarget, BannerHandle, useBannerArrange } from "./BannerArrange";
 import { ResolutionBadge } from "./ResolutionBadge";
 import Link from "next/link";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
@@ -23,6 +23,7 @@ import { bannerFonts } from "../bannerPresets";
 import { HighlightKind } from "@/src/domain/entities/PhotoHighlights";
 import {
   defaultHomeBanner,
+  defaultWelcomePanel,
   HomeBanner,
 } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
@@ -32,14 +33,21 @@ export default function HomePage({
   banner: previewBanner,
   onEditPhoto,
   editedPhoto,
-  onLayoutChange,
+  onArrange,
+  focusSlide,
+  onActiveChange,
 }: {
   getAllPhotos?: Pick<GetAllPhotos, "execute">;
   getPhotoById?: Pick<GetPhotoById, "execute">;
   banner?: HomeBanner;
   editedPhoto?: Photo | null;
   onEditPhoto?: (photo: Photo) => void;
-  onLayoutChange?: (layout: string) => void;
+  /** Curator only: drag handles rearrange Welcome and Photographs. */
+  onArrange?: (target: ArrangeTarget) => void;
+  /** Curator only: each new request shows that slide. */
+  focusSlide?: { photoId: string };
+  /** Curator only: told which slide is showing. */
+  onActiveChange?: (photoId: string) => void;
 }) {
   const [savedBanner, setSavedBanner] = useState<HomeBanner>(defaultHomeBanner);
   useEffect(() => {
@@ -138,38 +146,28 @@ export default function HomePage({
   const slide = banner.slides?.find((item) => item.photoId === photo?.getId());
   const destination =
     slide?.href ?? `/photo/${encodeURIComponent(photo?.getId() ?? "")}`;
-  const start = useRef<{ x: number; y: number; block: string } | null>(null);
-  const arrange = (block: string) => ({
-    draggable: !!onLayoutChange,
-    onDragStart: (event: React.DragEvent) => {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", block);
-      start.current = { x: event.clientX, y: event.clientY, block };
-    },
-    onDragEnd: (event: React.DragEvent) => {
-      const value = start.current;
-      start.current = null;
-      if (!value || !onLayoutChange) return;
-      const x = event.clientX - value.x,
-        y = event.clientY - value.y;
-      if (Math.max(Math.abs(x), Math.abs(y)) < 25) return;
-      const side =
-        Math.abs(x) > Math.abs(y)
-          ? x < 0
-            ? "left"
-            : "right"
-          : y < 0
-            ? "top"
-            : "bottom";
-      const inverse: Record<string, string> = {
-        left: "right",
-        right: "left",
-        top: "bottom",
-        bottom: "top",
-      };
-      onLayoutChange(`text-${block === "text" ? side : inverse[side]}`);
-    },
+  const welcome = { ...defaultWelcomePanel, ...banner.welcome };
+  const stage = useRef<HTMLElement>(null);
+  const arrange = useBannerArrange({
+    stage,
+    layout: banner.layout,
+    position: welcome.position,
+    onArrange,
   });
+  // A focus request is answered once its slide is in the carousel, adjusting the index
+  // during render rather than in an effect.
+  const [answered, setAnswered] = useState<typeof focusSlide>();
+  if (focusSlide && focusSlide !== answered) {
+    const at =
+      photos?.findIndex((item) => item.getId() === focusSlide.photoId) ?? -1;
+    if (at >= 0) {
+      setAnswered(focusSlide);
+      setIndex(at);
+    }
+  }
+  useEffect(() => {
+    if (listedId) onActiveChange?.(listedId);
+  }, [listedId, onActiveChange]);
 
   const move = (step: number) => {
     if (photos?.length)
@@ -178,18 +176,11 @@ export default function HomePage({
   return (
     <div className="home-banner-scope">
       <main
-        onDragOver={(event) => {
-          if (onLayoutChange) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-          }
-        }}
-        onDrop={(event) => event.preventDefault()}
-        className={`home-gallery home-gallery--${banner.layout} home-gallery--${banner.shape} home-gallery--${banner.imageMode ?? "highlight"} home-gallery--nav-${banner.navigation ?? "dots"} home-gallery--controls-${banner.controlsPosition ?? "below"}`}
+        ref={stage}
+        className={`home-gallery home-gallery--${banner.layout} home-gallery--${banner.shape} home-gallery--${banner.imageMode ?? "highlight"} home-gallery--nav-${banner.navigation ?? "dots"} home-gallery--controls-${banner.controlsPosition ?? "below"} home-gallery--welcome-${welcome.position} home-gallery--panel-${welcome.panel}${onArrange ? " home-gallery--editing" : ""}${arrange.dragging ? " is-arranging" : ""}`}
         style={
           {
             "--banner-height": `${banner.bannerHeight ?? 620}px`,
-            "--banner-overlay-opacity": (banner.overlayOpacity ?? 45) / 100,
             "--banner-background": banner.backgroundColor,
             "--banner-text": banner.textColor,
             "--banner-accent": banner.accentColor,
@@ -199,12 +190,17 @@ export default function HomePage({
               bannerFonts[0].family,
             "--banner-font-size": `${banner.fontSize / 16}rem`,
             "--banner-align": banner.textAlign,
+            "--welcome-width": `${welcome.width}%`,
+            "--welcome-panel": welcome.panelColor,
+            "--welcome-text": welcome.textColor,
+            "--welcome-alpha": `${banner.overlayOpacity ?? 45}%`,
+            "--welcome-radius": `${welcome.radius}px`,
           } as CSSProperties
         }
       >
-        <header className="home-gallery__intro" {...arrange("text")}>
-          {onLayoutChange && (
-            <BannerDragHandle block="text" onChange={onLayoutChange} />
+        <header className="home-gallery__intro">
+          {onArrange && (
+            <BannerHandle block="text" props={arrange.handle("text")} />
           )}
           <p>{banner.eyebrow}</p>
           <h1>
@@ -296,8 +292,8 @@ export default function HomePage({
             }
           }}
         >
-          {onLayoutChange && (
-            <BannerDragHandle block="photo" onChange={onLayoutChange} />
+          {onArrange && (
+            <BannerHandle block="photo" props={arrange.handle("photo")} />
           )}
           <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
           {!loading && loadedPhotos && photos?.length === 0 && (
@@ -416,7 +412,14 @@ export default function HomePage({
             </>
           )}
         </section>
+        {arrange.dropMap}
+        {onArrange && (
+          <p className="sr-only" aria-live="polite">
+            {arrange.announcement}
+          </p>
+        )}
       </main>
+      {arrange.ghost}
     </div>
   );
 }

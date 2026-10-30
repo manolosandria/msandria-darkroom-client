@@ -43,7 +43,6 @@ Feature: Home banner studio
     Given the carousel has keyboard focus
     When the administrator presses a horizontal arrow or drags across a photograph
     Then the current slide changes
-    And composition drag targets accept move operations without a forbidden cursor
 
   Scenario: Publish slide destinations and overlay presentation
     Given an administrator selects a banner photograph
@@ -51,3 +50,27 @@ Feature: Home banner studio
     And choose overlay welcome and carousel navigation
     Then saving applies the caption, link and presentation to public Home
     And the active welcome placement remains marked without moving buttons
+
+  Scenario: Manage Home slides like a collection
+    Given an administrator opens Curator Home
+    When they add public photographs from the thumbnail strip
+    And give each slide a title and a link destination
+    And drag a card by its grip or press an arrow key on it
+    Then the slides keep that order, up to eight
+    And a slide whose photograph is not enabled for Home is flagged
+    And clicking a card shows that slide in the preview
+
+  Scenario: Place Welcome over the photograph
+    Given an administrator chooses the Welcome over photo layout
+    When they pick a position on the 3 by 3 grid, a width, a panel style, colors, opacity and radius
+    Then the preview shows the panel there, spanning the width on phones
+    And saving sends the panel with the banner
+    And the slide title moves to the side the panel leaves free
+
+  Scenario: Arrange Welcome and Photographs by dragging
+    Given an administrator drags the grip of Welcome or Photographs in the preview
+    When the pointer crosses the banner
+    Then a drop map shows the edges and, for Welcome, nine anchors over the photographs
+    And the target under the pointer lights up and is named beside it
+    And releasing applies it, while a press without movement or Escape changes nothing
+    And arrow keys on a grip move the block the same way

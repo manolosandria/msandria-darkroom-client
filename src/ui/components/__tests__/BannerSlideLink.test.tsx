@@ -17,15 +17,15 @@ describe('Slide destinations',()=>{
  expect(await screen.findByLabelText('Collection')).toHaveValue('travel');
  fireEvent.change(screen.getByLabelText('Link destination'),{target:{value:'external'}});
  fireEvent.change(screen.getByLabelText('HTTPS URL'),{target:{value:'https://www.instagram.com/photographer/'}});
- fireEvent.change(screen.getByLabelText('Caption text'),{target:{value:'Follow my work'}});
- expect(screen.getByLabelText('Caption text')).toHaveValue('Follow my work');
+ fireEvent.change(screen.getByLabelText('Slide title'),{target:{value:'Follow my work'}});
+ expect(screen.getByLabelText('Slide title')).toHaveValue('Follow my work');
  expect(screen.getByText(/Destination:/)).toHaveTextContent('https://www.instagram.com/photographer/');
  });
  it('edits an existing slide in place, keeping the carousel order',async()=>{
  const onChange=vi.fn();
  const banner={...defaultHomeBanner,slides:[{photoId:'a',text:'A',href:'/gallery'},{photoId:'b',text:'B',href:'/gallery'}]};
  render(<BannerSlideLink photoId="a" title="A" banner={banner} onChange={onChange}/>);
- fireEvent.change(await screen.findByLabelText('Caption text'),{target:{value:'Renamed'}});
+ fireEvent.change(await screen.findByLabelText('Slide title'),{target:{value:'Renamed'}});
  expect(onChange).toHaveBeenLastCalledWith([{photoId:'a',text:'Renamed',href:'/gallery'},{photoId:'b',text:'B',href:'/gallery'}]);
  });
 });

@@ -337,16 +337,10 @@
 .home-gallery__intro { padding:clamp(1.5rem,4cqw,4rem); }
 .home-carousel__controls { padding:1rem; }
 .home-carousel__image { border-radius:0; }
-.banner-live-handle { font:12px Arial,sans-serif!important; margin:0!important; padding:.5rem; background:#fff; color:#293126; cursor:grab; }
 .banner-quality { position:absolute; top:.5rem; right:.5rem; max-width:90%; z-index:2; padding:.4rem .6rem; color:white; background:#000c; font:11px Arial,sans-serif; }
 @container(max-width:800px) { .home-gallery { padding:0; gap:0; } }
 
-.banner-live-handle { touch-action:none; user-select:none; }
 
-.banner-live-handle { border:1px solid #abb79e; border-radius:6px; min-width:40px; min-height:36px; }
-.banner-live-handle>span { font-size:22px; }
-.banner-live-handle small { display:none; }
-.banner-live-handle:hover small,.banner-live-handle:focus small,.banner-live-handle:active small { display:inline; }
 /* Clicking the photo focuses the carousel for the arrow keys; the banner never shows a
    focus frame around itself. Its buttons and title link keep their own focus styles. */
 .home-carousel:focus, .home-carousel:focus-visible { outline:none; }
@@ -365,14 +359,11 @@
 .home-carousel { position:relative; }
 .home-carousel__image { height:var(--banner-height,620px); }
 .home-gallery--text-top .home-carousel__image,.home-gallery--text-bottom .home-carousel__image { height:var(--banner-height,620px); aspect-ratio:auto; }
-.home-gallery--text-overlay { display:grid; grid-template-columns:minmax(0,1fr); position:relative; }
 .home-gallery--text-overlay .home-carousel { grid-area:1/1; }
-.home-gallery--text-overlay .home-gallery__intro { grid-area:1/1; z-index:3; align-self:end; max-width:min(650px,100%); color:white; background:rgb(0 0 0 / var(--banner-overlay-opacity,.45)); margin:clamp(.75rem,3cqw,3rem); border-radius:8px; }
 .home-gallery--text-overlay .home-gallery__intro em { color:inherit; }
 .home-gallery--text-overlay .home-gallery__intro a { color:inherit; border-color:currentColor; }
 .home-gallery--controls-overlay .home-carousel__controls { position:absolute; bottom:0; left:0; right:0; z-index:4; color:white; background:#000a; }
 .home-gallery--controls-overlay .home-carousel__caption { padding-bottom:5rem; }
-.home-gallery--text-overlay.home-gallery--controls-overlay .home-gallery__intro { margin-bottom:90px; }
 .home-carousel__thumb { display:block; position:relative; width:40px; height:30px; overflow:hidden; border-radius:4px; }
 .home-gallery--nav-thumbnails .home-carousel__dots button { width:44px; flex-basis:44px; height:36px; }
 .home-gallery--nav-thumbnails .home-carousel__dots button::after { display:none; }
@@ -381,3 +372,67 @@
 .home-carousel__progress { width:100%; min-width:0; accent-color:var(--banner-accent); }
 .banner-quality { box-sizing:border-box; width:min(390px,calc(100% - 1rem)); max-width:calc(100% - 1rem); overflow-wrap:anywhere; white-space:normal; }
 @container(max-width:800px) { .home-carousel__image,.home-gallery--text-top .home-carousel__image,.home-gallery--text-bottom .home-carousel__image { height:auto; aspect-ratio:4/5; } .home-gallery--text-overlay .home-gallery__intro { padding:1rem; } .home-gallery--text-overlay .home-gallery__intro h1 { font-size:clamp(1.4rem,7cqw,2.5rem); } }
+
+/* Welcome over the photographs: anchored on a 3 × 3 grid, sized as a share of the
+   banner, with a solid, frosted, faded or no panel behind it. */
+.home-gallery--text-overlay { display:grid; grid-template-columns:minmax(0,1fr); position:relative; --welcome-margin:clamp(.75rem,3cqw,3rem); --controls-space:72px; }
+.home-gallery--text-overlay .home-gallery__intro { grid-area:1/1; z-index:3; box-sizing:border-box; width:var(--welcome-width,50%); max-width:calc(100% - 2 * var(--welcome-margin)); height:fit-content; margin:var(--welcome-margin); margin-bottom:calc(var(--welcome-margin) + var(--controls-space)); color:var(--welcome-text,#fff); border-radius:var(--welcome-radius,8px); align-self:end; justify-self:start; background:color-mix(in srgb,var(--welcome-panel,#000) var(--welcome-alpha,45%),transparent); }
+.home-gallery--text-overlay.home-gallery--panel-glass .home-gallery__intro { background:color-mix(in srgb,var(--welcome-panel,#000) calc(var(--welcome-alpha,45%) * .7),transparent); backdrop-filter:blur(16px) saturate(1.25); -webkit-backdrop-filter:blur(16px) saturate(1.25); border:1px solid color-mix(in srgb,var(--welcome-text,#fff) 22%,transparent); }
+.home-gallery--text-overlay.home-gallery--panel-gradient .home-gallery__intro { background:radial-gradient(farthest-side,color-mix(in srgb,var(--welcome-panel,#000) var(--welcome-alpha,45%),transparent) 35%,transparent); }
+.home-gallery--text-overlay.home-gallery--panel-none .home-gallery__intro { background:none; text-shadow:0 1px 14px rgb(0 0 0 / .55),0 0 2px rgb(0 0 0 / .35); }
+.home-gallery--text-overlay.home-gallery--welcome-top-left .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-top .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-top-right .home-gallery__intro { align-self:start; }
+.home-gallery--text-overlay.home-gallery--welcome-left .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-center .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-right .home-gallery__intro { align-self:center; }
+.home-gallery--text-overlay.home-gallery--welcome-top-right .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-right .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-bottom-right .home-gallery__intro { justify-self:end; }
+.home-gallery--text-overlay.home-gallery--welcome-top .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-center .home-gallery__intro,
+.home-gallery--text-overlay.home-gallery--welcome-bottom .home-gallery__intro { justify-self:center; }
+@container (max-width:800px) {
+  .home-gallery--text-overlay .home-gallery__intro { width:auto; justify-self:stretch !important; }
+}
+
+/* Curator: blocks show they can be dragged, and a drop map shows where they land. */
+.home-gallery--editing { position:relative; }
+.home-gallery--editing .home-gallery__intro { position:relative; outline:1px dashed transparent; outline-offset:-6px; transition:outline-color .15s ease; view-transition-name:banner-welcome; }
+.home-gallery--editing .home-carousel__image { view-transition-name:banner-photos; }
+.home-gallery--editing .home-gallery__intro:hover, .home-gallery--editing .home-gallery__intro:focus-within { outline-color:color-mix(in srgb,currentColor 45%,transparent); }
+.banner-live-handle { position:absolute; top:.5rem; left:.5rem; z-index:6; display:inline-flex; gap:.35rem; align-items:center; margin:0; padding:.3rem .6rem .3rem .45rem; border:1px solid #abb79e; border-radius:999px; background:#fffffff0; color:#293126; font:600 11px/1 Arial,sans-serif; letter-spacing:0; text-shadow:none; box-shadow:0 2px 8px #0002; cursor:grab; touch-action:none; user-select:none; opacity:.9; transition:opacity .15s ease, box-shadow .15s ease; }
+.banner-live-handle > span { font-size:16px; }
+.banner-live-handle small { font:inherit; }
+.banner-live-handle:hover, .banner-live-handle:focus-visible { opacity:1; box-shadow:0 6px 16px #0003; }
+.banner-live-handle:active { cursor:grabbing; }
+.banner-live-handle:focus-visible { outline:2px solid #465b34; outline-offset:2px; }
+/* Photographs' grip sits at the photo's top left; Welcome's rides on the top edge of
+   its block, at the right, so neither covers the words nor the other grip. */
+.home-carousel .banner-live-handle--photo { top:.75rem; left:.75rem; }
+.home-gallery__intro .banner-live-handle--text { top:.5rem; left:auto; right:.5rem; }
+.home-gallery--text-overlay .home-gallery__intro .banner-live-handle--text { top:0; right:.75rem; transform:translateY(-50%); }
+.home-gallery.is-arranging { user-select:none; cursor:grabbing; }
+.banner-drop-map { position:absolute; inset:0; z-index:20; pointer-events:none; opacity:0; transition:opacity .15s ease; font:600 11px Arial,sans-serif; }
+.banner-drop-map.is-active { opacity:1; }
+.banner-drop-map__edge { position:absolute; display:grid; place-items:center; box-sizing:border-box; border:2px dashed #ffffffb3; background:#29312640; color:white; text-shadow:0 1px 3px #000a; letter-spacing:.06em; text-transform:uppercase; backdrop-filter:blur(2px); transition:background .12s ease, border-color .12s ease; }
+.banner-drop-map__edge--top { top:0; left:0; right:0; height:16%; }
+.banner-drop-map__edge--bottom { bottom:0; left:0; right:0; height:16%; }
+.banner-drop-map__edge--left { top:16%; bottom:16%; left:0; width:16%; }
+.banner-drop-map__edge--right { top:16%; bottom:16%; right:0; width:16%; }
+.banner-drop-map--photo .banner-drop-map__edge--top { height:50%; clip-path:polygon(0 0,100% 0,50% 100%); place-items:start center; padding-top:8%; }
+.banner-drop-map--photo .banner-drop-map__edge--bottom { height:50%; clip-path:polygon(0 100%,100% 100%,50% 0); place-items:end center; padding-bottom:8%; }
+.banner-drop-map--photo .banner-drop-map__edge--left { top:0; bottom:0; width:50%; clip-path:polygon(0 0,100% 50%,0 100%); place-items:center start; padding-left:4%; }
+.banner-drop-map--photo .banner-drop-map__edge--right { top:0; bottom:0; width:50%; clip-path:polygon(100% 0,0 50%,100% 100%); place-items:center end; padding-right:4%; }
+.banner-drop-map__edge.is-over { background:#4f6638d9; border:2px solid #e4ecd9; }
+.banner-drop-map__anchors { position:absolute; inset:16%; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:6px; padding:6px; }
+.banner-drop-map__anchors i { border:1.5px dashed #ffffff8c; border-radius:6px; background:#00000026; transition:background .12s ease, transform .12s ease, border-color .12s ease; }
+.banner-drop-map__anchors i.is-over { background:#4f6638d9; border:2px solid #e4ecd9; transform:scale(1.03); box-shadow:0 8px 24px #0005; }
+.banner-drag-ghost { position:fixed; z-index:1000; display:grid; gap:2px; padding:.45rem .7rem; border-radius:8px; background:#1f2a18f0; color:white; font:12px Arial,sans-serif; pointer-events:none; transform:translate(14px,14px); box-shadow:0 10px 24px #0005; white-space:nowrap; }
+.banner-drag-ghost small { opacity:.8; font-size:11px; }
+::view-transition-group(banner-welcome), ::view-transition-group(banner-photos) { animation-duration:.32s; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .banner-drop-map, .banner-drop-map__edge, .banner-drop-map__anchors i, .banner-live-handle { transition:none; }
+}
+/* Over the photograph, the slide title moves to the side Welcome leaves free. */
+.home-gallery--text-overlay:not([class*="welcome-top-right"]):not(.home-gallery--welcome-right):not([class*="welcome-bottom-right"]) .home-carousel__caption { justify-content:flex-end; text-align:right; }

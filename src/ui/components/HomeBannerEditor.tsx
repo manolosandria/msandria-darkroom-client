@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   defaultHomeBanner,
+  defaultWelcomePanel,
   HomeBanner,
 } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
@@ -13,6 +14,8 @@ import "./homeBannerEditor.css";
 import { bannerFonts, bannerPalettes } from "../bannerPresets";
 import { BannerPhotoSettings } from "./BannerPhotoSettings";
 import { BannerSlideList } from "./BannerSlideList";
+import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
+import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
 
 export default function HomeBannerEditor() {
@@ -39,6 +42,9 @@ function Editor() {
   const [notice, setNotice] = useState("");
   const [highlightDirty, setHighlightDirty] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [focusSlide, setFocusSlide] = useState<{ photoId: string }>();
+  const [activePhotoId, setActivePhotoId] = useState<string>();
+  const onActiveChange = useCallback((id: string) => setActivePhotoId(id), []);
   const { confirm } = useEditingWorkspace();
   const dirty =
     saved !== null && JSON.stringify(draft) !== JSON.stringify(saved);
@@ -80,6 +86,23 @@ function Editor() {
   }
   function change(key: keyof HomeBanner, value: string | number) {
     setDraft((previous) => ({ ...previous, [key]: value }));
+    setNotice("");
+  }
+  // A drop over the photographs also chooses Welcome's anchor there.
+  function arrange(target: ArrangeTarget) {
+    setDraft((previous) => ({
+      ...previous,
+      layout: target.layout,
+      ...(target.position
+        ? {
+            welcome: {
+              ...defaultWelcomePanel,
+              ...previous.welcome,
+              position: target.position,
+            },
+          }
+        : {}),
+    }));
     setNotice("");
   }
   useUnsavedEditor(dirty, {
@@ -327,14 +350,6 @@ function Editor() {
             </fieldset>
             <fieldset disabled={busy}>
               <legend>Carousel</legend>
-              <BannerSlideList
-                slides={draft.slides ?? []}
-                disabled={busy}
-                onChange={(slides) => {
-                  setDraft((previous) => ({ ...previous, slides }));
-                  setNotice("");
-                }}
-              />
               <label>
                 Navigation
                 <select
@@ -368,18 +383,6 @@ function Editor() {
                   value={draft.bannerHeight ?? 620}
                   onChange={(event) =>
                     change("bannerHeight", Number(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                Welcome overlay shade · {draft.overlayOpacity ?? 45}%
-                <input
-                  type="range"
-                  min={0}
-                  max={85}
-                  value={draft.overlayOpacity ?? 45}
-                  onChange={(event) =>
-                    change("overlayOpacity", Number(event.target.value))
                   }
                 />
               </label>
@@ -424,38 +427,33 @@ function Editor() {
             className="banner-editor__preview"
             aria-label="Banner preview"
           >
-            <p>
-              Drag Welcome or Photographs directly in the preview to change
-              their position. Click a photograph to choose its highlight.
-            </p>
-            <div className="banner-layout-keys" aria-label="Welcome placement">
-              {["left", "right", "top", "bottom", "overlay"].map((side) => (
-                <button
-                  type="button"
-                  key={side}
+            <section className="banner-arrange" aria-label="Arrange the banner">
+              <header>
+                <h2>Composition</h2>
+                <p>
+                  Choose a layout, or drag the ⠿ grips of Welcome and Photographs
+                  in the preview: drop on an edge to sit beside the photographs, or
+                  inside to float over them.
+                </p>
+              </header>
+              <BannerLayoutPicker
+                value={draft.layout}
+                disabled={busy}
+                onChange={(value) => change("layout", value)}
+              />
+              {draft.layout === "text-overlay" && (
+                <WelcomePanelControls
+                  welcome={{ ...defaultWelcomePanel, ...draft.welcome }}
+                  opacity={draft.overlayOpacity ?? 45}
                   disabled={busy}
-                  aria-pressed={draft.layout === `text-${side}`}
-                  aria-label={`Welcome ${side}`}
-                  title={`Welcome ${side}`}
-                  onClick={() => change("layout", `text-${side}`)}
-                >
-                  <span aria-hidden="true">
-                    {
-                      (
-                        {
-                          left: "⇤",
-                          right: "⇥",
-                          top: "⇡",
-                          bottom: "⇣",
-                          overlay: "▣",
-                        } as Record<string, string>
-                      )[side]
-                    }
-                  </span>
-                  <small>Welcome {side}</small>
-                </button>
-              ))}
-            </div>
+                  onChange={(welcome) => {
+                    setDraft((previous) => ({ ...previous, welcome }));
+                    setNotice("");
+                  }}
+                  onOpacityChange={(value) => change("overlayOpacity", value)}
+                />
+              )}
+            </section>
             {editingPhoto && (
               <BannerPhotoSettings
                 key={editingPhoto.getId()}
@@ -519,11 +517,21 @@ function Editor() {
                     setEditingPhoto(photo);
                 }}
                 editedPhoto={editingPhoto}
-                onLayoutChange={
-                  busy ? undefined : (value) => change("layout", value)
-                }
+                onArrange={busy ? undefined : arrange}
+                focusSlide={focusSlide}
+                onActiveChange={onActiveChange}
               />
             </div>
+            <BannerSlideList
+              slides={draft.slides ?? []}
+              disabled={busy}
+              activePhotoId={activePhotoId}
+              onFocusSlide={(photoId) => setFocusSlide({ photoId })}
+              onChange={(slides) => {
+                setDraft((previous) => ({ ...previous, slides }));
+                setNotice("");
+              }}
+            />
           </section>
         </div>
       )}
