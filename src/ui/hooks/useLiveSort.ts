@@ -3,6 +3,7 @@ import {
   CSSProperties,
   KeyboardEvent,
   PointerEvent,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -12,6 +13,7 @@ type Rect = { left: number; top: number; width: number; height: number };
 type Point = { x: number; y: number };
 type Live<K> = {
   key: K;
+  pointerId: number | undefined;
   from: number;
   pointer: Point;
   /** The dragged item's slot when the drag began, relative to the list. */
@@ -60,6 +62,8 @@ export function useLiveSort<K extends string>({
   const applied = useRef<Point>({ x: 0, y: 0 });
   // A press that became a drag must not also count as a click.
   const dropped = useRef(false);
+  // Removes the window listeners that follow the drag in progress.
+  const unlisten = useRef<(() => void) | null>(null);
   const order = preview ?? keys;
 
   const origin = () =>
@@ -126,6 +130,7 @@ export function useLiveSort<K extends string>({
   const finish = (commit: boolean) => {
     const current = live.current;
     if (!current) return;
+    unlisten.current?.();
     snapshot();
     live.current = null;
     dropped.current = current.moved;
@@ -138,9 +143,9 @@ export function useLiveSort<K extends string>({
       onMove(current.from, to);
   };
 
-  const pointerMove = (event: PointerEvent) => {
+  const pointerMove = (event: globalThis.PointerEvent) => {
     const current = live.current;
-    if (!current) return;
+    if (!current || event.pointerId !== current.pointerId) return;
     current.delta = {
       x: event.clientX - current.pointer.x,
       y: event.clientY - current.pointer.y,
@@ -181,6 +186,29 @@ export function useLiveSort<K extends string>({
     follow(current);
   };
 
+  // The drag is followed from the window, not from the grip: when the dragged item
+  // passes one to its right, React moves its own node, and moving a node makes the
+  // browser drop its pointer capture, so the grip would stop hearing the pointer.
+  const listen = () => {
+    unlisten.current?.();
+    const up = (event: globalThis.PointerEvent) => {
+      if (event.pointerId === live.current?.pointerId) finish(true);
+    };
+    const cancel = (event: globalThis.PointerEvent) => {
+      if (event.pointerId === live.current?.pointerId) finish(false);
+    };
+    window.addEventListener("pointermove", pointerMove);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    unlisten.current = () => {
+      window.removeEventListener("pointermove", pointerMove);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      unlisten.current = null;
+    };
+  };
+  useEffect(() => () => unlisten.current?.(), []);
+
   const gripProps = (key: K) => ({
     onPointerDown: (event: PointerEvent<HTMLElement>) => {
       if (disabled || event.button !== 0) return;
@@ -192,6 +220,7 @@ export function useLiveSort<K extends string>({
       if (!start) return;
       live.current = {
         key,
+        pointerId: event.pointerId,
         from: keys.indexOf(key),
         pointer: { x: event.clientX, y: event.clientY },
         start,
@@ -199,10 +228,8 @@ export function useLiveSort<K extends string>({
         moved: false,
         delta: { x: 0, y: 0 },
       };
+      listen();
     },
-    onPointerMove: pointerMove,
-    onPointerUp: () => finish(true),
-    onPointerCancel: () => finish(false),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
       if (event.key === "Escape" && live.current) {
         event.preventDefault();

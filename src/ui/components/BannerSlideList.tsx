@@ -99,21 +99,47 @@ export function BannerSlideList({
       ),
     );
 
-  // Reordering by pointer: the card follows the grip and the others make room as it
-  // passes over them; it lands where it is dropped.
+  // Reordering by pointer: a thumbnail is dragged from anywhere on it, follows the
+  // pointer while the others make room, and lands where it is dropped.
   const {
     order: sortOrder,
-    dragging: sortDragging,
+    dragging,
     attachList,
     attachItem,
     itemStyle,
     gripProps,
+    takeDrop,
   } = useLiveSort({
     keys: slides.map((slide) => slide.photoId),
     onMove: moveTo,
     disabled,
   });
-  const dragging = sortDragging;
+  // The slide in the detail is the one last picked in the strip, until the preview
+  // shows another one; then it follows the preview.
+  const [picked, setPicked] = useState<{ id: string; active?: string }>();
+  const isSlide = (id?: string) =>
+    Boolean(id && slides.some((slide) => slide.photoId === id));
+  const preferred =
+    picked && picked.active === activePhotoId ? picked.id : activePhotoId;
+  const selectedId = isSlide(preferred)
+    ? preferred
+    : isSlide(picked?.id)
+      ? picked!.id
+      : slides[0]?.photoId;
+  const pick = (photoId: string) => {
+    setPicked({ id: photoId, active: activePhotoId });
+    onFocusSlide?.(photoId);
+  };
+  const remove = (photoId: string) => {
+    onChange(slides.filter((slide) => slide.photoId !== photoId));
+    setAnnouncement(`${titleOf(photoId)} removed from Home.`);
+  };
+  const hiddenFromHome = (photoId: string) => {
+    const photo = photoOf(photoId);
+    return Boolean(photo && enabledPhotoViews(photo, "home").length === 0);
+  };
+  const position = slides.findIndex((slide) => slide.photoId === selectedId);
+  const selected = slides[position];
 
   return (
     <section className="slide-studio" aria-label="Home slides">
@@ -122,7 +148,7 @@ export function BannerSlideList({
           <h3>Slides</h3>
           <p>
             {slides.length
-              ? "Home shows these photographs, in this order. Drag a card by its grip to reorder."
+              ? "Home shows these photographs, in this order. Drag a thumbnail to reorder; click it to edit."
               : "No slides yet: Home shows up to eight eligible photographs at random."}
           </p>
         </div>
@@ -135,32 +161,34 @@ export function BannerSlideList({
       </header>
       {catalogError && <p role="alert">{catalogError}</p>}
       {slides.length > 0 ? (
-        <ol
-          ref={attachList}
-          className={`slide-studio__cards${dragging ? " is-sorting" : ""}`}
-        >
-          {sortOrder.map((photoId, index) => {
-            const slide = slides.find((item) => item.photoId === photoId)!;
-            const position = slides.indexOf(slide);
-            const photo = photoOf(slide.photoId);
-            const title = titleOf(slide.photoId);
-            const hiddenFromHome =
-              photo && enabledPhotoViews(photo, "home").length === 0;
-            const isDragged = dragging === slide.photoId;
-            return (
-              <li
-                key={slide.photoId}
-                ref={attachItem(slide.photoId)}
-                data-slide-card
-                className={`slide-card${isDragged ? " is-dragged" : ""}${activePhotoId === slide.photoId ? " is-active" : ""}`}
-                style={itemStyle(slide.photoId)}
-              >
-                <div className="slide-card__media">
+        <>
+          <ol
+            ref={attachList}
+            className={`slide-strip${dragging ? " is-sorting" : ""}`}
+            aria-label="Slide order"
+          >
+            {sortOrder.map((photoId, index) => {
+              const photo = photoOf(photoId);
+              const title = titleOf(photoId);
+              return (
+                <li
+                  key={photoId}
+                  ref={attachItem(photoId)}
+                  className={`slide-strip__item${dragging === photoId ? " is-dragged" : ""}${selectedId === photoId ? " is-selected" : ""}`}
+                  style={itemStyle(photoId)}
+                >
                   <button
                     type="button"
-                    className="slide-card__thumb"
-                    aria-label={`Show ${title} in the preview`}
-                    onClick={() => onFocusSlide?.(slide.photoId)}
+                    className="slide-strip__thumb"
+                    disabled={disabled}
+                    aria-pressed={selectedId === photoId}
+                    aria-label={`Slide ${index + 1} of ${slides.length}: ${title}`}
+                    title="Click to edit · drag or arrow keys to reorder"
+                    {...gripProps(photoId)}
+                    onClick={() => {
+                      if (takeDrop()) return;
+                      pick(photoId);
+                    }}
                   >
                     {photo ? (
                       <PhotoImage
@@ -168,116 +196,58 @@ export function BannerSlideList({
                         crop={photo.getHighlights().landscape}
                         className="object-cover"
                         maxWidth={320}
-                        fallbackSizes="220px"
+                        fallbackSizes="132px"
                       />
                     ) : (
-                      <span aria-hidden="true">{title.slice(0, 1)}</span>
+                      <span className="slide-strip__initial" aria-hidden="true">
+                        {title.slice(0, 1)}
+                      </span>
+                    )}
+                    <span className="slide-strip__number" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    {hiddenFromHome(photoId) && (
+                      <span
+                        className="slide-strip__warn"
+                        aria-hidden="true"
+                        title="Not enabled for Home"
+                      >
+                        !
+                      </span>
                     )}
                   </button>
-                  <span className="slide-card__number" aria-hidden="true">
-                    {index + 1}
-                  </span>
                   <button
                     type="button"
-                    className="slide-card__grip"
-                    disabled={disabled}
-                    aria-label={`Reorder ${title}, position ${index + 1} of ${slides.length}`}
-                    title="Drag to reorder · arrow keys move it"
-                    {...gripProps(slide.photoId)}
-                  >
-                    <span aria-hidden="true">⠿</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="slide-card__remove"
+                    className="slide-strip__remove"
                     disabled={disabled}
                     aria-label={`Remove ${title} from Home`}
                     title="Remove from Home"
-                    onClick={() => {
-                      onChange(slides.filter((_, other) => other !== position));
-                      setAnnouncement(`${title} removed from Home.`);
-                    }}
+                    onClick={() => remove(photoId)}
                   >
                     <span aria-hidden="true">✕</span>
                   </button>
-                </div>
-                {hiddenFromHome && (
-                  <p className="slide-card__warning">
-                    Not enabled for Home: allow a framing for Home in Photos, or
-                    it is skipped.
-                  </p>
-                )}
-                <label>
-                  Slide title
-                  <input
-                    maxLength={200}
-                    disabled={disabled}
-                    value={slide.text}
-                    aria-label={`Title for ${title}`}
-                    onChange={(e) => update(position, { text: e.target.value })}
-                  />
-                </label>
-                <SlideDestination
-                  compact
-                  photoId={slide.photoId}
-                  href={slide.href}
-                  catalog={catalog}
-                  onChange={(href) => update(position, { href })}
-                />
-                <details className="slide-heading">
-                  <summary>
-                    Own title
-                    {slide.heading && (
-                      <span className="slide-heading__on">on</span>
-                    )}
-                  </summary>
-                  {slide.heading ? (
-                    <SlideHeadingFields
-                      heading={slide.heading}
-                      general={general}
-                      photoId={slide.photoId}
-                      catalog={catalog}
-                      disabled={disabled}
-                      onChange={(heading) => update(position, { heading })}
-                    />
-                  ) : (
-                    <p className="slide-heading__empty">
-                      Shows the general title.{" "}
-                      <button
-                        type="button"
-                        disabled={disabled || !general}
-                        onClick={() => {
-                          update(position, { heading: { ...general! } });
-                          onFocusSlide?.(slide.photoId);
-                        }}
-                      >
-                        Give it its own
-                      </button>
-                    </p>
-                  )}
-                </details>
-                <div className="slide-card__order">
-                  <button
-                    type="button"
-                    disabled={disabled || position === 0}
-                    aria-label={`Move ${title} earlier`}
-                    onClick={() => moveTo(position, position - 1)}
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled || position === slides.length - 1}
-                    aria-label={`Move ${title} later`}
-                    onClick={() => moveTo(position, position + 1)}
-                  >
-                    →
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+                </li>
+              );
+            })}
+          </ol>
+          {selected && (
+            <SlideDetail
+              key={selected.photoId}
+              slide={selected}
+              position={position}
+              count={slides.length}
+              title={titleOf(selected.photoId)}
+              hiddenFromHome={hiddenFromHome(selected.photoId)}
+              general={general}
+              catalog={catalog}
+              disabled={disabled}
+              onChange={(patch) => update(position, patch)}
+              onMove={(to) => moveTo(position, to)}
+              onRemove={() => remove(selected.photoId)}
+              onOwnTitle={() => onFocusSlide?.(selected.photoId)}
+            />
+          )}
+        </>
       ) : (
         <p className="slide-studio__empty">
           Pick photographs below to choose exactly what Home shows.
@@ -350,6 +320,145 @@ export function BannerSlideList({
   );
 }
 
+// The chosen slide: its words, where it leads, its place in the order and whether it
+// shows the general title or one of its own. It stays in place while the strip above
+// is rearranged.
+function SlideDetail({
+  slide,
+  position,
+  count,
+  title,
+  hiddenFromHome,
+  general,
+  catalog,
+  disabled,
+  onChange,
+  onMove,
+  onRemove,
+  onOwnTitle,
+}: {
+  slide: Slides[number];
+  position: number;
+  count: number;
+  title: string;
+  hiddenFromHome: boolean;
+  general?: SlideHeading;
+  catalog: Parameters<typeof SlideDestination>[0]["catalog"];
+  disabled?: boolean;
+  onChange: (patch: Partial<Slides[number]>) => void;
+  onMove: (to: number) => void;
+  onRemove: () => void;
+  onOwnTitle: () => void;
+}) {
+  return (
+    <section
+      className="slide-detail"
+      aria-label={`Slide ${position + 1}: ${title}`}
+    >
+      <header className="slide-detail__bar">
+        <h4>
+          <span className="slide-detail__position">
+            Slide {position + 1} of {count}
+          </span>
+          {title}
+        </h4>
+        <div className="slide-detail__tools">
+          <button
+            type="button"
+            disabled={disabled || position === 0}
+            aria-label={`Move ${title} earlier`}
+            title="Move earlier"
+            onClick={() => onMove(position - 1)}
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            disabled={disabled || position === count - 1}
+            aria-label={`Move ${title} later`}
+            title="Move later"
+            onClick={() => onMove(position + 1)}
+          >
+            →
+          </button>
+          <button
+            type="button"
+            className="slide-detail__remove"
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            Remove
+          </button>
+        </div>
+      </header>
+      {hiddenFromHome && (
+        <p className="slide-detail__warning">
+          Not enabled for Home: allow a framing for Home in Photos, or it is
+          skipped.
+        </p>
+      )}
+      <div className="slide-detail__fields">
+        <label>
+          Slide title
+          <input
+            maxLength={200}
+            disabled={disabled}
+            value={slide.text}
+            aria-label={`Title for ${title}`}
+            onChange={(e) => onChange({ text: e.target.value })}
+          />
+        </label>
+        <SlideDestination
+          compact
+          photoId={slide.photoId}
+          href={slide.href}
+          catalog={catalog}
+          onChange={(href) => onChange({ href })}
+        />
+      </div>
+      <fieldset className="slide-heading" disabled={disabled}>
+        <legend>Welcome title on this slide</legend>
+        <div className="slide-heading__switch">
+          <button
+            type="button"
+            aria-pressed={!slide.heading}
+            onClick={() => onChange({ heading: undefined })}
+          >
+            General title
+          </button>
+          <button
+            type="button"
+            aria-pressed={Boolean(slide.heading)}
+            disabled={!slide.heading && !general}
+            onClick={() => {
+              if (slide.heading) return;
+              onChange({ heading: { ...general! } });
+              onOwnTitle();
+            }}
+          >
+            Own title
+          </button>
+        </div>
+        {slide.heading ? (
+          <SlideHeadingFields
+            heading={slide.heading}
+            general={general}
+            photoId={slide.photoId}
+            catalog={catalog}
+            disabled={disabled}
+            onChange={(heading) => onChange({ heading })}
+          />
+        ) : (
+          <p className="slide-heading__empty">
+            This slide shows the general Welcome title. Choose Own title to give
+            it words, a link and a place of its own.
+          </p>
+        )}
+      </fieldset>
+    </section>
+  );
+}
+
 // The fields of a slide's own title; where it sits is set by dragging it in the preview.
 function SlideHeadingFields({
   heading,
@@ -364,7 +473,7 @@ function SlideHeadingFields({
   photoId: string;
   catalog: Parameters<typeof SlideDestination>[0]["catalog"];
   disabled?: boolean;
-  onChange: (heading: SlideHeading | undefined) => void;
+  onChange: (heading: SlideHeading) => void;
 }) {
   const set = (patch: Partial<SlideHeading>) =>
     onChange({ ...heading, ...patch });
@@ -424,13 +533,6 @@ function SlideHeadingFields({
           }
         >
           Same place as the general title
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(undefined)}
-        >
-          Use the general title
         </button>
       </div>
     </div>

@@ -200,9 +200,6 @@ export function CollectionCanvas({
                     : `Text block: ${block.text.trim() || "empty"}`
                 }
                 onPointerDown={gripProps(block.key).onPointerDown}
-                onPointerMove={gripProps(block.key).onPointerMove}
-                onPointerUp={gripProps(block.key).onPointerUp}
-                onPointerCancel={gripProps(block.key).onPointerCancel}
                 onClick={() => {
                   if (takeDrop()) return;
                   onSelect(block.key);
