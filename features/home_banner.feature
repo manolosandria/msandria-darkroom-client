@@ -82,3 +82,19 @@ Feature: Home banner studio
     And dropping it keeps the new order
     And Escape puts every item back where it was
     And the arrow keys on a grip move the item one place
+
+  Scenario: Place the Welcome panel freely
+    Given the Welcome panel sits over the photograph in the Curator preview
+    When the curator drags the panel
+    Then it stays where it is dropped, at the same share of the banner on any screen
+    When they drag its edge or its corner
+    Then its width changes, or its width and title size change together
+    And choosing an anchor puts it back on the 3 × 3 grid
+
+  Scenario: Give a slide its own title
+    Given a slide in Curator → Home
+    When the curator opens Own title and gives the slide its own
+    Then it starts from the general title and its place
+    And its words, link destination, size and place can be changed apart from the general title
+    And Home shows it instead of the general title while that slide is on show
+    And Use the general title removes it

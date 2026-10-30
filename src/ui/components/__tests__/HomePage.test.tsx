@@ -1,7 +1,13 @@
 import { defaultHomeBanner } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import HomePage from "../HomePage";
 import { Photo } from "@/src/domain/entities/Photo";
 
@@ -53,7 +59,9 @@ describe("HomePage", () => {
     expect(screen.getByRole("progressbar")).toHaveAttribute("max", "1");
   });
   it("shows the slides chosen in Curator, in their order, instead of random photos", async () => {
-    const getAllPhotos = { execute: vi.fn().mockResolvedValue([makePhoto("r", "Random")]) };
+    const getAllPhotos = {
+      execute: vi.fn().mockResolvedValue([makePhoto("r", "Random")]),
+    };
     const getPhotoById = {
       execute: vi.fn((id: string) =>
         Promise.resolve(id === "gone" ? null : makePhoto(id, `Photo ${id}`)),
@@ -73,10 +81,18 @@ describe("HomePage", () => {
         getPhotoById={getPhotoById}
       />,
     );
-    expect(await screen.findByRole("link", { name: /Second chosen/ })).toHaveAttribute("href", "/gallery");
+    expect(
+      await screen.findByRole("link", { name: /Second chosen/ }),
+    ).toHaveAttribute("href", "/gallery");
     expect(screen.getByText("01 / 02", { exact: false })).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByRole("region", { name: "Featured photographs" }), { key: "ArrowRight" });
-    expect(screen.getByRole("link", { name: /First chosen/ })).toHaveAttribute("href", "/photo/a");
+    fireEvent.keyDown(
+      screen.getByRole("region", { name: "Featured photographs" }),
+      { key: "ArrowRight" },
+    );
+    expect(screen.getByRole("link", { name: /First chosen/ })).toHaveAttribute(
+      "href",
+      "/photo/a",
+    );
     expect(getAllPhotos.execute).not.toHaveBeenCalled();
     // Each slide's detail came with the slide list; nothing is fetched again.
     expect(getPhotoById.execute).toHaveBeenCalledTimes(3);
@@ -87,17 +103,27 @@ describe("HomePage", () => {
       <HomePage
         banner={defaultHomeBanner}
         getAllPhotos={{
-          execute: vi.fn().mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
+          execute: vi
+            .fn()
+            .mockResolvedValue([
+              makePhoto("a", "First"),
+              makePhoto("b", "Second"),
+            ]),
         }}
         getPhotoById={{ execute: vi.fn().mockResolvedValue(null) }}
       />,
     );
     const title = await screen.findByRole("link", { name: /First/ });
-    const carousel = screen.getByRole("region", { name: "Featured photographs" });
+    const carousel = screen.getByRole("region", {
+      name: "Featured photographs",
+    });
     expect(within(carousel).getAllByRole("link")).toEqual([title]);
-    for (const image of screen.getAllByAltText("First")) expect(image.closest("a")).toBeNull();
+    for (const image of screen.getAllByAltText("First"))
+      expect(image.closest("a")).toBeNull();
     fireEvent.click(title);
-    expect(JSON.parse(window.sessionStorage.getItem("viewerSequence")!)).toEqual([["a"], ["b"]]);
+    expect(
+      JSON.parse(window.sessionStorage.getItem("viewerSequence")!),
+    ).toEqual([["a"], ["b"]]);
   });
   it("changes slides with focused horizontal keys", async () => {
     render(
@@ -138,7 +164,9 @@ describe("HomePage", () => {
             radius: 16,
           },
         }}
-        getAllPhotos={{ execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]) }}
+        getAllPhotos={{
+          execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]),
+        }}
       />,
     );
     await screen.findByText("First");
@@ -154,30 +182,56 @@ describe("HomePage", () => {
   });
   it("arranges Welcome and Photographs by dragging over the drop map or with arrow keys", async () => {
     const onArrange = vi.fn();
-    const photos = { execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]) };
+    const photos = {
+      execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]),
+    };
     const { rerender } = render(
-      <HomePage banner={defaultHomeBanner} onArrange={onArrange} getAllPhotos={photos} />,
+      <HomePage
+        banner={defaultHomeBanner}
+        onArrange={onArrange}
+        getAllPhotos={photos}
+      />,
     );
     await screen.findByText("First");
     const main = screen.getByRole("main");
     main.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, width: 1000, height: 500, right: 1000, bottom: 500 }) as DOMRect;
-    const welcome = screen.getByRole("button", { name: "Drag Welcome to arrange" });
+      ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 500,
+        right: 1000,
+        bottom: 500,
+      }) as DOMRect;
+    const welcome = screen.getByRole("button", {
+      name: "Drag Welcome to arrange",
+    });
     // A drag shows the map, names the target and drops Welcome on an anchor.
     fireEvent.pointerDown(welcome, { button: 0, clientX: 100, clientY: 100 });
     fireEvent.pointerMove(welcome, { clientX: 780, clientY: 120 });
     expect(document.querySelector(".banner-drop-map.is-active")).not.toBeNull();
-    expect(screen.getByText("Welcome over the photographs, top right")).toBeInTheDocument();
+    expect(
+      screen.getByText("Welcome over the photographs, top right"),
+    ).toBeInTheDocument();
     fireEvent.pointerUp(welcome, { clientX: 780, clientY: 120 });
-    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-overlay", position: "top-right" });
+    expect(onArrange).toHaveBeenLastCalledWith({
+      layout: "text-overlay",
+      position: "top-right",
+    });
     expect(document.querySelector(".banner-drop-map")).toBeNull();
     // A press without movement changes nothing.
     fireEvent.pointerDown(welcome, { button: 0, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(welcome, { clientX: 102, clientY: 101 });
     expect(onArrange).toHaveBeenCalledTimes(1);
     // Photographs dropped on the left edge send Welcome to the right.
-    const photographs = screen.getByRole("button", { name: "Drag Photographs to arrange" });
-    fireEvent.pointerDown(photographs, { button: 0, clientX: 500, clientY: 250 });
+    const photographs = screen.getByRole("button", {
+      name: "Drag Photographs to arrange",
+    });
+    fireEvent.pointerDown(photographs, {
+      button: 0,
+      clientX: 500,
+      clientY: 250,
+    });
     fireEvent.pointerMove(photographs, { clientX: 20, clientY: 250 });
     fireEvent.pointerUp(photographs, { clientX: 20, clientY: 250 });
     expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-right" });
@@ -194,14 +248,24 @@ describe("HomePage", () => {
         banner={{
           ...defaultHomeBanner,
           layout: "text-overlay",
-          welcome: { position: "bottom-left", width: 50, panel: "solid", panelColor: "#000000", textColor: "#ffffff", radius: 8 },
+          welcome: {
+            position: "bottom-left",
+            width: 50,
+            panel: "solid",
+            panelColor: "#000000",
+            textColor: "#ffffff",
+            radius: 8,
+          },
         }}
         onArrange={onArrange}
         getAllPhotos={photos}
       />,
     );
     fireEvent.keyDown(welcome, { key: "ArrowUp" });
-    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-overlay", position: "left" });
+    expect(onArrange).toHaveBeenLastCalledWith({
+      layout: "text-overlay",
+      position: "left",
+    });
     fireEvent.keyDown(welcome, { key: "ArrowLeft" });
     expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-left" });
     fireEvent.keyDown(photographs, { key: "ArrowUp" });
@@ -210,10 +274,16 @@ describe("HomePage", () => {
   it("shows the slide Curator focuses and reports the one showing", async () => {
     const onActiveChange = vi.fn();
     const photos = {
-      execute: vi.fn().mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
+      execute: vi
+        .fn()
+        .mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
     };
     const { rerender } = render(
-      <HomePage banner={defaultHomeBanner} getAllPhotos={photos} onActiveChange={onActiveChange} />,
+      <HomePage
+        banner={defaultHomeBanner}
+        getAllPhotos={photos}
+        onActiveChange={onActiveChange}
+      />,
     );
     await screen.findByText("First");
     expect(onActiveChange).toHaveBeenLastCalledWith("a");
@@ -451,4 +521,138 @@ it("removes a photo disabled in the inline Home editor without breaking navigati
   );
   expect(screen.getByText("Second")).toBeInTheDocument();
   expect(screen.queryByText("First")).not.toBeInTheDocument();
+});
+
+describe("HomePage titles per slide", () => {
+  const heading = {
+    eyebrow: "SERIES",
+    title: "Calaca",
+    accentText: "bonita",
+    linkText: "See the series",
+    href: "/collections?collection=dead",
+    position: "top-right" as const,
+    x: 10,
+    y: 10,
+    width: 40,
+    fontSize: 60,
+  };
+  const withHeading = {
+    ...defaultHomeBanner,
+    layout: "text-overlay",
+    slides: [{ photoId: "a", text: "", href: "/photo/a", heading }],
+  };
+  it("shows a slide's own title, link and free placement instead of the general one", async () => {
+    render(
+      <HomePage
+        banner={withHeading}
+        getAllPhotos={{
+          execute: vi.fn().mockResolvedValue([makePhoto("a", "A")]),
+        }}
+        getPhotoById={{
+          execute: vi.fn().mockResolvedValue(makePhoto("a", "A")),
+        }}
+      />,
+    );
+    expect(
+      await screen.findByRole("link", { name: /See the series/ }),
+    ).toHaveAttribute("href", "/collections?collection=dead");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Calacabonita",
+    );
+    expect(screen.queryByText(defaultHomeBanner.title)).not.toBeInTheDocument();
+    const main = screen.getByRole("main");
+    expect(main).toHaveClass("home-gallery--welcome-free");
+    expect(main.style.getPropertyValue("--welcome-x")).toBe("10%");
+    expect(main.style.getPropertyValue("--banner-font-size")).toBe("3.75rem");
+  });
+  it("moves and resizes the Welcome panel in Curator, for the slide's own title", async () => {
+    const onPlaceWelcome = vi.fn();
+    const { container } = render(
+      <HomePage
+        banner={withHeading}
+        onPlaceWelcome={onPlaceWelcome}
+        getAllPhotos={{
+          execute: vi.fn().mockResolvedValue([makePhoto("a", "A")]),
+        }}
+        getPhotoById={{
+          execute: vi.fn().mockResolvedValue(makePhoto("a", "A")),
+        }}
+      />,
+    );
+    await screen.findByRole("link", { name: /See the series/ });
+    const main = screen.getByRole("main");
+    const panel = container.querySelector<HTMLElement>(".home-gallery__intro")!;
+    main.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 500 }) as DOMRect;
+    panel.getBoundingClientRect = () =>
+      ({ left: 100, top: 50, width: 400, height: 100 }) as DOMRect;
+    fireEvent.pointerDown(panel, { button: 0, clientX: 150, clientY: 100 });
+    fireEvent.pointerMove(panel, { clientX: 151, clientY: 100 });
+    expect(onPlaceWelcome).not.toHaveBeenCalled();
+    fireEvent.pointerMove(panel, { clientX: 250, clientY: 150 });
+    fireEvent.pointerUp(panel);
+    expect(onPlaceWelcome).toHaveBeenLastCalledWith(
+      { x: 20, y: 20, width: 40, fontSize: 60 },
+      "a",
+    );
+    const edge = container.querySelector<HTMLElement>(".welcome-resize--edge")!;
+    fireEvent.pointerDown(edge, { button: 0, clientX: 500, clientY: 100 });
+    fireEvent.pointerMove(edge, { clientX: 600, clientY: 100 });
+    fireEvent.pointerUp(edge);
+    expect(onPlaceWelcome).toHaveBeenLastCalledWith(
+      { x: 10, y: 10, width: 50, fontSize: 60 },
+      "a",
+    );
+    const corner = container.querySelector<HTMLElement>(
+      ".welcome-resize--corner",
+    )!;
+    fireEvent.pointerDown(corner, { button: 0, clientX: 500, clientY: 150 });
+    fireEvent.pointerMove(corner, { clientX: 600, clientY: 150 });
+    fireEvent.pointerCancel(corner);
+    expect(onPlaceWelcome).toHaveBeenLastCalledWith(
+      { x: 10, y: 10, width: 50, fontSize: 75 },
+      "a",
+    );
+    // The link and grips keep their own jobs.
+    onPlaceWelcome.mockClear();
+    const link = screen.getByRole("link", { name: /See the series/ });
+    fireEvent.pointerDown(link, { button: 0, clientX: 150, clientY: 100 });
+    fireEvent.pointerMove(panel, { clientX: 250, clientY: 150 });
+    expect(onPlaceWelcome).not.toHaveBeenCalled();
+  });
+  it("places the general Welcome panel when the slide has no title of its own", async () => {
+    const onPlaceWelcome = vi.fn();
+    const { container } = render(
+      <HomePage
+        banner={{ ...defaultHomeBanner, layout: "text-overlay" }}
+        onPlaceWelcome={onPlaceWelcome}
+        getAllPhotos={{
+          execute: vi.fn().mockResolvedValue([makePhoto("a", "A")]),
+        }}
+      />,
+    );
+    await screen.findAllByRole("img");
+    expect(screen.getByRole("main")).not.toHaveClass(
+      "home-gallery--welcome-free",
+    );
+    const main = screen.getByRole("main");
+    const panel = container.querySelector<HTMLElement>(".home-gallery__intro")!;
+    main.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 500 }) as DOMRect;
+    panel.getBoundingClientRect = () =>
+      ({ left: 0, top: 250, width: 500, height: 100 }) as DOMRect;
+    const edge = container.querySelector<HTMLElement>(".welcome-resize--edge")!;
+    fireEvent.pointerDown(edge, { button: 0, clientX: 500, clientY: 300 });
+    fireEvent.pointerMove(edge, { clientX: 450, clientY: 300 });
+    // Resizing an anchored panel keeps it on its anchor.
+    expect(onPlaceWelcome).toHaveBeenLastCalledWith(
+      {
+        x: undefined,
+        y: undefined,
+        width: 45,
+        fontSize: defaultHomeBanner.fontSize,
+      },
+      undefined,
+    );
+  });
 });

@@ -52,7 +52,14 @@ function LayoutSketch({ layout }: { layout: string }) {
         className="layout-sketch__peak"
       />
       {overlay && (
-        <rect x="7" y="19" width="26" height="14" rx="2" className="layout-sketch__panel" />
+        <rect
+          x="7"
+          y="19"
+          width="26"
+          height="14"
+          rx="2"
+          className="layout-sketch__panel"
+        />
       )}
       <rect
         x={text[0]}
@@ -95,7 +102,11 @@ export function BannerLayoutPicker({
   disabled?: boolean;
 }) {
   return (
-    <div className="layout-picker" role="radiogroup" aria-label="Welcome placement">
+    <div
+      className="layout-picker"
+      role="radiogroup"
+      aria-label="Welcome placement"
+    >
       {layouts.map((layout) => (
         <button
           key={layout.id}
@@ -139,7 +150,8 @@ export function WelcomePanelControls({
   onOpacityChange: (opacity: number) => void;
   disabled?: boolean;
 }) {
-  const set = (patch: Partial<WelcomePanel>) => onChange({ ...welcome, ...patch });
+  const set = (patch: Partial<WelcomePanel>) =>
+    onChange({ ...welcome, ...patch });
   return (
     <fieldset className="welcome-panel-controls" disabled={disabled}>
       <legend>Welcome over the photograph</legend>
@@ -156,15 +168,29 @@ export function WelcomePanelControls({
                 key={position}
                 type="button"
                 role="radio"
-                aria-checked={welcome.position === position}
+                aria-checked={
+                  welcome.x === undefined && welcome.position === position
+                }
                 aria-label={positionLabel(position)}
                 title={positionLabel(position)}
-                onClick={() => set({ position })}
+                onClick={() =>
+                  onChange({
+                    ...welcome,
+                    position,
+                    x: undefined,
+                    y: undefined,
+                  })
+                }
               >
                 <i aria-hidden="true" />
               </button>
             ))}
           </div>
+          <p className="welcome-panel-controls__hint">
+            {welcome.x !== undefined
+              ? "Placed freely. Choose an anchor to snap it back."
+              : "Or drag the panel in the preview; its edge and corner resize it."}
+          </p>
         </div>
         <div className="welcome-panel-controls__sliders">
           <label>
@@ -203,7 +229,11 @@ export function WelcomePanelControls({
         </div>
       </div>
       <p className="welcome-panel-controls__label">Panel</p>
-      <div className="welcome-panel-styles" role="radiogroup" aria-label="Panel style">
+      <div
+        className="welcome-panel-styles"
+        role="radiogroup"
+        aria-label="Panel style"
+      >
         {panelStyles.map((style) => (
           <button
             key={style.id}
@@ -245,7 +275,10 @@ export function WelcomePanelControls({
           type="button"
           className="welcome-panel-controls__swap"
           onClick={() =>
-            set({ panelColor: welcome.textColor, textColor: welcome.panelColor })
+            set({
+              panelColor: welcome.textColor,
+              textColor: welcome.panelColor,
+            })
           }
         >
           Swap colors

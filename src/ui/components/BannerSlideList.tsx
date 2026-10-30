@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { HomeBanner } from "@/src/domain/entities/HomeBanner";
+import { HomeBanner, SlideHeading } from "@/src/domain/entities/HomeBanner";
 import { Photo } from "@/src/domain/entities/Photo";
 import { getManagedPhotos } from "@/src/infrastructure/photoServices";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
@@ -28,6 +28,7 @@ export function BannerSlideList({
   getPhotos = getManagedPhotos,
   activePhotoId,
   onFocusSlide,
+  general,
 }: {
   slides: Slides;
   onChange: (slides: Slides) => void;
@@ -37,6 +38,8 @@ export function BannerSlideList({
   activePhotoId?: string;
   /** Asks the preview to show a slide. */
   onFocusSlide?: (photoId: string) => void;
+  /** The general title and its placement, which a slide's own title starts from. */
+  general?: SlideHeading;
 }) {
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [error, setError] = useState("");
@@ -221,6 +224,38 @@ export function BannerSlideList({
                   catalog={catalog}
                   onChange={(href) => update(position, { href })}
                 />
+                <details className="slide-heading">
+                  <summary>
+                    Own title
+                    {slide.heading && (
+                      <span className="slide-heading__on">on</span>
+                    )}
+                  </summary>
+                  {slide.heading ? (
+                    <SlideHeadingFields
+                      heading={slide.heading}
+                      general={general}
+                      photoId={slide.photoId}
+                      catalog={catalog}
+                      disabled={disabled}
+                      onChange={(heading) => update(position, { heading })}
+                    />
+                  ) : (
+                    <p className="slide-heading__empty">
+                      Shows the general title.{" "}
+                      <button
+                        type="button"
+                        disabled={disabled || !general}
+                        onClick={() => {
+                          update(position, { heading: { ...general! } });
+                          onFocusSlide?.(slide.photoId);
+                        }}
+                      >
+                        Give it its own
+                      </button>
+                    </p>
+                  )}
+                </details>
                 <div className="slide-card__order">
                   <button
                     type="button"
@@ -312,5 +347,92 @@ export function BannerSlideList({
         </p>
       </div>
     </section>
+  );
+}
+
+// The fields of a slide's own title; where it sits is set by dragging it in the preview.
+function SlideHeadingFields({
+  heading,
+  general,
+  photoId,
+  catalog,
+  disabled,
+  onChange,
+}: {
+  heading: SlideHeading;
+  general?: SlideHeading;
+  photoId: string;
+  catalog: Parameters<typeof SlideDestination>[0]["catalog"];
+  disabled?: boolean;
+  onChange: (heading: SlideHeading | undefined) => void;
+}) {
+  const set = (patch: Partial<SlideHeading>) =>
+    onChange({ ...heading, ...patch });
+  const text = (
+    key: "eyebrow" | "title" | "accentText" | "linkText",
+    label: string,
+    maxLength: number,
+  ) => (
+    <label>
+      {label}
+      <input
+        value={heading[key]}
+        maxLength={maxLength}
+        disabled={disabled}
+        onChange={(event) => set({ [key]: event.target.value })}
+      />
+    </label>
+  );
+  return (
+    <div className="slide-heading__fields">
+      {text("eyebrow", "Eyebrow", 120)}
+      {text("title", "Title", 200)}
+      {text("accentText", "Accent text", 200)}
+      {text("linkText", "Link text", 80)}
+      <SlideDestination
+        compact
+        photoId={photoId}
+        href={heading.href}
+        catalog={catalog}
+        onChange={(href) => set({ href })}
+      />
+      <label>
+        Title size · {heading.fontSize}px
+        <input
+          type="range"
+          min={24}
+          max={96}
+          value={heading.fontSize}
+          disabled={disabled}
+          onChange={(event) => set({ fontSize: Number(event.target.value) })}
+        />
+      </label>
+      <p className="slide-heading__hint">
+        Drag it in the preview to move it; its edge and corner resize it.
+      </p>
+      <div className="slide-heading__actions">
+        <button
+          type="button"
+          disabled={disabled || !general}
+          onClick={() =>
+            set({
+              position: general!.position,
+              x: general!.x,
+              y: general!.y,
+              width: general!.width,
+            })
+          }
+        >
+          Same place as the general title
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(undefined)}
+        >
+          Use the general title
+        </button>
+      </div>
+    </div>
   );
 }

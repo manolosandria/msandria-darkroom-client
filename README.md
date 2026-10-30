@@ -551,6 +551,23 @@ the arrow keys on a grip move an item one place. Positions are measured against 
 list after each change, so rows, columns and wrapping grids with mixed spans all work.
 Categories still move between departments by native drag and drop.
 
+Over the photograph (`text-overlay`) the Welcome panel can also be placed freely: in the
+preview it moves with the pointer, its right edge sets its width and its corner scales
+width and title size together (`useWelcomePlacement`). Free placement is `x` and `y`
+in `welcome`, the panel's top-left corner as a share of the banner (0–100); choosing an
+anchor in the 3 × 3 grid removes them, and resizing an anchored panel keeps it anchored.
+On phones a freely placed panel keeps its height and spans the width.
+
+Each slide can carry its own title (`heading` on the slide: eyebrow, title, accent, link
+text and destination, anchor or free `x`/`y`, width and title size). Home shows it
+instead of the general one while that slide is on show, panel style aside; without link
+text it has no link. In the slide's card, **Own title** starts one from the general title
+and its place, edits its words, destination and size, puts it back in the general
+title's place or returns to the general one. While a slide with its own title is in the
+preview, dragging or resizing the panel changes that title, marked with a gold outline;
+otherwise it changes the general one. The API must accept `heading` and `x`/`y` before
+this client saves them.
+
 In the preview, Welcome and Photographs carry a ⠿ grip (`BannerArrange`). Dragging one
 draws the drop map over the banner: edge bands put Welcome beside the photographs and,
 for Welcome, nine anchors inside float it over them; the target lights up and a label

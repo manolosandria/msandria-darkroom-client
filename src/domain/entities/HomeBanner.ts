@@ -32,6 +32,12 @@ export type WelcomePosition = (typeof welcomePositions)[number];
 /** The Welcome panel when it sits over the photograph (`text-overlay`). */
 export type WelcomePanel = {
   position: WelcomePosition;
+  /**
+   * Free placement: the panel's top-left corner as a share of the banner, 0–100.
+   * Both or neither; without them the anchor decides.
+   */
+  x?: number;
+  y?: number;
   /** Share of the banner's width, 25–90. */
   width: number;
   panel: "solid" | "glass" | "gradient" | "none";
@@ -48,6 +54,35 @@ export const defaultWelcomePanel: WelcomePanel = {
   textColor: "#ffffff",
   radius: 8,
 };
+/**
+ * A slide's own title, shown instead of the general one while the slide is on show.
+ * Without link text there is no link. Its panel keeps the general panel's style.
+ */
+export type SlideHeading = {
+  eyebrow: string;
+  title: string;
+  accentText: string;
+  linkText: string;
+  href: string;
+  position: WelcomePosition;
+  x?: number;
+  y?: number;
+  /** Share of the banner's width, 25–90. */
+  width: number;
+  /** Title size in pixels, 24–96. */
+  fontSize: number;
+};
+export type BannerSlide = {
+  photoId: string;
+  text: string;
+  href: string;
+  heading?: SlideHeading;
+};
+/** What the preview changes when the Welcome panel is dragged or resized. */
+export type WelcomePlacement = Pick<
+  SlideHeading,
+  "x" | "y" | "width" | "fontSize"
+>;
 export type HomeBanner = {
   eyebrow: string;
   title: string;
@@ -70,7 +105,7 @@ export type HomeBanner = {
   bannerHeight?: number;
   overlayOpacity?: number;
   welcome?: WelcomePanel;
-  slides?: {photoId:string; text:string; href:string}[];
+  slides?: BannerSlide[];
   photoCrops?: { photoId: string; desktop: string; mobile: string }[];
   version: number;
 };
