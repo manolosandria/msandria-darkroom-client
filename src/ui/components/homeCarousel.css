@@ -1,5 +1,6 @@
+/* No minimum height: the banner sets its own, and the page must look like the
+   Curator preview, where a minimum only centred it between two bands. */
 .home-gallery {
-  min-height: 75vh;
   padding: clamp(1.5rem, 5vw, 5rem);
   background: #f0f0e9;
   color: #293126;

@@ -3,9 +3,9 @@ import Curator from "@/src/ui/components/Curator";
 
 export default function CuratorPage() {
   return (
-    <>
+    <div className="curator-page">
       <MainHeader />
       <Curator />
-    </>
+    </div>
   );
 }

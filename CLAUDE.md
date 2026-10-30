@@ -408,6 +408,16 @@ messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
 every minute, when the window regains focus, and whenever a curator action dispatches
 a `curator:refresh` event.
 
+From 900 px wide, Curator is a workstation the size of the window (`curatorLayout.css`):
+the page never scrolls, the tabs stay on one line on top and every tab is a
+`.curator-panel` with its own scroll. Home and Gallery split into columns that scroll
+on their own — controls on the left with Save at their foot, the preview in the middle
+and, for Home, composition and the chosen photo's settings in a third column (from
+1400 px; below it they share the left column) — and Photos keeps its stage in view
+while the inspector scrolls. Every scrolling box is positioned, so absolute
+descendants such as screen-reader texts stay inside it instead of making the page
+scroll. Phones keep the flowing page.
+
 Its tabs are **Upload**, **Photos**, **Collections**, **Variants**, **Moderation** and **Inbox**: the
 screens of `/upload`, `/manage`, the collection editor and `/moderate`, plus the contact
 inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs

@@ -427,57 +427,6 @@ function Editor() {
             className="banner-editor__preview"
             aria-label="Banner preview"
           >
-            <section className="banner-arrange" aria-label="Arrange the banner">
-              <header>
-                <h2>Composition</h2>
-                <p>
-                  Choose a layout, or drag the ⠿ grips of Welcome and Photographs
-                  in the preview: drop on an edge to sit beside the photographs, or
-                  inside to float over them.
-                </p>
-              </header>
-              <BannerLayoutPicker
-                value={draft.layout}
-                disabled={busy}
-                onChange={(value) => change("layout", value)}
-              />
-              {draft.layout === "text-overlay" && (
-                <WelcomePanelControls
-                  welcome={{ ...defaultWelcomePanel, ...draft.welcome }}
-                  opacity={draft.overlayOpacity ?? 45}
-                  disabled={busy}
-                  onChange={(welcome) => {
-                    setDraft((previous) => ({ ...previous, welcome }));
-                    setNotice("");
-                  }}
-                  onOpacityChange={(value) => change("overlayOpacity", value)}
-                />
-              )}
-            </section>
-            {editingPhoto && (
-              <BannerPhotoSettings
-                key={editingPhoto.getId()}
-                photo={editingPhoto}
-                onUpdated={setEditingPhoto}
-                onDirty={setHighlightDirty}
-                onSlideChange={(slides) => {
-                  setDraft((previous) => ({ ...previous, slides }));
-                  setNotice("");
-                }}
-                display={mobile ? "mobile" : "desktop"}
-                onDisplayChange={(value) => setMobile(value === "mobile")}
-                banner={draft}
-                onClose={() => setEditingPhoto(null)}
-                onChange={(photoCrops) => {
-                  setDraft((previous) => ({
-                    ...previous,
-                    imageMode: "highlight",
-                    photoCrops,
-                  }));
-                  setNotice("");
-                }}
-              />
-            )}
             <div className="banner-editor__preview-bar">
               <h2>Live preview</h2>
               <div
@@ -533,6 +482,62 @@ function Editor() {
               }}
             />
           </section>
+          <aside
+            className="banner-editor__inspector"
+            aria-label="Composition and photo"
+          >
+            <section className="banner-arrange" aria-label="Arrange the banner">
+              <header>
+                <h2>Composition</h2>
+                <p>
+                  Choose a layout, or drag the ⠿ grips of Welcome and Photographs
+                  in the preview: drop on an edge to sit beside the photographs, or
+                  inside to float over them.
+                </p>
+              </header>
+              <BannerLayoutPicker
+                value={draft.layout}
+                disabled={busy}
+                onChange={(value) => change("layout", value)}
+              />
+              {draft.layout === "text-overlay" && (
+                <WelcomePanelControls
+                  welcome={{ ...defaultWelcomePanel, ...draft.welcome }}
+                  opacity={draft.overlayOpacity ?? 45}
+                  disabled={busy}
+                  onChange={(welcome) => {
+                    setDraft((previous) => ({ ...previous, welcome }));
+                    setNotice("");
+                  }}
+                  onOpacityChange={(value) => change("overlayOpacity", value)}
+                />
+              )}
+            </section>
+            {editingPhoto && (
+              <BannerPhotoSettings
+                key={editingPhoto.getId()}
+                photo={editingPhoto}
+                onUpdated={setEditingPhoto}
+                onDirty={setHighlightDirty}
+                onSlideChange={(slides) => {
+                  setDraft((previous) => ({ ...previous, slides }));
+                  setNotice("");
+                }}
+                display={mobile ? "mobile" : "desktop"}
+                onDisplayChange={(value) => setMobile(value === "mobile")}
+                banner={draft}
+                onClose={() => setEditingPhoto(null)}
+                onChange={(photoCrops) => {
+                  setDraft((previous) => ({
+                    ...previous,
+                    imageMode: "highlight",
+                    photoCrops,
+                  }));
+                  setNotice("");
+                }}
+              />
+            )}
+          </aside>
         </div>
       )}
     </div>

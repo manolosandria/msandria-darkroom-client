@@ -13,6 +13,7 @@ import { useCuratorNotifications } from "./CuratorNotifications";
 import { EditingBoundary } from "./EditingWorkspace";
 import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
 import { useSessionValue } from "./SessionProvider";
+import "./curatorLayout.css";
 
 const sections = [
   "Home",
@@ -82,41 +83,49 @@ export default function Curator() {
             );
           })}
         </nav>
-        <div hidden={section !== "Upload"}>
+        <div className="curator-panel" hidden={section !== "Upload"}>
           <UploadPanel />
         </div>
         {visited.includes("Photos") && (
-          <div hidden={section !== "Photos"}>
+          <div className="curator-panel" hidden={section !== "Photos"}>
             <ManagePhotos />
           </div>
         )}
         {visited.includes("Collections") && (
-          <div hidden={section !== "Collections"}>
+          <div className="curator-panel" hidden={section !== "Collections"}>
             <ManageCollections />
           </div>
         )}
         {visited.includes("Variants") && (
-          <div hidden={section !== "Variants"}>
+          <div className="curator-panel" hidden={section !== "Variants"}>
             <ManageCollections variants />
           </div>
         )}
         {visited.includes("Home") && (
-          <div hidden={section !== "Home"}>
+          <div className="curator-panel" hidden={section !== "Home"}>
             <HomeBannerEditor />
           </div>
         )}
         {visited.includes("Palettes") && (
-          <div hidden={section !== "Palettes"}>
+          <div className="curator-panel" hidden={section !== "Palettes"}>
             <PaletteManager />
           </div>
         )}
         {visited.includes("Gallery") && (
-          <div hidden={section !== "Gallery"}>
+          <div className="curator-panel" hidden={section !== "Gallery"}>
             <GalleryEditor />
           </div>
         )}
-        {section === "Moderation" && <CommentModeration />}
-        {section === "Inbox" && <ContactInbox />}
+        {section === "Moderation" && (
+          <div className="curator-panel">
+            <CommentModeration />
+          </div>
+        )}
+        {section === "Inbox" && (
+          <div className="curator-panel">
+            <ContactInbox />
+          </div>
+        )}
       </div></ClassificationCatalogBoundary>
     </EditingBoundary>
   );
