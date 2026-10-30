@@ -749,6 +749,11 @@ bottom of the viewer, and in a collection mosaic only when the collection's
 and shows, on a small drawing of the page, where each of the four colors goes. It saves
 the same settings document as the Gallery studio: each announces its save
 (`curator:gallery-settings-saved`) and the other adopts the new palettes and version.
+Each color row can be clicked anywhere to open its picker, and lights up with its value
+and a pencil under the pointer or keyboard focus. Pointing at a row rings every zone of
+the drawing painted with that color; pointing at a zone lights up its row and legend
+entry, and clicking it opens that color's picker. The library and the drawing always
+show the same palette.
 In the Gallery studio, **Type & color** comes first, with the palette drawer under the
 colors; the introduction texts are numbered cards.
 

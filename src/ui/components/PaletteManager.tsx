@@ -14,6 +14,7 @@ import {
   GalleryPaletteLibrary,
   PALETTE_KEYS,
   PALETTE_ROLES,
+  PaletteKey,
 } from "./GalleryPaletteLibrary";
 
 // Both editors keep the same settings document: each tells the other what it saved.
@@ -34,7 +35,9 @@ function Manager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [preview, setPreview] = useState(0);
+  const [preview, setPreview] = useState("");
+  // The color pointed at, by its row in the editor or its zone in the drawing.
+  const [highlighted, setHighlighted] = useState<PaletteKey | null>(null);
   const lock = useRef(false);
   const { confirm } = useEditingWorkspace();
   const savedPalettes = saved?.palettes ?? defaultGalleryPalettes;
@@ -97,7 +100,18 @@ function Manager() {
     save,
     discard: () => setPalettes(savedPalettes),
   });
-  const shown = palettes[preview] ?? palettes[0];
+  const shown =
+    palettes.find((palette) => palette.id === preview) ?? palettes[0];
+  // A click on the drawing opens that color's picker in the editor, which always
+  // shows the palette drawn.
+  const form = useRef<HTMLFormElement>(null);
+  function pick(key: PaletteKey) {
+    const input = form.current?.querySelector<HTMLInputElement>(
+      `input[aria-label="Palette ${key}"]`,
+    );
+    input?.focus();
+    input?.click();
+  }
   return (
     <div className="palette-manager">
       <header>
@@ -136,6 +150,7 @@ function Manager() {
       ) : (
         <div className="palette-manager__layout">
           <form
+            ref={form}
             onSubmit={async (event) => {
               event.preventDefault();
               await save();
@@ -149,6 +164,10 @@ function Manager() {
                 setPalettes(next);
                 setNotice("");
               }}
+              selectedId={shown?.id ?? ""}
+              onSelect={setPreview}
+              highlighted={highlighted}
+              onHighlight={setHighlighted}
             />
             <div className="palette-manager__actions">
               <button type="submit" disabled={busy || !dirty}>
@@ -176,20 +195,32 @@ function Manager() {
             <label className="palette-guide__pick">
               Preview
               <select
-                value={palettes.indexOf(shown)}
-                onChange={(event) => setPreview(Number(event.target.value))}
+                value={shown?.id}
+                onChange={(event) => setPreview(event.target.value)}
               >
-                {palettes.map((palette, index) => (
-                  <option key={palette.id} value={index}>
+                {palettes.map((palette) => (
+                  <option key={palette.id} value={palette.id}>
                     {palette.name}
                   </option>
                 ))}
               </select>
             </label>
-            {shown && <PaletteDiagram palette={shown} />}
+            {shown && (
+              <PaletteDiagram
+                palette={shown}
+                highlighted={highlighted}
+                onHighlight={setHighlighted}
+                onPick={pick}
+              />
+            )}
             <ol className="palette-guide__legend">
               {PALETTE_KEYS.map((key, index) => (
-                <li key={key}>
+                <li
+                  key={key}
+                  data-linked={highlighted === key || undefined}
+                  onPointerEnter={() => setHighlighted(key)}
+                  onPointerLeave={() => setHighlighted(null)}
+                >
                   <span
                     className="palette-guide__dot"
                     style={{ background: shown?.[key] }}
@@ -211,7 +242,19 @@ function Manager() {
 }
 
 // A small drawing of the Gallery page in the palette's colors, with numbered marks.
-function PaletteDiagram({ palette }: { palette: GalleryPalette }) {
+// Every zone carries the color it shows: pointing at one lights it up and names it
+// in the editor, and a color pointed at in the editor lights up its zones here.
+function PaletteDiagram({
+  palette,
+  highlighted,
+  onHighlight,
+  onPick,
+}: {
+  palette: GalleryPalette;
+  highlighted: PaletteKey | null;
+  onHighlight: (key: PaletteKey | null) => void;
+  onPick: (key: PaletteKey) => void;
+}) {
   const mark = (index: number) => (
     <span className="palette-diagram__mark" aria-hidden="true">
       {index}
@@ -220,35 +263,67 @@ function PaletteDiagram({ palette }: { palette: GalleryPalette }) {
   return (
     <div
       className="palette-diagram"
+      data-zone="background"
+      data-highlight={highlighted ?? undefined}
       style={{ background: palette.background, color: palette.text }}
       aria-hidden="true"
+      onPointerOver={(event) => {
+        const zone = (event.target as Element).closest<HTMLElement>(
+          "[data-zone]",
+        )?.dataset.zone;
+        if (zone) onHighlight(zone as PaletteKey);
+      }}
+      onPointerLeave={() => onHighlight(null)}
+      onClick={(event) => {
+        const zone = (event.target as Element).closest<HTMLElement>(
+          "[data-zone]",
+        )?.dataset.zone;
+        if (zone) onPick(zone as PaletteKey);
+      }}
     >
       {mark(1)}
-      <div className="palette-diagram__heading">
-        <span style={{ background: palette.text }} />
+      <div className="palette-diagram__heading" data-zone="text">
+        <span
+          className="palette-diagram__rule"
+          data-zone="accent"
+          style={{ background: palette.accent }}
+        />
         <strong>
           Gallery
-          <i style={{ background: palette.accent }} />
+          <i data-zone="accent" style={{ background: palette.accent }} />
+          {mark(2)}
         </strong>
-        {mark(2)}
+        <small>Twelve photographs at a time.</small>
       </div>
       <div
         className="palette-diagram__tools"
+        data-zone="surface"
         style={{ background: palette.surface }}
       >
         {mark(4)}
-        <span className="palette-diagram__field" />
+        <span
+          className="palette-diagram__field"
+          data-zone="background"
+          style={{ background: palette.background }}
+        />
         <span
           className="palette-diagram__chip"
+          data-zone="accent"
           style={{ background: palette.accent, color: palette.background }}
         >
           Street {mark(3)}
         </span>
-        <span className="palette-diagram__chip">Color</span>
+        <span className="palette-diagram__chip" data-zone="text">
+          Color
+        </span>
       </div>
       <div className="palette-diagram__tiles">
         {[0, 1, 2].map((index) => (
-          <span key={index} style={{ background: palette.surface }} />
+          <span
+            key={index}
+            data-zone="surface"
+            style={{ background: palette.surface }}
+          />
         ))}
       </div>
     </div>
