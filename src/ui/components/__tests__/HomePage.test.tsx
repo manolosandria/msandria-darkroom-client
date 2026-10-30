@@ -99,11 +99,10 @@ describe("HomePage", () => {
     fireEvent.click(title);
     expect(JSON.parse(window.sessionStorage.getItem("viewerSequence")!)).toEqual([["a"], ["b"]]);
   });
-  it("changes slides with focused horizontal keys and accepts composition drops", async () => {
+  it("changes slides with focused horizontal keys", async () => {
     render(
       <HomePage
         banner={defaultHomeBanner}
-        onLayoutChange={() => {}}
         getAllPhotos={{
           execute: vi
             .fn()
@@ -121,11 +120,113 @@ describe("HomePage", () => {
     expect(carousel).toHaveAttribute("tabindex", "0");
     fireEvent.keyDown(carousel, { key: "ArrowRight" });
     expect(screen.getByText("Second")).toBeInTheDocument();
-    const transfer = { dropEffect: "none" };
-    expect(
-      fireEvent.dragOver(screen.getByRole("main"), { dataTransfer: transfer }),
-    ).toBe(false);
-    expect(transfer.dropEffect).toBe("move");
+    expect(screen.queryByRole("button", { name: /to arrange/ })).toBeNull();
+  });
+  it("places the Welcome panel over the photograph with its own look", async () => {
+    render(
+      <HomePage
+        banner={{
+          ...defaultHomeBanner,
+          layout: "text-overlay",
+          overlayOpacity: 30,
+          welcome: {
+            position: "top-right",
+            width: 40,
+            panel: "glass",
+            panelColor: "#102030",
+            textColor: "#fafafa",
+            radius: 16,
+          },
+        }}
+        getAllPhotos={{ execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]) }}
+      />,
+    );
+    await screen.findByText("First");
+    const main = screen.getByRole("main");
+    expect(main).toHaveClass(
+      "home-gallery--welcome-top-right",
+      "home-gallery--panel-glass",
+    );
+    expect(main.style.getPropertyValue("--welcome-width")).toBe("40%");
+    expect(main.style.getPropertyValue("--welcome-alpha")).toBe("30%");
+    expect(main.style.getPropertyValue("--welcome-panel")).toBe("#102030");
+    expect(main.style.getPropertyValue("--welcome-radius")).toBe("16px");
+  });
+  it("arranges Welcome and Photographs by dragging over the drop map or with arrow keys", async () => {
+    const onArrange = vi.fn();
+    const photos = { execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]) };
+    const { rerender } = render(
+      <HomePage banner={defaultHomeBanner} onArrange={onArrange} getAllPhotos={photos} />,
+    );
+    await screen.findByText("First");
+    const main = screen.getByRole("main");
+    main.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 500, right: 1000, bottom: 500 }) as DOMRect;
+    const welcome = screen.getByRole("button", { name: "Drag Welcome to arrange" });
+    // A drag shows the map, names the target and drops Welcome on an anchor.
+    fireEvent.pointerDown(welcome, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(welcome, { clientX: 780, clientY: 120 });
+    expect(document.querySelector(".banner-drop-map.is-active")).not.toBeNull();
+    expect(screen.getByText("Welcome over the photographs, top right")).toBeInTheDocument();
+    fireEvent.pointerUp(welcome, { clientX: 780, clientY: 120 });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-overlay", position: "top-right" });
+    expect(document.querySelector(".banner-drop-map")).toBeNull();
+    // A press without movement changes nothing.
+    fireEvent.pointerDown(welcome, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(welcome, { clientX: 102, clientY: 101 });
+    expect(onArrange).toHaveBeenCalledTimes(1);
+    // Photographs dropped on the left edge send Welcome to the right.
+    const photographs = screen.getByRole("button", { name: "Drag Photographs to arrange" });
+    fireEvent.pointerDown(photographs, { button: 0, clientX: 500, clientY: 250 });
+    fireEvent.pointerMove(photographs, { clientX: 20, clientY: 250 });
+    fireEvent.pointerUp(photographs, { clientX: 20, clientY: 250 });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-right" });
+    // Escape cancels a drag in progress.
+    fireEvent.pointerDown(welcome, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(welcome, { clientX: 900, clientY: 400 });
+    fireEvent.keyDown(welcome, { key: "Escape" });
+    expect(document.querySelector(".banner-drop-map")).toBeNull();
+    // Keys: edges beside the photographs, anchors over them.
+    fireEvent.keyDown(welcome, { key: "ArrowDown" });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-bottom" });
+    rerender(
+      <HomePage
+        banner={{
+          ...defaultHomeBanner,
+          layout: "text-overlay",
+          welcome: { position: "bottom-left", width: 50, panel: "solid", panelColor: "#000000", textColor: "#ffffff", radius: 8 },
+        }}
+        onArrange={onArrange}
+        getAllPhotos={photos}
+      />,
+    );
+    fireEvent.keyDown(welcome, { key: "ArrowUp" });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-overlay", position: "left" });
+    fireEvent.keyDown(welcome, { key: "ArrowLeft" });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-left" });
+    fireEvent.keyDown(photographs, { key: "ArrowUp" });
+    expect(onArrange).toHaveBeenLastCalledWith({ layout: "text-bottom" });
+  });
+  it("shows the slide Curator focuses and reports the one showing", async () => {
+    const onActiveChange = vi.fn();
+    const photos = {
+      execute: vi.fn().mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
+    };
+    const { rerender } = render(
+      <HomePage banner={defaultHomeBanner} getAllPhotos={photos} onActiveChange={onActiveChange} />,
+    );
+    await screen.findByText("First");
+    expect(onActiveChange).toHaveBeenLastCalledWith("a");
+    rerender(
+      <HomePage
+        banner={defaultHomeBanner}
+        getAllPhotos={photos}
+        onActiveChange={onActiveChange}
+        focusSlide={{ photoId: "b" }}
+      />,
+    );
+    expect(await screen.findByText("Second")).toBeInTheDocument();
+    expect(onActiveChange).toHaveBeenLastCalledWith("b");
   });
   it("swipes horizontally without following the photo link and ignores vertical scroll", async () => {
     render(

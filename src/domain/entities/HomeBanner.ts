@@ -17,6 +17,37 @@ export const defaultHomeBanner = {
   mobileCrop: "portrait",
   version: 1,
 } as const;
+export const welcomePositions = [
+  "top-left",
+  "top",
+  "top-right",
+  "left",
+  "center",
+  "right",
+  "bottom-left",
+  "bottom",
+  "bottom-right",
+] as const;
+export type WelcomePosition = (typeof welcomePositions)[number];
+/** The Welcome panel when it sits over the photograph (`text-overlay`). */
+export type WelcomePanel = {
+  position: WelcomePosition;
+  /** Share of the banner's width, 25–90. */
+  width: number;
+  panel: "solid" | "glass" | "gradient" | "none";
+  panelColor: string;
+  textColor: string;
+  /** Corner radius in pixels, 0–32. */
+  radius: number;
+};
+export const defaultWelcomePanel: WelcomePanel = {
+  position: "bottom-left",
+  width: 50,
+  panel: "solid",
+  panelColor: "#000000",
+  textColor: "#ffffff",
+  radius: 8,
+};
 export type HomeBanner = {
   eyebrow: string;
   title: string;
@@ -38,6 +69,7 @@ export type HomeBanner = {
   controlsPosition?: string;
   bannerHeight?: number;
   overlayOpacity?: number;
+  welcome?: WelcomePanel;
   slides?: {photoId:string; text:string; href:string}[];
   photoCrops?: { photoId: string; desktop: string; mobile: string }[];
   version: number;

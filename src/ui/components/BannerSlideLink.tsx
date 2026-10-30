@@ -3,17 +3,11 @@ import { useEffect, useState } from "react";
 import { HomeBanner } from "@/src/domain/entities/HomeBanner";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { editCatalog } from "@/src/infrastructure/catalogServices";
-export function BannerSlideLink({
-  photoId,
-  title,
-  banner,
-  onChange,
-}: {
-  photoId: string;
-  title: string;
-  banner: HomeBanner;
-  onChange: (slides: NonNullable<HomeBanner["slides"]>) => void;
-}) {
+
+type Slide = NonNullable<HomeBanner["slides"]>[number];
+
+// Categories and collections a slide can link to. Loaded once per editor.
+export function useSlideCatalog() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -25,56 +19,51 @@ export function BannerSlideLink({
       })
       .catch(() => {
         if (active)
-          setError("Catalog unavailable. Retry by reopening photo settings.");
+          setError("Catalog unavailable. Category and collection links are off.");
       });
     return () => {
       active = false;
     };
   }, []);
-  const slide = banner.slides?.find((item) => item.photoId === photoId) ?? {
-    photoId,
-    text: title,
-    href: `/photo/${photoId}`,
-  };
-  const kind = slide.href.startsWith("https:")
+  return { catalog, error };
+}
+
+const destinationKind = (href: string) =>
+  href.startsWith("https:")
     ? "external"
-    : slide.href.startsWith("/collections")
+    : href.startsWith("/collections")
       ? "collection"
-      : slide.href.includes("?category=")
+      : href.includes("?category=")
         ? "category"
-        : slide.href === "/gallery"
+        : href === "/gallery"
           ? "gallery"
           : "photo";
-  // Slides are the carousel's order, so an edit keeps the slide where it is; a photo
-  // that is not a slide yet joins at the end, up to eight.
-  const update = (patch: Partial<typeof slide>) => {
-    const slides = banner.slides ?? [];
-    onChange(
-      slides.some((item) => item.photoId === photoId)
-        ? slides.map((item) =>
-            item.photoId === photoId ? { ...slide, ...patch } : item,
-          )
-        : [...slides, { ...slide, ...patch }].slice(-8),
-    );
-  };
+
+/** Where a slide's title leads: the photo, Gallery, a category, a collection or HTTPS. */
+export function SlideDestination({
+  photoId,
+  href,
+  catalog,
+  onChange,
+  compact = false,
+}: {
+  photoId: string;
+  href: string;
+  catalog: Catalog | null;
+  onChange: (href: string) => void;
+  compact?: boolean;
+}) {
+  const kind = destinationKind(href);
+  const query = new URLSearchParams(href.split("?")[1]);
   return (
-    <fieldset className="banner-slide-link">
-      <legend>Slide text & destination</legend>
-      <label>
-        Caption text
-        <input
-          maxLength={200}
-          value={slide.text}
-          onChange={(e) => update({ text: e.target.value })}
-        />
-      </label>
+    <div className={`slide-destination${compact ? " slide-destination--compact" : ""}`}>
       <label>
         Link destination
         <select
           value={kind}
           onChange={(e) =>
-            update({
-              href: (
+            onChange(
+              (
                 {
                   photo: `/photo/${photoId}`,
                   gallery: "/gallery",
@@ -87,7 +76,7 @@ export function BannerSlideLink({
                   external: "https://www.instagram.com/",
                 } as Record<string, string>
               )[e.target.value],
-            })
+            )
           }
         >
           <option value="photo">This photograph</option>
@@ -101,19 +90,13 @@ export function BannerSlideLink({
           <option value="external">External website (HTTPS)</option>
         </select>
       </label>
-      {error && <p role="alert">{error}</p>}
       {kind === "category" && (
         <label>
           Category
           <select
-            value={
-              new URLSearchParams(slide.href.split("?")[1]).get("category") ??
-              ""
-            }
+            value={query.get("category") ?? ""}
             onChange={(e) =>
-              update({
-                href: `/gallery?category=${encodeURIComponent(e.target.value)}`,
-              })
+              onChange(`/gallery?category=${encodeURIComponent(e.target.value)}`)
             }
           >
             {catalog?.categories.map((item) => (
@@ -128,14 +111,11 @@ export function BannerSlideLink({
         <label>
           Collection
           <select
-            value={
-              new URLSearchParams(slide.href.split("?")[1]).get("collection") ??
-              ""
-            }
+            value={query.get("collection") ?? ""}
             onChange={(e) =>
-              update({
-                href: `/collections?collection=${encodeURIComponent(e.target.value)}`,
-              })
+              onChange(
+                `/collections?collection=${encodeURIComponent(e.target.value)}`,
+              )
             }
           >
             {catalog?.collections.map((item) => (
@@ -151,12 +131,65 @@ export function BannerSlideLink({
           HTTPS URL
           <input
             type="url"
-            value={slide.href}
+            value={href}
             maxLength={2000}
-            onChange={(e) => update({ href: e.target.value })}
+            onChange={(e) => onChange(e.target.value)}
           />
         </label>
       )}
+    </div>
+  );
+}
+
+export function BannerSlideLink({
+  photoId,
+  title,
+  banner,
+  onChange,
+}: {
+  photoId: string;
+  title: string;
+  banner: HomeBanner;
+  onChange: (slides: NonNullable<HomeBanner["slides"]>) => void;
+}) {
+  const { catalog, error } = useSlideCatalog();
+  const slide: Slide = banner.slides?.find(
+    (item) => item.photoId === photoId,
+  ) ?? {
+    photoId,
+    text: title,
+    href: `/photo/${photoId}`,
+  };
+  // Slides are the carousel's order, so an edit keeps the slide where it is; a photo
+  // that is not a slide yet joins at the end, up to eight.
+  const update = (patch: Partial<Slide>) => {
+    const slides = banner.slides ?? [];
+    onChange(
+      slides.some((item) => item.photoId === photoId)
+        ? slides.map((item) =>
+            item.photoId === photoId ? { ...slide, ...patch } : item,
+          )
+        : [...slides, { ...slide, ...patch }].slice(-8),
+    );
+  };
+  return (
+    <fieldset className="banner-slide-link">
+      <legend>Slide title & link</legend>
+      <label>
+        Slide title
+        <input
+          maxLength={200}
+          value={slide.text}
+          onChange={(e) => update({ text: e.target.value })}
+        />
+      </label>
+      <SlideDestination
+        photoId={photoId}
+        href={slide.href}
+        catalog={catalog}
+        onChange={(href) => update({ href })}
+      />
+      {error && <p role="alert">{error}</p>}
       <p>Destination: {slide.href}. Save banner to publish.</p>
     </fieldset>
   );

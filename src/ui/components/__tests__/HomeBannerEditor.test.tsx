@@ -35,9 +35,48 @@ describe("Home banner editor", () => {
       screen.getByRole("button", { name: "Apply Atlantic palette" }),
     );
     expect(screen.getByLabelText("Background")).toHaveValue("#e9eff1");
-    fireEvent.click(screen.getByRole("button", { name: "Welcome bottom" }));
-    expect(screen.getByRole("button",{name:"Welcome bottom"})).toHaveAttribute("aria-pressed","true");
+    fireEvent.click(screen.getByRole("radio", { name: "Welcome below" }));
+    expect(screen.getByRole("radio", { name: "Welcome below" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     expect(manageHomeBanner.save).not.toHaveBeenCalled();
+  });
+  it("offers the Welcome panel controls only over the photograph and saves them", async () => {
+    vi.mocked(manageHomeBanner.save).mockImplementation(async (banner) => ({
+      ...banner,
+      version: 2,
+    }));
+    render(<HomeBannerEditor />);
+    await screen.findByLabelText("Title");
+    expect(screen.queryByRole("radiogroup", { name: "Welcome position" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Welcome over photo" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Top right" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Frosted glass/ }));
+    fireEvent.change(screen.getByLabelText(/^Width/), { target: { value: "65" } });
+    fireEvent.change(screen.getByLabelText(/^Panel opacity/), { target: { value: "30" } });
+    fireEvent.change(screen.getByLabelText(/^Corner radius/), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Panel color"), { target: { value: "#222222" } });
+    fireEvent.click(screen.getByRole("button", { name: "Swap colors" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save banner" }));
+    await screen.findByRole("status");
+    expect(manageHomeBanner.save).toHaveBeenCalledWith({
+      ...defaultHomeBanner,
+      layout: "text-overlay",
+      overlayOpacity: 30,
+      welcome: {
+        position: "top-right",
+        width: 65,
+        panel: "glass",
+        panelColor: "#ffffff",
+        textColor: "#222222",
+        radius: 20,
+      },
+    });
+    // Text only has no panel to color or round.
+    fireEvent.click(screen.getByRole("radio", { name: /Text only/ }));
+    expect(screen.getByLabelText(/^Panel opacity/)).toBeDisabled();
+    expect(screen.getByLabelText("Panel color")).toBeDisabled();
   });
   it("previews a draft before publishing and retains it after failure", async () => {
     vi.mocked(manageHomeBanner.save)

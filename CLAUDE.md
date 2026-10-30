@@ -452,7 +452,7 @@ See README for endpoints and the required API migration.
 ## Interactive browsing and variant assignment
 
 Home features a manually controlled carousel with previous/next controls, position
-buttons and keyboard arrows. Slides chosen in Curator (`BannerSlideList`) decide its
+buttons and keyboard arrows. Slides chosen in Curator (`BannerSlideList`, under the preview) decide its
 photos and order; without them it draws up to eight eligible photos at random per
 visit. Clicking the photo only focuses the carousel (no focus frame); the slide title
 is the only link. It never advances automatically. Gallery keeps its place in the URL
@@ -498,14 +498,14 @@ The API validates the complete design and rejects stale versions with 409. Home 
 the original appearance if settings cannot be loaded; the editor requires a successful
 load before saving. Preview changes never publish until Save banner is pressed.
 
-BannerComposition replaces the placement dropdown with pointer/touch and keyboard
-block placement. bannerPresets contains local font stacks and palette presets.
+`BannerArrange` gives Welcome and Photographs their drag grips and drop map, and
+`BannerLayoutPicker` the layout drawings and the Welcome panel controls. bannerPresets contains local font stacks and palette presets.
 HomePage supports framed/fill/highlight modes with independent desktop/mobile crops;
 the crop source uses normalized highlight coordinates, then covers the banner.
 Container queries keep the real page and embedded mobile preview consistent.
 Horizontal swipes suppress link activation; vertical gestures keep scrolling.
 
-Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the actual Welcome and Photographs areas to rearrange them; placement buttons remain available. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the downloaded rendition and effective crop pixels, warning when display density requires upscaling. Home has no exterior banner padding.
+Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the ⠿ grips of Welcome and Photographs to rearrange them; the layout drawings above the preview do the same. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the downloaded rendition and effective crop pixels, warning when display density requires upscaling. Home has no exterior banner padding.
 
 Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
 
@@ -609,3 +609,33 @@ In Photos → Categories, typing narrows the existing categories shown as button
 offers **Create** for a new name; there is no dropdown. The Collections editor follows the
 Photos layout: the photo strip on top, the composition on a dark stage and an inspector
 of sections (Selected photo, Details, Categories, Display).
+
+## Home slides, Welcome over the photograph and arranging
+
+**Slides** sit under the Home preview and are managed like a collection
+(`BannerSlideList`): a strip of public photographs (searched by title, accents
+ignored) adds one with a click, each slide is a card with its thumbnail, a **Slide
+title** and a **Link destination** (`SlideDestination`: this photograph, Gallery, a
+category, a collection or an HTTPS address), and cards reorder by dragging their ⠿
+grip, by arrow keys on the grip or with ← →. Up to eight. A card warns when its
+photograph has no framing enabled for Home, since Home skips it. Clicking a card's
+thumbnail shows that slide in the preview, and the card of the slide on show is marked.
+
+**Composition** above the preview chooses the layout from five drawings
+(`BannerLayoutPicker`). **Welcome over photo** opens `WelcomePanelControls`: a 3 × 3
+position grid, width (25–90 % of the banner), panel style (solid, frosted glass, soft
+fade or text only), panel and text colors with a swap, panel opacity and corner radius.
+They are saved as `welcome` in the banner; without it the panel keeps its earlier look
+(bottom left, half width, black at the saved opacity). On phones the panel spans the
+width and keeps its vertical position. Over the photograph, the slide title moves to
+the side Welcome leaves free.
+
+In the preview, Welcome and Photographs carry a ⠿ grip (`BannerArrange`). Dragging one
+draws the drop map over the banner: edge bands put Welcome beside the photographs and,
+for Welcome, nine anchors inside float it over them; the target lights up and a label
+follows the pointer naming it. A press without movement changes nothing and Escape
+cancels. Arrow keys on a grip do the same: Welcome walks the nine anchors while it is
+over the photographs and leaves for an edge past the last one. Changes animate with
+view transitions where the browser has them, and not under reduced motion. The preview
+column scrolls on its own on wide screens, so composition, preview and slides stay in
+reach.
