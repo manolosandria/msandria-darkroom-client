@@ -874,3 +874,20 @@
   background: #dce7cd;
   font-weight: 600;
 }
+.gallery-page-layout__sequence {
+  position: relative;
+}
+.gallery-page-layout__sequence > .gallery-page-layout__join {
+  justify-self: center;
+}
+.banner-editor .gallery-page-layout__block .gallery-page-layout__grip {
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  font-size: 1rem;
+}
+.gallery-page-layout__block[data-dragging] {
+  box-shadow: 0 14px 28px #29312633;
+  cursor: grabbing;
+}

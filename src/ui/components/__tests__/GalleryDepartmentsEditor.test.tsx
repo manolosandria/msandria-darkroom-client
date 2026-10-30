@@ -175,18 +175,28 @@ describe("Gallery departments editor", () => {
     fireEvent.drop(tray, { dataTransfer });
     expect(chipsOf("Unsorted categories")).toContain("Animal");
     expect(screen.getByText("Drop categories here")).toBeInTheDocument();
-    // Second before First.
+    // Second before First: the grip carries it, First makes room before the drop.
+    const departmentItems = () =>
+      screen
+        .getAllByRole("list", { name: /^Categories in / })
+        .map((list) => list.parentElement!);
+    departmentItems().forEach((item, index) => {
+      item.getBoundingClientRect = () =>
+        ({ left: 0, top: index * 100, width: 300, height: 90 }) as DOMRect;
+    });
     const grip = screen.getByRole("button", { name: "Move department Second" });
-    fireEvent.dragStart(grip, { dataTransfer });
-    const first = screen.getByRole("list", { name: "Categories in First" })
-      .parentElement!;
-    fireEvent.dragOver(first, { dataTransfer, clientY: -1 });
-    expect(first).toHaveAttribute("data-drop-before", "true");
-    fireEvent.drop(first, { dataTransfer });
+    fireEvent.pointerDown(grip, { button: 0, clientX: 10, clientY: 110 });
+    fireEvent.pointerMove(grip, { clientX: 10, clientY: 40 });
+    expect(
+      screen.getByRole("button", { name: "Move department Second" }),
+    ).toHaveTextContent("1");
+    fireEvent.pointerUp(grip, { clientX: 10, clientY: 40 });
     expect(screen.getByLabelText("Name of department 1")).toHaveValue("Second");
-    // A drop without a drag in progress changes nothing.
-    fireEvent.dragEnd(grip);
-    fireEvent.drop(first, { dataTransfer });
+    // Escape puts a department back where it was.
+    const again = screen.getByRole("button", { name: "Move department First" });
+    fireEvent.pointerDown(again, { button: 0, clientX: 10, clientY: 110 });
+    fireEvent.pointerMove(again, { clientX: 10, clientY: 40 });
+    fireEvent.keyDown(again, { key: "Escape" });
     expect(screen.getByLabelText("Name of department 1")).toHaveValue("Second");
   });
 });

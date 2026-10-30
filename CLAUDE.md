@@ -696,6 +696,15 @@ They are saved as `welcome` in the banner; without it the panel keeps its earlie
 width and keeps its vertical position. Over the photograph, the slide title moves to
 the side Welcome leaves free.
 
+Lists that are arranged by hand share `useLiveSort` (`src/ui/hooks`): Home's slides,
+the Gallery page's blocks, the filter departments and the collection mosaic. The dragged
+item follows the pointer and the others slide out of its way as it passes over them, as
+icons do on a phone, with a short FLIP animation (none under reduced motion); the order
+is committed only on the drop, Escape or a cancelled pointer puts everything back, and
+the arrow keys on a grip move an item one place. Positions are measured against the
+list after each change, so rows, columns and wrapping grids with mixed spans all work.
+Categories still move between departments by native drag and drop.
+
 In the preview, Welcome and Photographs carry a ⠿ grip (`BannerArrange`). Dragging one
 draws the drop map over the banner: edge bands put Welcome beside the photographs and,
 for Welcome, nine anchors inside float it over them; the target lights up and a label

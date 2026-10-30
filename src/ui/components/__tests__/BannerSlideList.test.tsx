@@ -127,7 +127,16 @@ describe("BannerSlideList", () => {
     fireEvent.pointerDown(grip, { button: 0, clientX: 100, clientY: 20 });
     fireEvent.pointerMove(grip, { clientX: 540, clientY: 40 });
     expect(cards[0]).toHaveClass("is-dragged");
-    expect(cards[2]).toHaveClass("is-target");
+    // The others make room while dragging: the card already shows its new place.
+    expect(
+      screen
+        .getAllByRole("button", { name: /^Reorder/ })
+        .map((grip) => grip.getAttribute("aria-label")),
+    ).toEqual([
+      "Reorder Photo b, position 1 of 3",
+      "Reorder Árbol del Médano, position 2 of 3",
+      "Reorder Photo a, position 3 of 3",
+    ]);
     fireEvent.pointerUp(grip, { clientX: 540, clientY: 40 });
     expect(latestOf().map((item) => item.photoId)).toEqual(["b", "c", "a"]);
     expect(screen.getByText(/moved to position 3 of 3/)).toBeInTheDocument();
