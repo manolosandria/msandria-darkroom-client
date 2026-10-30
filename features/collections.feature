@@ -203,3 +203,10 @@ Feature: Curated collections
     When I write text with a photo
     Then it shows under the photo inside the same piece
     And hovering or focusing the piece outlines and lifts photo and text together
+
+  Scenario: Change the view shape while the next page loads
+    Given the gallery shows photos without a square view
+    When a visitor chooses Square views
+    Then the page keeps working while the new selection loads
+    And photos without a view for that shape are left out instead of breaking the grid
+    And an empty selection says that no photos match

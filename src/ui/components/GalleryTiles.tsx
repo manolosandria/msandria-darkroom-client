@@ -14,7 +14,7 @@ import { PackedTile, packGallery } from "./galleryPacking";
 export { galleryPriorities } from "./galleryPacking";
 
 export function GalleryTiles({
-  tiles,
+  tiles: listed,
   layout,
   context,
 }: {
@@ -23,15 +23,20 @@ export function GalleryTiles({
   context?: GalleryViewContext;
 }) {
   const [selected, setSelected] = useState<Record<string, string>>({});
-  const photos = tiles.map(
-    (tile) =>
-      tile.variants.find((photo) => photo.getId() === selected[tile.key]) ??
-      tile.photo,
-  );
-  const seed = tiles.map((tile) => tile.key).join("|");
-  const views = photos.map((photo) => [
-    choosePhotoView(photo, "gallery", seed, context),
-  ]);
+  const seed = listed.map((tile) => tile.key).join("|");
+  // A tile without a view for the current context is left out rather than
+  // packed: the previous page stays on screen while the next one loads, and
+  // its photos may have no view for a crop shape chosen meanwhile.
+  const shown = listed.flatMap((tile) => {
+    const photo =
+      tile.variants.find((variant) => variant.getId() === selected[tile.key]) ??
+      tile.photo;
+    const view = choosePhotoView(photo, "gallery", seed, context);
+    return view ? [{ tile, photo, view }] : [];
+  });
+  const tiles = shown.map((item) => item.tile);
+  const photos = shown.map((item) => item.photo);
+  const views = shown.map((item) => [item.view]);
   const keys = tiles.map((tile) => tile.key);
   const desktop = packGallery(keys, views, 4);
   const mobile = packGallery(keys, views, 3);
