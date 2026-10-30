@@ -458,6 +458,7 @@
 .home-gallery--editing.home-gallery--text-overlay .home-gallery__intro {
   cursor: move;
   touch-action: none;
+  user-select: none;
   outline: 1px dashed color-mix(in srgb, var(--welcome-text, #fff) 55%, transparent);
   outline-offset: 3px;
 }

@@ -48,6 +48,8 @@ export function useWelcomePlacement({
       kind === "move" ? event.currentTarget : event.currentTarget.parentElement
     )?.getBoundingClientRect();
     if (!banner || !panel || !banner.width || !banner.height) return;
+    // No text selection or native drag while the panel follows the pointer.
+    event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     gesture.current = {
