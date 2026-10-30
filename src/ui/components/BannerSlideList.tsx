@@ -1,17 +1,21 @@
 "use client";
-import { KeyboardEvent, PointerEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { HomeBanner } from "@/src/domain/entities/HomeBanner";
 import { Photo } from "@/src/domain/entities/Photo";
 import { getManagedPhotos } from "@/src/infrastructure/photoServices";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
 import { enabledPhotoViews } from "@/src/domain/photoPresentation";
 import { PhotoImage } from "./PhotoImage";
+import { useLiveSort } from "../hooks/useLiveSort";
 import { SlideDestination, useSlideCatalog } from "./BannerSlideLink";
 
 type Slides = NonNullable<HomeBanner["slides"]>;
 const MAX_SLIDES = 8;
 const fold = (text: string) =>
-  text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 
 // The photographs Home shows, in order, managed like a collection: thumbnails to add,
 // cards to drag into order, and a title and link per slide. With none, Home picks
@@ -92,72 +96,21 @@ export function BannerSlideList({
       ),
     );
 
-  // Reordering by pointer: the grip captures the pointer, the card follows it and the
-  // nearest slot (by card centre) shows where it will land.
-  const list = useRef<HTMLOListElement>(null);
-  const drag = useRef<{ from: number; x: number; y: number } | null>(null);
-  const [dragging, setDragging] = useState<{
-    from: number;
-    to: number;
-    dx: number;
-    dy: number;
-  } | null>(null);
-  const slotAt = (x: number, y: number) => {
-    const cards = Array.from(
-      list.current?.querySelectorAll<HTMLElement>("[data-slide-card]") ?? [],
-    );
-    let best = 0,
-      distance = Infinity;
-    cards.forEach((card, index) => {
-      const r = card.getBoundingClientRect();
-      const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
-      if (d < distance) {
-        distance = d;
-        best = index;
-      }
-    });
-    return best;
-  };
-  const grip = (index: number) => ({
-    onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
-      if (disabled || event.button !== 0) return;
-      drag.current = { from: index, x: event.clientX, y: event.clientY };
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      setDragging({ from: index, to: index, dx: 0, dy: 0 });
-    },
-    onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
-      const start = drag.current;
-      if (!start) return;
-      setDragging({
-        from: start.from,
-        to: slotAt(event.clientX, event.clientY),
-        dx: event.clientX - start.x,
-        dy: event.clientY - start.y,
-      });
-    },
-    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
-      const start = drag.current;
-      drag.current = null;
-      setDragging(null);
-      if (start) moveTo(start.from, slotAt(event.clientX, event.clientY));
-    },
-    onPointerCancel: () => {
-      drag.current = null;
-      setDragging(null);
-    },
-    onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
-      const step = (
-        { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 } as Record<
-          string,
-          number
-        >
-      )[event.key];
-      if (step && !disabled) {
-        event.preventDefault();
-        moveTo(index, index + step);
-      }
-    },
+  // Reordering by pointer: the card follows the grip and the others make room as it
+  // passes over them; it lands where it is dropped.
+  const {
+    order: sortOrder,
+    dragging: sortDragging,
+    attachList,
+    attachItem,
+    itemStyle,
+    gripProps,
+  } = useLiveSort({
+    keys: slides.map((slide) => slide.photoId),
+    onMove: moveTo,
+    disabled,
   });
+  const dragging = sortDragging;
 
   return (
     <section className="slide-studio" aria-label="Home slides">
@@ -170,36 +123,34 @@ export function BannerSlideList({
               : "No slides yet: Home shows up to eight eligible photographs at random."}
           </p>
         </div>
-        <span className="slide-studio__count" aria-label={`${slides.length} of ${MAX_SLIDES} slides`}>
+        <span
+          className="slide-studio__count"
+          aria-label={`${slides.length} of ${MAX_SLIDES} slides`}
+        >
           {slides.length}/{MAX_SLIDES}
         </span>
       </header>
       {catalogError && <p role="alert">{catalogError}</p>}
       {slides.length > 0 ? (
         <ol
-          ref={list}
+          ref={attachList}
           className={`slide-studio__cards${dragging ? " is-sorting" : ""}`}
         >
-          {slides.map((slide, index) => {
+          {sortOrder.map((photoId, index) => {
+            const slide = slides.find((item) => item.photoId === photoId)!;
+            const position = slides.indexOf(slide);
             const photo = photoOf(slide.photoId);
             const title = titleOf(slide.photoId);
             const hiddenFromHome =
               photo && enabledPhotoViews(photo, "home").length === 0;
-            const isDragged = dragging?.from === index;
-            const isTarget =
-              dragging && dragging.to === index && dragging.from !== index;
+            const isDragged = dragging === slide.photoId;
             return (
               <li
                 key={slide.photoId}
+                ref={attachItem(slide.photoId)}
                 data-slide-card
-                className={`slide-card${isDragged ? " is-dragged" : ""}${isTarget ? " is-target" : ""}${activePhotoId === slide.photoId ? " is-active" : ""}`}
-                style={
-                  isDragged
-                    ? {
-                        transform: `translate(${dragging.dx}px, ${dragging.dy}px) rotate(1.5deg)`,
-                      }
-                    : undefined
-                }
+                className={`slide-card${isDragged ? " is-dragged" : ""}${activePhotoId === slide.photoId ? " is-active" : ""}`}
+                style={itemStyle(slide.photoId)}
               >
                 <div className="slide-card__media">
                   <button
@@ -229,7 +180,7 @@ export function BannerSlideList({
                     disabled={disabled}
                     aria-label={`Reorder ${title}, position ${index + 1} of ${slides.length}`}
                     title="Drag to reorder · arrow keys move it"
-                    {...grip(index)}
+                    {...gripProps(slide.photoId)}
                   >
                     <span aria-hidden="true">⠿</span>
                   </button>
@@ -240,7 +191,7 @@ export function BannerSlideList({
                     aria-label={`Remove ${title} from Home`}
                     title="Remove from Home"
                     onClick={() => {
-                      onChange(slides.filter((_, other) => other !== index));
+                      onChange(slides.filter((_, other) => other !== position));
                       setAnnouncement(`${title} removed from Home.`);
                     }}
                   >
@@ -260,7 +211,7 @@ export function BannerSlideList({
                     disabled={disabled}
                     value={slide.text}
                     aria-label={`Title for ${title}`}
-                    onChange={(e) => update(index, { text: e.target.value })}
+                    onChange={(e) => update(position, { text: e.target.value })}
                   />
                 </label>
                 <SlideDestination
@@ -268,22 +219,22 @@ export function BannerSlideList({
                   photoId={slide.photoId}
                   href={slide.href}
                   catalog={catalog}
-                  onChange={(href) => update(index, { href })}
+                  onChange={(href) => update(position, { href })}
                 />
                 <div className="slide-card__order">
                   <button
                     type="button"
-                    disabled={disabled || index === 0}
+                    disabled={disabled || position === 0}
                     aria-label={`Move ${title} earlier`}
-                    onClick={() => moveTo(index, index - 1)}
+                    onClick={() => moveTo(position, position - 1)}
                   >
                     ←
                   </button>
                   <button
                     type="button"
-                    disabled={disabled || index === slides.length - 1}
+                    disabled={disabled || position === slides.length - 1}
                     aria-label={`Move ${title} later`}
-                    onClick={() => moveTo(index, index + 1)}
+                    onClick={() => moveTo(position, position + 1)}
                   >
                     →
                   </button>
@@ -325,7 +276,9 @@ export function BannerSlideList({
                   type="button"
                   disabled={disabled || full}
                   aria-label={`Add ${photo.getTitle()} to Home`}
-                  title={full ? "Remove a slide first" : `Add ${photo.getTitle()}`}
+                  title={
+                    full ? "Remove a slide first" : `Add ${photo.getTitle()}`
+                  }
                   onClick={() => add(photo)}
                 >
                   <span className="slide-studio__strip-thumb">

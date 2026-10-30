@@ -357,12 +357,13 @@ describe("collection editor", () => {
     await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
     await user.click(screen.getByRole("button", { name: "Photo 1: Color" }));
     const dragged = screen.getByRole("button", { name: "Photo 2: Monochrome" });
-    const target = screen
-      .getByRole("button", { name: "Photo 1: Color" })
-      .closest("li")!;
-    Object.defineProperty(document, "elementFromPoint", {
-      configurable: true,
-      value: () => target,
+    // Laid out side by side: Color at the left, Monochrome at the right.
+    [
+      screen.getByRole("button", { name: "Photo 1: Color" }).closest("li")!,
+      dragged.closest("li")!,
+    ].forEach((piece, index) => {
+      piece.getBoundingClientRect = () =>
+        ({ left: index * 160, top: 0, width: 150, height: 150 }) as DOMRect;
     });
     fireEvent.pointerDown(dragged, { button: 0, clientX: 200, clientY: 10 });
     fireEvent.pointerMove(dragged, { clientX: 20, clientY: 10 });

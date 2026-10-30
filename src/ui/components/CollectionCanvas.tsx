@@ -16,9 +16,9 @@ import {
 } from "@/src/domain/collectionLayout";
 import { Photo } from "@/src/domain/entities/Photo";
 import { PhotoImage } from "./PhotoImage";
+import { useLiveSort } from "../hooks/useLiveSort";
 
 export { MOSAIC_COLUMNS } from "@/src/domain/collectionLayout";
-const DRAG_THRESHOLD = 6;
 
 export const isHiddenFromPublic = (photo?: Photo) =>
   !!photo &&
@@ -55,9 +55,19 @@ export function CollectionCanvas({
   onResize: (index: number, columns: number, rows: number) => void;
 }) {
   const grid = useRef<HTMLUListElement>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<string | null>(null);
-  const suppressClick = useRef(false);
+  // A piece follows the pointer and the others reflow around it as it passes; the
+  // new order is kept when it is dropped.
+  const {
+    order: sortOrder,
+    dragging: sortDragging,
+    attachList,
+    attachItem,
+    itemStyle,
+    gripProps,
+    takeDrop,
+  } = useLiveSort({ keys: blocks.map((block) => block.key), onMove });
+  const dragging = sortDragging;
   const columns = layout === "mobile" ? MOBILE_MOSAIC_COLUMNS : MOSAIC_COLUMNS;
   // Photos are numbered among themselves, as the side panel counts them.
   const photoNumbers = blocks.reduce<number[]>(
@@ -74,48 +84,6 @@ export function CollectionCanvas({
     if (!element) return 1;
     const gap = parseFloat(getComputedStyle(element).columnGap) || 0;
     return (element.clientWidth + gap) / columns || 1;
-  }
-
-  function startDrag(
-    event: ReactPointerEvent<HTMLElement>,
-    key: string,
-    index: number,
-  ) {
-    if (event.button !== 0) return;
-    const start = { x: event.clientX, y: event.clientY };
-    let moved = false;
-    // Tracked here rather than read from props, which lag a render behind the drag.
-    let position = index;
-    const target = event.currentTarget;
-    target.setPointerCapture?.(event.pointerId);
-    const move = (next: PointerEvent) => {
-      if (
-        !moved &&
-        Math.hypot(next.clientX - start.x, next.clientY - start.y) <
-          DRAG_THRESHOLD
-      )
-        return;
-      moved = true;
-      setDragging(key);
-      const over = document
-        .elementFromPoint?.(next.clientX, next.clientY)
-        ?.closest<HTMLElement>("[data-entry-index]");
-      const to = Number(over?.dataset.entryIndex ?? position);
-      if (over && to !== position) {
-        onMove(position, to);
-        position = to;
-      }
-    };
-    const end = () => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", end);
-      target.removeEventListener("pointercancel", end);
-      suppressClick.current = moved;
-      setDragging(null);
-    };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", end);
-    target.addEventListener("pointercancel", end);
   }
 
   function startResize(
@@ -167,7 +135,10 @@ export function CollectionCanvas({
   return (
     <div className="collection-canvas">
       <ul
-        ref={grid}
+        ref={(element) => {
+          grid.current = element;
+          attachList(element);
+        }}
         className="collection-mosaic studio-canvas"
         data-layout={layout}
         aria-label={
@@ -176,7 +147,9 @@ export function CollectionCanvas({
             : "Collection composition"
         }
       >
-        {blocks.map((block, index) => {
+        {sortOrder.map((key) => {
+          const index = blocks.findIndex((block) => block.key === key);
+          const block = blocks[index];
           const span = spanIn(block, layout);
           const photo =
             block.kind === "photo"
@@ -207,9 +180,15 @@ export function CollectionCanvas({
           return (
             <li
               key={block.key}
+              ref={attachItem(block.key)}
               data-entry-index={index}
               className={classes}
-              style={spanStyle(block) as CSSProperties}
+              style={
+                {
+                  ...(spanStyle(block) as CSSProperties),
+                  ...itemStyle(block.key),
+                } as CSSProperties
+              }
             >
               <button
                 type="button"
@@ -220,12 +199,12 @@ export function CollectionCanvas({
                     ? `Photo ${photoNumber}: ${title}${caption ? `, with text: ${caption}` : ""}`
                     : `Text block: ${block.text.trim() || "empty"}`
                 }
-                onPointerDown={(event) => startDrag(event, block.key, index)}
+                onPointerDown={gripProps(block.key).onPointerDown}
+                onPointerMove={gripProps(block.key).onPointerMove}
+                onPointerUp={gripProps(block.key).onPointerUp}
+                onPointerCancel={gripProps(block.key).onPointerCancel}
                 onClick={() => {
-                  if (suppressClick.current) {
-                    suppressClick.current = false;
-                    return;
-                  }
+                  if (takeDrop()) return;
                   onSelect(block.key);
                 }}
               >
