@@ -1,11 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { User, UserRole } from "@/src/domain/entities/User";
 import { SessionPorts } from "@/src/ui/hooks/useSession";
 import MainHeader from "../MainHeader";
 import { SessionProvider } from "../SessionProvider";
+import { writeHeaderHidden } from "@/src/ui/headerPreference";
 
 const getCurrentUser = vi.fn();
+const notifications = vi.hoisted(() => ({
+  current: null as { comments: number; inbox: number } | null,
+}));
+
+vi.mock("../CuratorNotifications", () => ({
+  useCuratorNotifications: () => notifications.current,
+}));
 
 const sessionPorts: SessionPorts = {
   getCurrentUser: () => getCurrentUser(),
@@ -41,6 +49,10 @@ function accountOf(role: UserRole) {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+  notifications.current = null;
+  act(() => writeHeaderHidden(false));
 });
 
 describe("MainHeader", () => {
@@ -88,5 +100,79 @@ describe("MainHeader", () => {
       expect(screen.getByTestId("google-signin-button")).toBeInTheDocument(),
     );
     expect(screen.queryByRole("link", { name: "Curator" })).not.toBeInTheDocument();
+  });
+
+  describe("folding away", () => {
+    function fold() {
+      return screen.getByRole("link", { name: "Gallery" }).closest(".site-header__fold");
+    }
+
+    it("hides the header and hands focus to the Menu tab", async () => {
+      getCurrentUser.mockResolvedValue(null);
+      renderHeader();
+
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+
+      const reveal = screen.getByRole("button", { name: "Show header" });
+      expect(reveal).toHaveAttribute("aria-expanded", "false");
+      expect(fold()).toHaveAttribute("inert");
+      await waitFor(() => expect(reveal).toHaveFocus());
+    });
+
+    it("brings it back and returns focus to the hide control", async () => {
+      getCurrentUser.mockResolvedValue(null);
+      renderHeader();
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
+
+      const hide = screen.getByRole("button", { name: "Hide header" });
+      expect(hide).toHaveAttribute("aria-expanded", "true");
+      expect(fold()).not.toHaveAttribute("inert");
+      await waitFor(() => expect(hide).toHaveFocus());
+    });
+
+    it("remembers the choice for the next page", () => {
+      getCurrentUser.mockResolvedValue(null);
+      const { unmount } = renderHeader();
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+      unmount();
+
+      renderHeader();
+
+      expect(window.localStorage.getItem("headerHidden")).toBe("true");
+      expect(fold()).toHaveAttribute("inert");
+      // Arriving with the header already hidden is not animated.
+      expect(fold()?.parentElement).not.toHaveAttribute("data-animated");
+    });
+
+    it("still folds when the browser refuses storage", () => {
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      getCurrentUser.mockResolvedValue(null);
+      renderHeader();
+
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+
+      expect(fold()).toHaveAttribute("inert");
+      expect(screen.getByRole("button", { name: "Show header" })).toBeInTheDocument();
+    });
+
+    it("tells the administrator about pending work on the folded tab", async () => {
+      getCurrentUser.mockResolvedValue(accountOf("ADMIN"));
+      notifications.current = { comments: 2, inbox: 1 };
+      renderHeader();
+      await screen.findByRole("link", { name: /Curator/ });
+
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+
+      expect(
+        screen.getByRole("button", { name: "Show header, 3 pending notifications" }),
+      ).toBeInTheDocument();
+    });
   });
 });
