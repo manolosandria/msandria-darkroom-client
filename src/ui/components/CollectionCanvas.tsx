@@ -1,13 +1,24 @@
 "use client";
-import { PointerEvent as ReactPointerEvent, useRef, useState } from "react";
-import { CollectionEntry } from "@/src/domain/entities/Catalog";
+import {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  useRef,
+  useState,
+} from "react";
+import {
+  CollectionBlock,
+  MOBILE_MOSAIC_COLUMNS,
+  MOSAIC_COLUMNS,
+  MOSAIC_MAX_ROWS,
+  MosaicLayout,
+  spanIn,
+  spanStyle,
+} from "@/src/domain/collectionLayout";
 import { Photo } from "@/src/domain/entities/Photo";
 import { PhotoImage } from "./PhotoImage";
 
-export const MOSAIC_COLUMNS = 4;
+export { MOSAIC_COLUMNS } from "@/src/domain/collectionLayout";
 const DRAG_THRESHOLD = 6;
-const clampSpan = (value: number) =>
-  Math.min(MOSAIC_COLUMNS, Math.max(1, Math.round(value)));
 
 export const isHiddenFromPublic = (photo?: Photo) =>
   !!photo &&
@@ -16,27 +27,30 @@ export const isHiddenFromPublic = (photo?: Photo) =>
 type Resize = { columns: boolean; rows: boolean };
 
 /**
- * The collection's mosaic as the curator edits it: the same four-column canvas as
- * the public one, where a tile is dragged to a new place, resized from its edges or
- * corner and selected with a click. Every change has a keyboard equivalent in the
- * side panel, so the pointer is a shortcut rather than the only way.
+ * The collection's mosaic as the curator edits it: the same canvas as the public
+ * one, eight columns wide or, in the phone layout, four. A piece is dragged to a new
+ * place, resized from its edges or corner and selected with a click. Every change
+ * has a keyboard equivalent in the side panel, so the pointer is a shortcut rather
+ * than the only way.
  */
 export function CollectionCanvas({
-  entries,
+  blocks,
   photos,
-  selectedId,
+  layout = "desktop",
+  selectedKey,
   coverId,
   excluded,
   onSelect,
   onMove,
   onResize,
 }: {
-  entries: CollectionEntry[];
+  blocks: CollectionBlock[];
   photos: Photo[];
-  selectedId: string | null;
+  layout?: MosaicLayout;
+  selectedKey: string | null;
   coverId: string | null;
   excluded: string[];
-  onSelect: (photoId: string) => void;
+  onSelect: (key: string) => void;
   onMove: (from: number, to: number) => void;
   onResize: (index: number, columns: number, rows: number) => void;
 }) {
@@ -44,18 +58,27 @@ export function CollectionCanvas({
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<string | null>(null);
   const suppressClick = useRef(false);
+  const columns = layout === "mobile" ? MOBILE_MOSAIC_COLUMNS : MOSAIC_COLUMNS;
+  // Photos are numbered among themselves, as the side panel counts them.
+  const photoNumbers = blocks.reduce<number[]>(
+    (numbers, block) => [
+      ...numbers,
+      (numbers.at(-1) ?? 0) + (block.kind === "photo" ? 1 : 0),
+    ],
+    [],
+  );
 
   // One cell plus its gap, measured from the laid-out grid so it follows any width.
   function cellSize() {
     const element = grid.current;
     if (!element) return 1;
     const gap = parseFloat(getComputedStyle(element).columnGap) || 0;
-    return (element.clientWidth + gap) / MOSAIC_COLUMNS || 1;
+    return (element.clientWidth + gap) / columns || 1;
   }
 
   function startDrag(
     event: ReactPointerEvent<HTMLElement>,
-    photoId: string,
+    key: string,
     index: number,
   ) {
     if (event.button !== 0) return;
@@ -73,7 +96,7 @@ export function CollectionCanvas({
       )
         return;
       moved = true;
-      setDragging(photoId);
+      setDragging(key);
       const over = document
         .elementFromPoint?.(next.clientX, next.clientY)
         ?.closest<HTMLElement>("[data-entry-index]");
@@ -103,21 +126,27 @@ export function CollectionCanvas({
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    const entry = entries[index];
+    const block = blocks[index];
+    const initial = spanIn(block, layout);
     const cell = cellSize();
     const start = { x: event.clientX, y: event.clientY };
-    let current = { columns: entry.columns, rows: entry.rows };
+    let current = { columns: initial.columns, rows: initial.rows };
     const target = event.currentTarget;
     target.setPointerCapture?.(event.pointerId);
-    setResizing(entry.photoId);
+    setResizing(block.key);
+    const clampTo = (value: number, max: number) =>
+      Math.min(max, Math.max(1, Math.round(value)));
     const move = (next: PointerEvent) => {
       const size = {
         columns: axes.columns
-          ? clampSpan(entry.columns + (next.clientX - start.x) / cell)
-          : entry.columns,
+          ? clampTo(initial.columns + (next.clientX - start.x) / cell, columns)
+          : initial.columns,
         rows: axes.rows
-          ? clampSpan(entry.rows + (next.clientY - start.y) / cell)
-          : entry.rows,
+          ? clampTo(
+              initial.rows + (next.clientY - start.y) / cell,
+              MOSAIC_MAX_ROWS,
+            )
+          : initial.rows,
       };
       if (size.columns === current.columns && size.rows === current.rows)
         return;
@@ -140,20 +169,36 @@ export function CollectionCanvas({
       <ul
         ref={grid}
         className="collection-mosaic studio-canvas"
-        aria-label="Collection composition"
+        data-layout={layout}
+        aria-label={
+          layout === "mobile"
+            ? "Collection composition on phones"
+            : "Collection composition"
+        }
       >
-        {entries.map((entry, index) => {
-          const photo = photos.find(
-            (candidate) => candidate.getId() === entry.photoId,
-          );
+        {blocks.map((block, index) => {
+          const span = spanIn(block, layout);
+          const photo =
+            block.kind === "photo"
+              ? photos.find((candidate) => candidate.getId() === block.photoId)
+              : undefined;
+          const photoNumber = photoNumbers[index];
           const hidden = isHiddenFromPublic(photo);
-          const removed = excluded.includes(entry.photoId);
-          const title = photo?.getTitle() ?? "Unavailable photo";
+          const removed =
+            block.kind === "photo" && excluded.includes(block.photoId);
+          const title =
+            block.kind === "photo"
+              ? (photo?.getTitle() ?? "Unavailable photo")
+              : "Text block";
+          const caption = block.kind === "photo" ? block.caption?.trim() : "";
           const classes = [
             "studio-tile",
-            selectedId === entry.photoId && "studio-tile--selected",
-            dragging === entry.photoId && "studio-tile--dragging",
-            resizing === entry.photoId && "studio-tile--resizing",
+            "mosaic-piece",
+            block.kind === "text" && "mosaic-piece--text studio-tile--text",
+            caption && "mosaic-piece--captioned",
+            selectedKey === block.key && "studio-tile--selected",
+            dragging === block.key && "studio-tile--dragging",
+            resizing === block.key && "studio-tile--resizing",
             hidden && "studio-tile--private",
             removed && "studio-tile--removed",
           ]
@@ -161,46 +206,73 @@ export function CollectionCanvas({
             .join(" ");
           return (
             <li
-              key={entry.photoId}
+              key={block.key}
               data-entry-index={index}
               className={classes}
-              style={{
-                gridColumn: `span ${entry.columns}`,
-                gridRow: `span ${entry.rows}`,
-              }}
+              style={spanStyle(block) as CSSProperties}
             >
               <button
                 type="button"
                 className="studio-tile__surface"
-                aria-pressed={selectedId === entry.photoId}
-                aria-label={`Photo ${index + 1}: ${title}`}
-                onPointerDown={(event) =>
-                  startDrag(event, entry.photoId, index)
+                aria-pressed={selectedKey === block.key}
+                aria-label={
+                  block.kind === "photo"
+                    ? `Photo ${photoNumber}: ${title}${caption ? `, with text: ${caption}` : ""}`
+                    : `Text block: ${block.text.trim() || "empty"}`
                 }
+                onPointerDown={(event) => startDrag(event, block.key, index)}
                 onClick={() => {
                   if (suppressClick.current) {
                     suppressClick.current = false;
                     return;
                   }
-                  onSelect(entry.photoId);
+                  onSelect(block.key);
                 }}
               >
-                {photo ? (
-                  <PhotoImage
-                    photo={photo}
-                    className="object-contain"
-                    fallbackSizes="(max-width: 640px) 50vw, 25vw"
-                    maxWidth={640}
-                  />
+                {block.kind === "text" ? (
+                  <span
+                    className="mosaic-text"
+                    data-style={block.style ?? "BODY"}
+                    data-align={block.align ?? "START"}
+                  >
+                    {block.text.trim() || (
+                      <span className="mosaic-text__placeholder">
+                        Write this block’s text in the side panel
+                      </span>
+                    )}
+                  </span>
                 ) : (
-                  <span className="studio-tile__missing">{title}</span>
+                  <span className="mosaic-piece__frame">
+                    <span className="mosaic-piece__image">
+                      {photo ? (
+                        <PhotoImage
+                          photo={photo}
+                          className="object-contain"
+                          fallbackSizes="(max-width: 640px) 50vw, 25vw"
+                          maxWidth={640}
+                        />
+                      ) : (
+                        <span className="studio-tile__missing">{title}</span>
+                      )}
+                      {block.showTitle !== false && photo && (
+                        <span className="studio-tile__caption">{title}</span>
+                      )}
+                    </span>
+                    {caption && (
+                      <span className="mosaic-piece__caption">{caption}</span>
+                    )}
+                  </span>
                 )}
-                <span className="studio-tile__index">{index + 1}</span>
-                {coverId === entry.photoId && (
+                <span className="studio-tile__index">
+                  {block.kind === "photo" ? photoNumber : "T"}
+                </span>
+                {block.kind === "photo" && coverId === block.photoId && (
                   <span className="studio-tile__cover">★ Cover</span>
                 )}
-                {entry.showTitle !== false && photo && (
-                  <span className="studio-tile__caption">{title}</span>
+                {resizing === block.key && (
+                  <span className="studio-tile__size">
+                    {span.columns} × {span.rows}
+                  </span>
                 )}
                 {hidden && (
                   <span

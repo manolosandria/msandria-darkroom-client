@@ -395,11 +395,34 @@ the administrator's inbox; **no email is sent**. Links are refused, and the API 
 
 The Collections tab in `/curator` is the administrator's catalog editor. It
 creates and edits categories, assigns categories to standalone photos, builds
-collections, orders their photos, and sets each tile's width and height from one
-to four cells. The collection editor (`CollectionCanvas`) is itself the
-composition, on the same four-column canvas as the gallery: a photo is dragged to
-a new place, resized by pulling its right edge, bottom edge or corner, and clicked
-to show its details in the side panel. Photos are added from **Add photos**, a
+collections, orders their photos, and sets each piece's width and height in cells
+of an eight-column grid (one to eight; new photos start at two by two). The
+collection editor (`CollectionCanvas`) is itself the composition, on the same canvas
+as the public collection: a piece is dragged to a new place, resized by pulling its
+right edge, bottom edge or corner (its size shows while it changes), and clicked to
+show its details in the side panel. Faint column guides mark the grid.
+
+**Phones.** The public mosaic switches to four columns when its container is
+narrower than 640 px. A piece without its own phone size takes one derived from the
+wide size with its proportion kept (`mobileSpan`: a 2×2 photo stays 2×2, half the
+phone's width; an 8×4 one becomes 4×2). **Wide screens / Phones** above the canvas
+switches the editor to a phone frame on four columns, in the same order; resizing a
+piece there, or ticking **Own size on phones**, gives it its own phone size, and
+unticking it follows the wide size again.
+
+**Text.** **Add text block** inserts a text after the selected piece: a heading,
+paragraph or quote, aligned left, centre or right, sized and moved like a photo
+(`TextDetails`). A text is stored by the number of photos before it, so it stays
+ahead of the same photo when photos are added or removed elsewhere; an empty block
+keeps the collection from saving. A photo can also carry **Text with the photo**
+(up to 500 characters): it shows under the photo inside the same piece, and
+hovering or focusing the piece outlines and lifts photo and text together.
+`collectionLayout` merges photos and texts into one reading order for the editor and
+splits them back into `entries` and `texts` for the API; on a paged collection,
+`textsForPage` shows each text on the page of the photo it precedes.
+
+The **New collection** card is a slow plasma of the site's greens under a glass
+plus, still when the visitor asks for reduced motion. Photos are added from **Add photos**, a
 horizontal strip of small thumbnails with their titles, filtered by title and
 category; thumbnails load lazily as the strip scrolls and never request more than a
 160-pixel rendition. Clicking one appends it to the composition and selects it,
@@ -408,8 +431,7 @@ in the collection**, **Use as collection cover** and removal. Each of those also
 works from the panel without a pointer. Private and reserved photos carry a framed
 **!** on the canvas and a warning above it. The collection's own title,
 description (up to 2000 characters, shown above the collection in the gallery) and
-categories fill the panel when no photo is selected. The entire composition scales
-down on phones without changing the arrangement. Photos remain uncropped inside
+categories fill the panel when no photo is selected. Photos remain uncropped inside
 each tile. Empty collections are allowed.
 
 The gallery reads the public `GET /catalog` alongside the existing photo listing.

@@ -234,10 +234,13 @@ describe("collection editor", () => {
     await user.type(screen.getByLabelText("Collection title"), "City");
     await user.type(screen.getByLabelText("Description"), "  At night ");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.selectOptions(screen.getByLabelText("Width"), "2");
+    await user.selectOptions(
+      screen.getByLabelText("Width on wide screens"),
+      "4",
+    );
     await saveAndAccept(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Offline");
-    expect(screen.getByLabelText("Width")).toHaveValue("2");
+    expect(screen.getByLabelText("Width on wide screens")).toHaveValue("4");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
     await saveAndAccept(user);
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -250,7 +253,18 @@ describe("collection editor", () => {
         coverPhotoId: null,
         showVariants: false,
         categoryIds: [],
-        entries: [{ photoId: "Color", columns: 2, rows: 1, showTitle: true }],
+        entries: [
+          {
+            photoId: "Color",
+            columns: 4,
+            rows: 2,
+            mobileColumns: null,
+            mobileRows: null,
+            showTitle: true,
+            caption: null,
+          },
+        ],
+        texts: [],
       },
       undefined,
     );
@@ -293,8 +307,17 @@ describe("collection editor", () => {
         showVariants: false,
         categoryIds: [],
         entries: [
-          { photoId: "Monochrome", columns: 1, rows: 1, showTitle: false },
+          {
+            photoId: "Monochrome",
+            columns: 2,
+            rows: 2,
+            mobileColumns: null,
+            mobileRows: null,
+            showTitle: false,
+            caption: null,
+          },
         ],
+        texts: [],
       },
       undefined,
     );
@@ -366,9 +389,115 @@ describe("collection editor", () => {
     fireEvent.pointerDown(corner, { button: 0, clientX: 0, clientY: 0 });
     fireEvent.pointerMove(corner, { clientX: 2, clientY: 1 });
     fireEvent.pointerUp(corner);
-    expect(tile).toHaveStyle({ gridColumn: "span 3", gridRow: "span 2" });
-    expect(screen.getByLabelText("Width")).toHaveValue("3");
-    expect(screen.getByLabelText("Height")).toHaveValue("2");
+    // New photos start 2×2 on the eight-column grid.
+    expect(tile).toHaveStyle({ "--span-columns": "4", "--span-rows": "3" });
+    expect(screen.getByLabelText("Width on wide screens")).toHaveValue("4");
+    expect(screen.getByLabelText("Height on wide screens")).toHaveValue("3");
+  });
+
+  it("gives a piece its own phone size when resized in the phone layout", async () => {
+    const user = userEvent.setup();
+    render(<CatalogEditor />);
+    await startNewCollection(user);
+    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Own size on phones" }),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("Width on phones")).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Phones/ }));
+    expect(
+      screen.getByRole("list", { name: "Collection composition on phones" }),
+    ).toBeInTheDocument();
+    const tile = screen
+      .getByRole("button", { name: "Photo 1: Color" })
+      .closest("li")!;
+    const corner = tile.querySelector(".studio-handle--corner")!;
+    fireEvent.pointerDown(corner, { button: 0, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(corner, { clientX: 9, clientY: 0 });
+    fireEvent.pointerUp(corner);
+    // Clamped to the four phone columns; the wide size is untouched.
+    expect(tile).toHaveStyle({
+      "--span-columns": "2",
+      "--span-mobile-columns": "4",
+      "--span-mobile-rows": "2",
+    });
+    expect(
+      screen.getByRole("checkbox", { name: "Own size on phones" }),
+    ).toBeChecked();
+    await user.click(
+      screen.getByRole("checkbox", { name: "Own size on phones" }),
+    );
+    expect(tile).toHaveStyle({ "--span-mobile-columns": "2" });
+  });
+
+  it("adds text blocks between photos and text attached to a photo", async () => {
+    const user = userEvent.setup();
+    render(<CatalogEditor />);
+    await startNewCollection(user);
+    await user.type(screen.getByLabelText("Collection title"), "City");
+    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.type(
+      screen.getByLabelText(/Text with the photo/),
+      "Taken at dawn",
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "Photo 1: Color, with text: Taken at dawn",
+      }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Add text block/ }));
+    await saveAndAccept(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Write something in every text block",
+    );
+    expect(manageCatalog.saveCollection).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText("Text"), "Night falls");
+    await user.click(screen.getByRole("button", { name: /Heading/ }));
+    await user.click(screen.getByRole("button", { name: "Center" }));
+    await user.click(screen.getByRole("button", { name: "← Move earlier" }));
+    expect(
+      screen.getByRole("button", { name: "Text block: Night falls" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    await saveAndAccept(user);
+    expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entries: [
+          expect.objectContaining({
+            photoId: "Color",
+            caption: "Taken at dawn",
+          }),
+          expect.objectContaining({ photoId: "Monochrome" }),
+        ],
+        texts: [
+          {
+            position: 0,
+            text: "Night falls",
+            style: "HEADING",
+            align: "CENTER",
+            columns: 4,
+            rows: 1,
+            mobileColumns: null,
+            mobileRows: null,
+          },
+        ],
+      }),
+      undefined,
+    );
+  }, 20000);
+
+  it("removes a text block from the side panel", async () => {
+    const user = userEvent.setup();
+    render(<CatalogEditor />);
+    await startNewCollection(user);
+    await user.click(screen.getByRole("button", { name: /Add text block/ }));
+    expect(
+      screen.getByRole("button", { name: "Text block: empty" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove text block" }));
+    expect(
+      screen.queryByRole("button", { name: /Text block/ }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -400,8 +529,10 @@ describe("collection mosaic", () => {
       "Monochrome",
     );
     expect(screen.getByRole("listitem")).toHaveStyle({
-      gridColumn: "span 2",
-      gridRow: "span 3",
+      "--span-columns": "2",
+      "--span-rows": "3",
+      "--span-mobile-columns": "2",
+      "--span-mobile-rows": "3",
     });
   });
 
@@ -489,4 +620,84 @@ it("offers variants in a public mosaic only when the collection allows it", () =
   expect(
     screen.getByRole("radiogroup", { name: "Variants of Color" }),
   ).toBeInTheDocument();
+});
+
+describe("collection mosaic with text", () => {
+  it("places text blocks before the photo they precede, in their style", () => {
+    render(
+      <CollectionMosaic
+        mosaic
+        tiles={[
+          {
+            key: "a",
+            photo: photos[0],
+            variants: [photos[0]],
+            entry: { photoId: "Color", columns: 2, rows: 2, position: 0 },
+          },
+          {
+            key: "b",
+            photo: photos[1],
+            variants: [photos[1]],
+            entry: { photoId: "Monochrome", columns: 2, rows: 2, position: 1 },
+          },
+        ]}
+        texts={[
+          {
+            position: 1,
+            text: "Between",
+            style: "QUOTE",
+            align: "END",
+            columns: 8,
+            rows: 1,
+          },
+          { position: 2, text: "After", columns: 4, rows: 1 },
+        ]}
+      />,
+    );
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Color",
+      "Between",
+      "Monochrome",
+      "After",
+    ]);
+    const quote = within(items[1]).getByText("Between");
+    expect(quote).toHaveAttribute("data-style", "QUOTE");
+    expect(quote).toHaveAttribute("data-align", "END");
+    expect(items[1]).toHaveStyle({
+      "--span-columns": "8",
+      "--span-mobile-columns": "4",
+    });
+    expect(within(items[3]).getByText("After")).toHaveAttribute(
+      "data-style",
+      "BODY",
+    );
+  });
+
+  it("shows a photo's own text as part of the same piece", () => {
+    render(
+      <CollectionMosaic
+        mosaic
+        tiles={[
+          {
+            key: "a",
+            photo: photos[0],
+            variants: [photos[0]],
+            entry: {
+              photoId: "Color",
+              columns: 2,
+              rows: 2,
+              caption: " At dawn ",
+            },
+          },
+        ]}
+      />,
+    );
+    const piece = screen.getByRole("listitem");
+    expect(piece).toHaveClass("mosaic-piece--captioned");
+    expect(within(piece).getByRole("figure")).toContainElement(
+      screen.getByText("At dawn"),
+    );
+    expect(screen.getByRole("link")).toHaveAccessibleDescription("At dawn");
+  });
 });
