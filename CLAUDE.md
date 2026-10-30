@@ -309,6 +309,14 @@ pending list when no issues remain. Normal metadata edits still use `PATCH`.
 The header stacks below the desktop breakpoint and allows wrapping between the
 logo, navigation and session controls, including the Google sign-in button.
 
+A chevron beside the account icon folds the header away (`MainHeader`); a slim bar of
+the header's colour stays in its place with a centred **Menu** tab that brings it back,
+so the page moves rather than being covered. Focus follows to whichever control remains,
+the folded header is `inert`, and reduced motion drops the animation. The choice is kept
+in `localStorage` under `headerHidden` (`headerPreference`, guarded like the photo
+quality and falling back to memory); a remembered choice applies without animating.
+For the administrator, the Menu tab carries a dot and announces pending notifications.
+
 ## Account deletion
 
 The account icon opens a disclosure with the signed-in name, email, role, a link to `/account` and sign-out. Escape closes it and returns focus to the icon. A press outside it or tabbing away closes it too; pressing its own text (name, email, the Admin label) leaves it open, since collapsing a disclosure under that press crashes Chromium tabs. The account page loads

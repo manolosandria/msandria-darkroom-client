@@ -17,5 +17,38 @@
 .session-menu__panel small { color:#72796c; }
 .session-menu__panel a,.session-menu__panel button { padding:.6rem; border-radius:.4rem; text-align:left; }
 .session-menu__panel a:hover,.session-menu__panel button:hover { background:#eef1e7; }
+/* Folding header. The fold keeps its row in the page flow, so nothing below is ever
+   covered: hidden, it shrinks to nothing and only the slim Menu tab keeps a row. */
+.site-header { --fold-ease:cubic-bezier(.22,.8,.24,1); --fold-time:.38s; position:relative; z-index:30; }
+.site-header__fold { display:grid; grid-template-rows:1fr; visibility:visible; }
+.site-header__fold-inner { min-height:0; clip-path:inset(-2rem -100vw -100vh -100vw); }
+.site-header[data-hidden="true"] .site-header__fold { grid-template-rows:0fr; visibility:hidden; }
+.site-header[data-hidden="true"] .site-header__fold-inner { clip-path:inset(0 0 100% 0); }
+.site-header[data-hidden="true"] .main-header { opacity:0; transform:translateY(-18px); }
+.site-header__reveal-row { display:grid; grid-template-rows:0fr; visibility:hidden; }
+.site-header__reveal-inner { min-height:0; overflow:hidden; display:flex; justify-content:center; }
+.site-header[data-hidden="true"] .site-header__reveal-row { grid-template-rows:1fr; visibility:visible; }
+.site-header[data-animated] .site-header__fold { transition:grid-template-rows var(--fold-time) var(--fold-ease),visibility 0s; }
+.site-header[data-animated][data-hidden="true"] .site-header__fold { transition:grid-template-rows var(--fold-time) var(--fold-ease),visibility 0s var(--fold-time); }
+.site-header[data-animated] .site-header__fold-inner { transition:clip-path var(--fold-time) var(--fold-ease); }
+.site-header[data-animated] .main-header { transition:opacity .28s ease,transform var(--fold-time) var(--fold-ease); }
+.site-header[data-animated] .site-header__reveal-row { transition:grid-template-rows .3s var(--fold-ease) .12s,visibility 0s .42s; }
+.site-header[data-animated][data-hidden="true"] .site-header__reveal-row { transition:grid-template-rows .3s var(--fold-ease) .12s,visibility 0s; }
+
+.main-header__tools { display:flex; align-items:center; gap:.5rem; }
+.main-header__hide { display:grid; place-items:center; width:36px; height:36px; border:1px solid transparent; border-radius:50%; color:#6d7566; cursor:pointer; transition:background .2s,color .2s,border-color .2s,transform .2s; }
+.main-header__hide:hover,.main-header__hide:focus-visible { background:#e8ebdf; border-color:#c9ccbf; color:#253d22; transform:translateY(-2px); }
+.main-header__hide:active { transform:translateY(0) scale(.94); }
+
+/* Hidden, the header leaves a slim bar of its own colour with the Menu tab at its
+   centre: still recognisably the header, and still in the flow. */
+.site-header__reveal-row { background:#f6f5f1; }
+.site-header[data-hidden="true"] .site-header__reveal-row { border-bottom:1px solid #dfdfd5; }
+.site-header__reveal { position:relative; display:inline-flex; align-items:center; gap:.4rem; margin:.3rem auto; padding:.28rem 1rem .28rem .75rem; border:1px solid transparent; border-radius:999px; background:transparent; color:#4b5745; font-size:.7rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; cursor:pointer; transition:background .2s,color .2s,border-color .2s,box-shadow .2s; }
+.site-header__reveal svg { transition:transform .25s var(--fold-ease); }
+.site-header__reveal:hover,.site-header__reveal:focus-visible { background:#e8ebdf; border-color:#c9ccbf; color:#253d22; box-shadow:0 0 0 4px #61744e15; }
+.site-header__reveal:hover svg,.site-header__reveal:focus-visible svg { transform:translateY(2px); }
+.site-header__reveal:focus-visible { outline:2px solid #65774f; outline-offset:3px; }
+.site-header__reveal-dot { position:absolute; top:.2rem; right:.35rem; width:7px; height:7px; border-radius:50%; background:#61744e; box-shadow:0 0 0 2px #f6f5f1; }
 @media(max-width:640px) { .main-header { gap:.7rem; } .main-header__brand { flex-basis:190px; } .main-header__actions { width:100%; justify-content:space-between; gap:.3rem; } .main-header__nav { gap:0; } .main-header__nav a { padding:.65rem .45rem; font-size:.78rem; } }
-@media(prefers-reduced-motion:reduce) { .main-header * { transition:none!important; } }
+@media(prefers-reduced-motion:reduce) { .main-header *,.site-header *,.site-header__reveal svg { transition:none!important; } }
