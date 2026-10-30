@@ -12,6 +12,7 @@ import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoImage } from "./PhotoImage";
 import { CollectionMosaic } from "./CollectionMosaic";
+import { textsForPage } from "@/src/domain/collectionLayout";
 import "./publicCatalog.css";
 
 export default function PublicCollections() {
@@ -171,14 +172,23 @@ function CollectionContents({
     setPage(next);
   };
   const pages = Math.max(1, Math.ceil((result?.total ?? 0) / 60));
+  const tiles = photos && selectCatalog(photos, catalog, "", collection.id);
   return (
     <>
       <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
-      {photos && (
+      {photos && tiles && (
         <CollectionMosaic
-          tiles={selectCatalog(photos, catalog, "", collection.id)}
+          tiles={tiles}
           mosaic
           variants={collection.showVariants === true}
+          texts={textsForPage(
+            collection.texts ?? [],
+            collection.entries.map((entry, index) => entry.position ?? index),
+            tiles.flatMap((tile) =>
+              tile.entry?.position !== undefined ? [tile.entry.position] : [],
+            ),
+            page >= pages,
+          )}
         />
       )}
       {result && pages > 1 && (

@@ -397,9 +397,17 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
 .manage-editor { padding: 24px; }
 @media (max-width: 700px) { .manage-layout { grid-template-columns: 1fr; } .manage-library { display: flex; overflow-x: auto; } .manage-library button { min-width: 190px; } }
 
-/* A fixed four-column composition scales as a whole, including on phones. */
+/* Eight columns on wide screens and four on phones. Each piece reads both spans from
+   custom properties, so one composition serves both; the editor forces one layout. */
 .collection-canvas { container-type: inline-size; }
-.collection-mosaic { --mosaic-gap: clamp(3px, 1cqw, 16px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: calc((100cqw - 3 * var(--mosaic-gap)) / 4); gap: var(--mosaic-gap); }
+.collection-mosaic { --mosaic-columns: 8; --mosaic-gap: clamp(3px, .8cqw, 14px); display: grid; grid-template-columns: repeat(var(--mosaic-columns), minmax(0, 1fr)); grid-auto-rows: calc((100cqw - (var(--mosaic-columns) - 1) * var(--mosaic-gap)) / var(--mosaic-columns)); gap: var(--mosaic-gap); }
+.collection-mosaic > li { grid-column: span var(--span-columns, 2); grid-row: span var(--span-rows, 2); }
+.collection-mosaic[data-layout=mobile] { --mosaic-columns: 4; }
+.collection-mosaic[data-layout=mobile] > li { grid-column: span var(--span-mobile-columns, 2); grid-row: span var(--span-mobile-rows, 2); }
+@container (max-width: 640px) {
+  .collection-mosaic:not([data-layout]) { --mosaic-columns: 4; }
+  .collection-mosaic:not([data-layout]) > li { grid-column: span var(--span-mobile-columns, 2); grid-row: span var(--span-mobile-rows, 2); }
+}
 .catalog-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
 .catalog-tile { position: relative; min-width: 0; background: #101010; overflow: hidden; }
 .catalog-grid .catalog-tile { aspect-ratio: 1; }

@@ -449,8 +449,14 @@ uses `CatalogRepository` and `ApiCatalogRepository`; components do not fetch dir
 `GET /catalog` carries collection entries, categories, work variants and photo category
 assignments without image URLs. Existing photo use cases supply the renditions.
 `selectCatalog` applies category/collection filters and groups each work into one tile.
-`CollectionMosaic` shares its four-column, proportionally scaled composition between
-the editor preview and the public gallery, with no breakpoint rearrangement.
+`CollectionMosaic` and `CollectionCanvas` share one composition: eight columns on
+wide screens and four on phones (container narrower than 640 px), each piece reading
+its spans from `--span-columns`/`--span-rows` and `--span-mobile-columns`/
+`--span-mobile-rows` (`spanStyle`). A piece without its own phone size derives one
+(`mobileSpan`). Text blocks sit between photos, anchored by the number of photos
+before them, and a photo's own text (`caption`) shows under it in the same piece;
+`collectionLayout` merges and splits that order. Deploy the API's
+`20261031000000_collection_grid` migration before this client.
 Each tile can select a variant while retaining the collection's dimensions. Photos
 keep their own viewer links and comments. Admin edits preserve their fields on failed
 writes, deletion confirms removal of the grouping, and only the API decides access.

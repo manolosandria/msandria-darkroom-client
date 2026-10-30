@@ -6,32 +6,51 @@ import { useId, useState } from "react";
 import {
   Catalog,
   CatalogCollection,
+  COLLECTION_TEXT_ALIGNS,
+  COLLECTION_TEXT_STYLES,
   CollectionDraft,
-  CollectionEntry,
+  CollectionTextAlign,
+  CollectionTextStyle,
 } from "@/src/domain/entities/Catalog";
+import {
+  CollectionBlock,
+  DEFAULT_PHOTO_SIZE,
+  DEFAULT_TEXT_SIZE,
+  MOBILE_MOSAIC_COLUMNS,
+  MOSAIC_COLUMNS,
+  MOSAIC_MAX_ROWS,
+  mergeBlocks,
+  mobileSpan,
+  MosaicLayout,
+  newTextKey,
+  BlockPatch,
+  PhotoBlock,
+  splitBlocks,
+  TextBlock,
+} from "@/src/domain/collectionLayout";
 import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { PhotoImage } from "./PhotoImage";
 import { InspectorSection } from "./InspectorSection";
 import { VariantThumbs } from "./VariantThumbs";
 import { PhotoPicker } from "./PhotoPicker";
-import {
-  CollectionCanvas,
-  isHiddenFromPublic,
-  MOSAIC_COLUMNS,
-} from "./CollectionCanvas";
+import { CollectionCanvas, isHiddenFromPublic } from "./CollectionCanvas";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
 
-const empty = (): CollectionDraft => ({
+/** The editor keeps photos and text blocks in one reading order. */
+type EditorDraft = Omit<CollectionDraft, "entries" | "texts"> & {
+  blocks: CollectionBlock[];
+};
+const empty = (): EditorDraft => ({
   title: "",
   description: "",
   coverPhotoId: null,
   showVariants: false,
   categoryIds: [],
-  entries: [],
+  blocks: [],
 });
-const fromCollection = (collection?: CatalogCollection): CollectionDraft =>
+const fromCollection = (collection?: CatalogCollection): EditorDraft =>
   collection
     ? {
         version: collection.version,
@@ -40,16 +59,13 @@ const fromCollection = (collection?: CatalogCollection): CollectionDraft =>
         coverPhotoId: collection.coverPhotoId ?? null,
         showVariants: collection.showVariants ?? false,
         categoryIds: collection.categories.map((category) => category.id),
-        entries: collection.entries.map(
-          ({ photoId, columns, rows, showTitle }) => ({
-            photoId,
-            columns,
-            rows,
-            showTitle: showTitle ?? true,
-          }),
-        ),
+        blocks: mergeBlocks(collection.entries, collection.texts),
       }
     : empty();
+const toPayload = (
+  { blocks, ...draft }: EditorDraft,
+  excluded: string[] = [],
+): CollectionDraft => ({ ...draft, ...splitBlocks(blocks, excluded) });
 const toggle = (ids: string[], id: string) =>
   ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 const findPhoto = (photos: Photo[], id?: string | null) =>
@@ -145,7 +161,9 @@ function CollectionBrowser({
               onClick={() => onOpen("")}
             >
               <span className="studio-collection-card__cover" aria-hidden>
-                +
+                <span className="studio-collection-plus">
+                  <span />
+                </span>
               </span>
               <strong>New collection</strong>
               <small>Start an empty composition</small>
@@ -303,6 +321,7 @@ function CollectionEditor({
   const [draft, setDraft] = useState(() => fromCollection(collection));
   const [excluded, setExcluded] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [layout, setLayout] = useState<MosaicLayout>("desktop");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -314,53 +333,89 @@ function CollectionEditor({
   ]);
   const prefix = useId();
   const { confirm } = useEditingWorkspace();
-  const included = draft.entries.filter(
-    (entry) => !excluded.includes(entry.photoId),
-  );
+  const composition = toPayload(draft, excluded);
+  const included = composition.entries;
   const existingCategoryIds = (ids: string[]) =>
     ids.filter((id) =>
       catalog.categories.some((category) => category.id === id),
     );
   const payload: CollectionDraft = {
-    ...draft,
+    ...composition,
     description: draft.description?.trim() ?? "",
     categoryIds: existingCategoryIds(draft.categoryIds),
-    entries: included,
     coverPhotoId: included.some((entry) => entry.photoId === draft.coverPhotoId)
       ? draft.coverPhotoId
       : null,
   };
+  const saved = toPayload(baseline);
   const dirty =
     JSON.stringify(payload) !==
     JSON.stringify({
-      ...baseline,
-      categoryIds: existingCategoryIds(baseline.categoryIds),
+      ...saved,
+      categoryIds: existingCategoryIds(saved.categoryIds),
     });
   const privatePhotos = included.flatMap((entry) => {
     const photo = findPhoto(photos, entry.photoId);
     return photo && isHiddenFromPublic(photo) ? [photo.getTitle()] : [];
   });
-  function update(next: Partial<CollectionDraft>) {
+  function update(next: Partial<EditorDraft>) {
     setDraft((previous) => ({ ...previous, ...next }));
     setNotice("");
   }
-  function updateEntry(photoId: string, next: Partial<CollectionEntry>) {
+  function updateBlock(key: string, next: BlockPatch) {
     setDraft((previous) => ({
       ...previous,
-      entries: previous.entries.map((entry) =>
-        entry.photoId === photoId ? { ...entry, ...next } : entry,
+      blocks: previous.blocks.map((block) =>
+        block.key === key ? ({ ...block, ...next } as CollectionBlock) : block,
       ),
     }));
     setNotice("");
   }
+  // A size set in the phone layout becomes the piece's own; the wide one stays.
+  function resize(key: string, columns: number, rows: number) {
+    updateBlock(
+      key,
+      layout === "mobile"
+        ? { mobileColumns: columns, mobileRows: rows }
+        : { columns, rows },
+    );
+  }
   function move(from: number, to: number) {
     setDraft((previous) => {
-      if (to < 0 || to >= previous.entries.length) return previous;
-      const entries = [...previous.entries];
-      const [entry] = entries.splice(from, 1);
-      entries.splice(to, 0, entry);
-      return { ...previous, entries };
+      if (to < 0 || to >= previous.blocks.length) return previous;
+      const blocks = [...previous.blocks];
+      const [block] = blocks.splice(from, 1);
+      blocks.splice(to, 0, block);
+      return { ...previous, blocks };
     });
+    setNotice("");
+  }
+  // A new text block goes right after the selected piece, or at the end.
+  function addText() {
+    const key = newTextKey();
+    setDraft((previous) => {
+      const at = previous.blocks.findIndex((block) => block.key === selected);
+      const blocks = [...previous.blocks];
+      blocks.splice(at < 0 ? blocks.length : at + 1, 0, {
+        kind: "text",
+        key,
+        text: "",
+        style: "BODY",
+        align: "START",
+        ...DEFAULT_TEXT_SIZE,
+      });
+      return { ...previous, blocks };
+    });
+    setSelected(key);
+    setNotice("");
+    toggleSection("photo", true);
+  }
+  function removeText(key: string) {
+    setDraft((previous) => ({
+      ...previous,
+      blocks: previous.blocks.filter((block) => block.key !== key),
+    }));
+    setSelected(null);
     setNotice("");
   }
   function discard() {
@@ -375,15 +430,31 @@ function CollectionEditor({
       setError("Give this collection a title before saving.");
       return false;
     }
+    if (payload.texts?.some((text) => !text.text.trim())) {
+      setError(
+        "Write something in every text block, or remove the empty ones.",
+      );
+      return false;
+    }
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const saved = await manageCatalog.saveCollection(
+      const result = await manageCatalog.saveCollection(
         payload,
         id || undefined,
       );
-      const next = id ? { ...payload, version: saved.version } : empty();
+      const next = id
+        ? {
+            ...draft,
+            ...payload,
+            blocks: draft.blocks.filter(
+              (block) =>
+                block.kind === "text" || !excluded.includes(block.photoId),
+            ),
+            version: result.version,
+          }
+        : empty();
       setBaseline(next);
       setDraft(next);
       setExcluded([]);
@@ -418,8 +489,15 @@ function CollectionEditor({
     discard,
   });
   if (!active) return null;
-  const index = draft.entries.findIndex((entry) => entry.photoId === selected);
-  const entry = draft.entries[index];
+  const index = draft.blocks.findIndex((block) => block.key === selected);
+  const block = draft.blocks[index];
+  const entry = block?.kind === "photo" ? block : undefined;
+  const photoCount = draft.blocks.filter(
+    (item) => item.kind === "photo",
+  ).length;
+  const photoIndex = draft.blocks
+    .slice(0, Math.max(index, 0))
+    .filter((item) => item.kind === "photo").length;
   const work = entry
     ? catalog.works.find((item) =>
         item.variants.some((v) => v.photoId === entry.photoId),
@@ -427,9 +505,10 @@ function CollectionEditor({
     : undefined;
   function chooseVariant(nextId: string) {
     if (!entry) return;
+    const key = `photo:${nextId}`;
     update({
-      entries: draft.entries.map((item) =>
-        item.photoId === entry.photoId ? { ...item, photoId: nextId } : item,
+      blocks: draft.blocks.map((item) =>
+        item.key === entry.key ? { ...entry, photoId: nextId, key } : item,
       ),
       coverPhotoId:
         draft.coverPhotoId === entry.photoId ? nextId : draft.coverPhotoId,
@@ -437,7 +516,7 @@ function CollectionEditor({
     setExcluded((previous) =>
       previous.map((id) => (id === entry.photoId ? nextId : id)),
     );
-    setSelected(nextId);
+    setSelected(key);
   }
   const sectionOpen = (key: string) => openSections.includes(key);
   function toggleSection(key: string, open: boolean) {
@@ -555,21 +634,26 @@ function CollectionEditor({
           catalog={catalog}
           photos={photos.filter(
             (photo) =>
-              !draft.entries.some((item) => item.photoId === photo.getId()),
+              !draft.blocks.some(
+                (item) =>
+                  item.kind === "photo" && item.photoId === photo.getId(),
+              ),
           )}
           onPick={(photo) => {
+            const key = `photo:${photo.getId()}`;
             update({
-              entries: [
-                ...draft.entries,
+              blocks: [
+                ...draft.blocks,
                 {
+                  kind: "photo",
+                  key,
                   photoId: photo.getId(),
-                  columns: 1,
-                  rows: 1,
+                  ...DEFAULT_PHOTO_SIZE,
                   showTitle: true,
                 },
               ],
             });
-            setSelected(photo.getId());
+            setSelected(key);
             toggleSection("photo", true);
           }}
         />
@@ -578,10 +662,41 @@ function CollectionEditor({
             className="collection-develop__stage"
             aria-label="Composition"
           >
+            <div className="collection-develop__bar">
+              <div
+                className="collection-layout-switch"
+                role="group"
+                aria-label="Layout"
+              >
+                <button
+                  type="button"
+                  aria-pressed={layout === "desktop"}
+                  onClick={() => setLayout("desktop")}
+                >
+                  <LayoutIcon kind="desktop" />
+                  Wide screens
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={layout === "mobile"}
+                  onClick={() => setLayout("mobile")}
+                >
+                  <LayoutIcon kind="mobile" />
+                  Phones
+                </button>
+              </div>
+              <button
+                type="button"
+                className="collection-add-text"
+                onClick={addText}
+              >
+                <span aria-hidden="true">T+</span> Add text block
+              </button>
+            </div>
             <p className="collection-develop__hint">
-              Drag a photo to change its priority, or pull its edges or corner
-              to resize it. The {MOSAIC_COLUMNS}-column canvas keeps the same
-              composition on phones.
+              {layout === "desktop"
+                ? `Drag a piece to change its place, or pull its edges or corner to resize it, on a ${MOSAIC_COLUMNS}-column grid.`
+                : `Phones show ${MOBILE_MOSAIC_COLUMNS} columns in the same order. Resizing here gives a piece its own phone size; the others follow their wide size.`}
             </p>
             {privatePhotos.length > 0 && (
               <p role="alert" className={styles.warning}>
@@ -590,28 +705,30 @@ function CollectionEditor({
                 {privatePhotos.join(", ")}.
               </p>
             )}
-            {draft.entries.length ? (
-              <CollectionCanvas
-                entries={draft.entries}
-                photos={photos}
-                selectedId={selected}
-                coverId={payload.coverPhotoId ?? null}
-                excluded={excluded}
-                onSelect={(photoId) => {
-                  setSelected(photoId);
-                  if (photoId) toggleSection("photo", true);
-                }}
-                onMove={move}
-                onResize={(position, columns, rows) =>
-                  updateEntry(draft.entries[position].photoId, {
-                    columns,
-                    rows,
-                  })
-                }
-              />
+            {draft.blocks.length ? (
+              <div
+                className={`collection-develop__device collection-develop__device--${layout}`}
+              >
+                <CollectionCanvas
+                  blocks={draft.blocks}
+                  photos={photos}
+                  layout={layout}
+                  selectedKey={selected}
+                  coverId={payload.coverPhotoId ?? null}
+                  excluded={excluded}
+                  onSelect={(key) => {
+                    setSelected(key);
+                    toggleSection("photo", true);
+                  }}
+                  onMove={move}
+                  onResize={(position, columns, rows) =>
+                    resize(draft.blocks[position].key, columns, rows)
+                  }
+                />
+              </div>
             ) : (
               <p className="studio-empty">
-                Add photos to start the composition.
+                Add photos or a text block to start the composition.
               </p>
             )}
           </section>
@@ -632,15 +749,27 @@ function CollectionEditor({
             </nav>
             <InspectorSection
               id={`${prefix}-photo`}
-              label="Selected photo"
+              label={
+                block?.kind === "text" ? "Selected text" : "Selected photo"
+              }
               summary={
-                entry ? `${index + 1} of ${draft.entries.length}` : "None"
+                entry
+                  ? `${photoIndex + 1} of ${photoCount}`
+                  : block
+                    ? "Text"
+                    : "None"
               }
               open={sectionOpen("photo")}
               onToggle={(open) => toggleSection("photo", open)}
             >
               <aside
-                aria-label={entry ? "Photo details" : "Collection details"}
+                aria-label={
+                  entry
+                    ? "Photo details"
+                    : block
+                      ? "Text block details"
+                      : "Collection details"
+                }
               >
                 {entry ? (
                   <>
@@ -656,8 +785,10 @@ function CollectionEditor({
                             const variant = findPhoto(photos, v.photoId);
                             return variant &&
                               (v.photoId === entry.photoId ||
-                                !draft.entries.some(
-                                  (item) => item.photoId === v.photoId,
+                                !draft.blocks.some(
+                                  (item) =>
+                                    item.kind === "photo" &&
+                                    item.photoId === v.photoId,
                                 ))
                               ? [variant]
                               : [];
@@ -669,14 +800,16 @@ function CollectionEditor({
                     )}
                     <EntryDetails
                       entry={entry}
-                      index={index}
-                      count={draft.entries.length}
+                      index={photoIndex}
+                      count={photoCount}
+                      first={index === 0}
+                      last={index === draft.blocks.length - 1}
                       photo={findPhoto(photos, entry.photoId)}
                       isCover={payload.coverPhotoId === entry.photoId}
                       removed={excluded.includes(entry.photoId)}
                       onBack={() => setSelected(null)}
                       onMove={(offset) => move(index, index + offset)}
-                      onChange={(next) => updateEntry(entry.photoId, next)}
+                      onChange={(next) => updateBlock(entry.key, next)}
                       onCover={(cover) =>
                         update({ coverPhotoId: cover ? entry.photoId : null })
                       }
@@ -685,10 +818,20 @@ function CollectionEditor({
                       }
                     />
                   </>
+                ) : block?.kind === "text" ? (
+                  <TextDetails
+                    block={block}
+                    first={index === 0}
+                    last={index === draft.blocks.length - 1}
+                    onBack={() => setSelected(null)}
+                    onMove={(offset) => move(index, index + offset)}
+                    onChange={(next) => updateBlock(block.key, next)}
+                    onRemove={() => removeText(block.key)}
+                  />
                 ) : (
                   <p className="upload-muted">
-                    Select a photo in the composition to resize it, hide its
-                    title or use it as the cover.
+                    Select a piece in the composition to resize it, give a photo
+                    its own text, hide its title or use it as the cover.
                   </p>
                 )}
               </aside>
@@ -820,7 +963,7 @@ function CollectionEditor({
 }
 
 const COLLECTION_SECTIONS = [
-  { id: "photo", label: "Photo" },
+  { id: "photo", label: "Selection" },
   { id: "details", label: "Details" },
   { id: "categories", label: "Categories" },
   { id: "display", label: "Display" },
@@ -830,6 +973,8 @@ function EntryDetails({
   entry,
   index,
   count,
+  first,
+  last,
   photo,
   isCover,
   removed,
@@ -839,15 +984,17 @@ function EntryDetails({
   onCover,
   onToggleRemoved,
 }: {
-  entry: CollectionEntry;
+  entry: PhotoBlock;
   index: number;
   count: number;
+  first: boolean;
+  last: boolean;
   photo?: Photo;
   isCover: boolean;
   removed: boolean;
   onBack: () => void;
   onMove: (offset: number) => void;
-  onChange: (next: Partial<CollectionEntry>) => void;
+  onChange: (next: Partial<PhotoBlock>) => void;
   onCover: (cover: boolean) => void;
   onToggleRemoved: () => void;
 }) {
@@ -880,35 +1027,21 @@ function EntryDetails({
           not be shown in the public collection.
         </p>
       )}
-      <div className="studio-row">
-        <button type="button" disabled={index === 0} onClick={() => onMove(-1)}>
-          ← Move earlier
-        </button>
-        <button
-          type="button"
-          disabled={index === count - 1}
-          onClick={() => onMove(1)}
-        >
-          Move later →
-        </button>
-      </div>
-      <div className="studio-row">
-        {(["columns", "rows"] as const).map((dimension) => (
-          <label key={dimension}>
-            {dimension === "columns" ? "Width" : "Height"}
-            <select
-              value={entry[dimension]}
-              onChange={(event) =>
-                onChange({ [dimension]: Number(event.target.value) })
-              }
-            >
-              {[1, 2, 3, 4].map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
+      <MoveButtons first={first} last={last} onMove={onMove} />
+      <SizeFields size={entry} onChange={onChange} />
+      <label className="studio-caption-field">
+        Text with the photo
+        <textarea
+          maxLength={500}
+          rows={3}
+          value={entry.caption ?? ""}
+          placeholder="A line that travels with this photo, shown under it"
+          onChange={(event) => onChange({ caption: event.target.value })}
+        />
+        <small className="upload-muted">
+          Shown under the photo, in the same piece. Leave empty for none.
+        </small>
+      </label>
       <label className="studio-check">
         <input
           type="checkbox"
@@ -940,5 +1073,278 @@ function EntryDetails({
         <span className="upload-muted">Will be removed when you save</span>
       )}
     </div>
+  );
+}
+
+function MoveButtons({
+  first,
+  last,
+  onMove,
+}: {
+  first: boolean;
+  last: boolean;
+  onMove: (offset: number) => void;
+}) {
+  return (
+    <div className="studio-row">
+      <button type="button" disabled={first} onClick={() => onMove(-1)}>
+        ← Move earlier
+      </button>
+      <button type="button" disabled={last} onClick={() => onMove(1)}>
+        Move later →
+      </button>
+    </div>
+  );
+}
+
+function CellSelect({
+  label,
+  device,
+  value,
+  max,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  device: string;
+  value: number;
+  max: number;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label>
+      <span>
+        {label}
+        <span className="sr-only"> on {device}</span>
+      </span>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(Number(event.target.value))}
+      >
+        {Array.from({ length: max }, (_, cell) => (
+          <option key={cell + 1}>{cell + 1}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Wide size in cells of the eight-column grid, and the phone size: derived from the
+ * wide one unless the piece has its own.
+ */
+function SizeFields({
+  size,
+  onChange,
+}: {
+  size: PhotoBlock | TextBlock;
+  onChange: (next: BlockPatch) => void;
+}) {
+  const phone = mobileSpan(size);
+  return (
+    <fieldset className="studio-size">
+      <legend>Size in cells</legend>
+      <div className="studio-size__row">
+        <span className="studio-size__device">
+          <LayoutIcon kind="desktop" /> Wide
+        </span>
+        <CellSelect
+          label="Width"
+          device="wide screens"
+          value={size.columns}
+          max={MOSAIC_COLUMNS}
+          onChange={(columns) => onChange({ columns })}
+        />
+        <CellSelect
+          label="Height"
+          device="wide screens"
+          value={size.rows}
+          max={MOSAIC_MAX_ROWS}
+          onChange={(rows) => onChange({ rows })}
+        />
+      </div>
+      <div className="studio-size__row">
+        <span className="studio-size__device">
+          <LayoutIcon kind="mobile" /> Phone
+        </span>
+        <CellSelect
+          label="Width"
+          device="phones"
+          value={phone.columns}
+          max={MOBILE_MOSAIC_COLUMNS}
+          disabled={!phone.custom}
+          onChange={(mobileColumns) =>
+            onChange({ mobileColumns, mobileRows: phone.rows })
+          }
+        />
+        <CellSelect
+          label="Height"
+          device="phones"
+          value={phone.rows}
+          max={MOSAIC_MAX_ROWS}
+          disabled={!phone.custom}
+          onChange={(mobileRows) =>
+            onChange({ mobileColumns: phone.columns, mobileRows })
+          }
+        />
+      </div>
+      <label className="studio-check">
+        <input
+          type="checkbox"
+          checked={phone.custom}
+          onChange={(event) =>
+            onChange(
+              event.target.checked
+                ? { mobileColumns: phone.columns, mobileRows: phone.rows }
+                : { mobileColumns: null, mobileRows: null },
+            )
+          }
+        />
+        Own size on phones
+      </label>
+      {!phone.custom && (
+        <small className="upload-muted">
+          Follows the wide size on the {MOBILE_MOSAIC_COLUMNS}-column phone
+          grid.
+        </small>
+      )}
+    </fieldset>
+  );
+}
+
+const STYLE_LABELS: Record<CollectionTextStyle, string> = {
+  HEADING: "Heading",
+  BODY: "Paragraph",
+  QUOTE: "Quote",
+};
+const ALIGN_LABELS: Record<CollectionTextAlign, string> = {
+  START: "Left",
+  CENTER: "Center",
+  END: "Right",
+};
+
+function TextDetails({
+  block,
+  first,
+  last,
+  onBack,
+  onMove,
+  onChange,
+  onRemove,
+}: {
+  block: TextBlock;
+  first: boolean;
+  last: boolean;
+  onBack: () => void;
+  onMove: (offset: number) => void;
+  onChange: (next: Partial<TextBlock>) => void;
+  onRemove: () => void;
+}) {
+  const style = block.style ?? "BODY";
+  const align = block.align ?? "START";
+  return (
+    <div className="studio-fields">
+      <button type="button" className="studio-back" onClick={onBack}>
+        ← Collection details
+      </button>
+      <label>
+        Text
+        <textarea
+          maxLength={2000}
+          rows={5}
+          value={block.text}
+          autoFocus={!block.text}
+          placeholder="A title, a note or a few lines between the photos"
+          onChange={(event) => onChange({ text: event.target.value })}
+        />
+      </label>
+      <div className="text-style-choice" role="group" aria-label="Text style">
+        {COLLECTION_TEXT_STYLES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={style === value}
+            data-style={value}
+            onClick={() => onChange({ style: value })}
+          >
+            <span aria-hidden="true">{value === "QUOTE" ? "“”" : "Aa"}</span>
+            {STYLE_LABELS[value]}
+          </button>
+        ))}
+      </div>
+      <div className="text-align-choice" role="group" aria-label="Alignment">
+        {COLLECTION_TEXT_ALIGNS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={align === value}
+            aria-label={ALIGN_LABELS[value]}
+            title={ALIGN_LABELS[value]}
+            onClick={() => onChange({ align: value })}
+          >
+            <AlignIcon align={value} />
+          </button>
+        ))}
+      </div>
+      <MoveButtons first={first} last={last} onMove={onMove} />
+      <SizeFields size={block} onChange={onChange} />
+      <button type="button" className="studio-danger" onClick={onRemove}>
+        Remove text block
+      </button>
+    </div>
+  );
+}
+
+function AlignIcon({ align }: { align: CollectionTextAlign }) {
+  const x = (width: number) =>
+    align === "START" ? 3 : align === "END" ? 21 - width : 12 - width / 2;
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      {[18, 12, 16, 10].map((width, line) => (
+        <rect
+          key={line}
+          x={x(width)}
+          y={5 + line * 4}
+          width={width}
+          height="2"
+          rx="1"
+          fill="currentColor"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function LayoutIcon({ kind }: { kind: MosaicLayout }) {
+  return kind === "desktop" ? (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <rect
+        x="3"
+        y="4"
+        width="18"
+        height="12"
+        rx="1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path d="M9 20h6M12 16v4" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <rect
+        x="7"
+        y="3"
+        width="10"
+        height="18"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path d="M11 18h2" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
   );
 }

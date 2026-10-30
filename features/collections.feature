@@ -165,3 +165,41 @@ Feature: Curated collections
     When I move from a category button into its open options
     Then the menu stays open until I choose an option or leave it
     And the photo count appears outside the menus beside the grid
+
+  Scenario: Start a collection from the plasma card
+    Given I am on Curator Collections
+    Then the New collection card shows a slowly moving plasma behind a glass plus
+    And with reduced motion requested the plasma stands still
+    When I choose the card
+    Then an empty collection editor opens
+
+  Scenario: Compose on an eight-column grid
+    Given I am editing a collection
+    When I add a photo
+    Then it takes two by two cells of an eight-column grid
+    And dragging its edges or corner shows its size and resizes it up to eight cells
+    And collections saved on the old four-column grid keep their look
+
+  Scenario: Lay out the collection for phones
+    Given I am editing a collection
+    When I switch the canvas to Phones
+    Then the composition shows in a phone frame on four columns, in the same order
+    And pieces I have not resized follow their wide size with its proportion
+    When I resize a piece there
+    Then that piece keeps its own phone size and its wide size is unchanged
+    And clearing Own size on phones makes it follow the wide size again
+    And visitors on narrow screens see the phone layout
+
+  Scenario: Write text blocks between photos
+    Given I am editing a collection
+    When I add a text block and write a heading, paragraph or quote
+    And choose its alignment, size and place among the photos
+    Then the public collection shows it at that place in that style
+    And an empty text block keeps the collection from saving until it is written or removed
+    And the text stays before the same photo when photos are added or removed elsewhere
+
+  Scenario: Give a photo its own text
+    Given I am editing a collection
+    When I write text with a photo
+    Then it shows under the photo inside the same piece
+    And hovering or focusing the piece outlines and lifts photo and text together
