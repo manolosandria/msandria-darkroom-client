@@ -99,6 +99,9 @@ function Editor() {
               ...defaultWelcomePanel,
               ...previous.welcome,
               position: target.position,
+              // An anchor takes the panel out of free placement.
+              x: undefined,
+              y: undefined,
             },
           }
         : {}),
