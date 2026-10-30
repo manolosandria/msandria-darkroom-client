@@ -107,7 +107,7 @@ describe("Gallery server pagination", () => {
         page: 1,
       }),
     );
-    await user.click(screen.getByRole("button", { name: /Subjects/ }));
+    await user.click(screen.getByRole("button", { name: /^Filters/ }));
     await user.click(screen.getByRole("button", { name: "Street" }));
     await waitFor(() =>
       expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
@@ -116,7 +116,6 @@ describe("Gallery server pagination", () => {
     );
     // Any of a group, and one of every group chosen.
     await user.click(screen.getByRole("button", { name: "Animal" }));
-    await user.click(screen.getByRole("button", { name: /Color & treatment/ }));
     await user.click(screen.getByRole("button", { name: "Color" }));
     await waitFor(() =>
       expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
@@ -135,6 +134,7 @@ describe("Gallery server pagination", () => {
     expect(
       screen.getByRole("button", { name: "Clear all filters" }),
     ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /^Filters/ }));
     await user.click(screen.getByRole("radio", { name: "Natural proportions" }));
     expect(screen.getAllByText("Natural proportions").length).toBeGreaterThan(1);
     await waitFor(() =>
@@ -161,6 +161,7 @@ describe("Gallery server pagination", () => {
     expect(signal.aborted).toBe(true);
   });
   it("honors administrator enabled options and shows an empty selection", async () => {
+    const user = userEvent.setup();
     render(
       <Gallery
         browsePhotos={{ execute: vi.fn().mockResolvedValue(result(1, 0)) }}
@@ -171,6 +172,7 @@ describe("Gallery server pagination", () => {
       />,
     );
     await screen.findByText("No photos in this selection.");
+    await user.click(screen.getByRole("button", { name: /^Filters/ }));
     expect(
       screen.getByRole("radio", { name: "Natural proportions" }),
     ).toBeChecked();
@@ -201,5 +203,56 @@ describe("Gallery server pagination", () => {
     expect(window.location.search).toContain("category=street");
     window.history.replaceState(null, "", "/");
     window.sessionStorage.clear();
+  });
+  it("splits the page into the cards the curator chose", async () => {
+    const execute = vi.fn().mockResolvedValue(result(1, 1));
+    const { container, rerender } = render(
+      <Gallery browsePhotos={{ execute }} settings={defaultGallerySettings} />,
+    );
+    await screen.findByRole("img");
+    const cards = () =>
+      Array.from(container.querySelectorAll(".gallery-card")).map((card) =>
+        card.getAttribute("data-blocks"),
+      );
+    // Without a layout, title and filters share a card, side by side.
+    expect(cards()).toEqual(["heading filters", "photos"]);
+    expect(container.querySelector(".gallery-card__row")).not.toBeNull();
+    rerender(
+      <Gallery
+        browsePhotos={{ execute }}
+        settings={{
+          ...defaultGallerySettings,
+          pageLayout: {
+            groups: [["photos"], ["filters"], ["heading"]],
+            filtersPlacement: "side",
+            headingAlign: "center",
+          },
+        }}
+      />,
+    );
+    expect(cards()).toEqual(["photos", "filters", "heading"]);
+    expect(container.querySelector(".gallery-cards-row")).not.toBeNull();
+    expect(container.querySelector(".gallery-heading")).toHaveAttribute(
+      "data-align",
+      "center",
+    );
+    expect(
+      screen.getByRole("region", { name: "Gallery filters" }),
+    ).toHaveAttribute("data-anchor", "start");
+    rerender(
+      <Gallery
+        browsePhotos={{ execute }}
+        settings={{
+          ...defaultGallerySettings,
+          pageLayout: {
+            groups: [["heading", "filters", "photos"]],
+            filtersPlacement: "below",
+            headingAlign: "start",
+          },
+        }}
+      />,
+    );
+    expect(cards()).toEqual(["heading filters photos"]);
+    expect(container.querySelector(".gallery-card__row")).toBeNull();
   });
 });

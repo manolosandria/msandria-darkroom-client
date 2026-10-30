@@ -28,59 +28,59 @@ function Harness({ onChange = vi.fn() }: { onChange?: (ids: string[]) => void })
           onChange(ids);
         }}
         search={<input aria-label="Search" />}
-        display={<span>12 photographs</span>}
+        count={<span>12 photographs</span>}
+        display={<button type="button">Squares</button>}
       />
       <button>Outside</button>
     </>
   );
 }
+const filtersButton = () => screen.getByRole("button", { name: /^Filters/ });
 
 describe("Gallery filters", () => {
-  it("offers the curator's departments in one bar with search and display", () => {
+  it("keeps search, one Filters button, reset and the count in the bar", () => {
     render(<Harness />);
     const bar = screen.getByRole("region", { name: "Gallery filters" });
     expect(within(bar).getByLabelText("Search")).toBeInTheDocument();
+    expect(filtersButton()).toHaveAttribute("aria-expanded", "false");
     expect(
-      within(screen.getByRole("toolbar", { name: "Departments" }))
-        .getAllByRole("button")
-        .map((button) => button.textContent),
-    ).toEqual(["Mood", "Subjects", "Other"]);
+      within(bar).getByRole("button", { name: "Clear all filters" }),
+    ).toBeDisabled();
     expect(within(bar).getByText("12 photographs")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Squares" })).toBeNull();
   });
 
-  it("opens one panel where every department is a column", async () => {
+  it("opens one panel with every department as a column and the view options", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
     const panel = document.getElementById(
-      screen.getByRole("button", { name: "Subjects" }).getAttribute("aria-controls")!,
+      filtersButton().getAttribute("aria-controls")!,
     )!;
-    expect(panel).toHaveAttribute("aria-label", "Browse by department");
+    expect(panel).toHaveAttribute("aria-label", "Filters and view");
     expect(panel).not.toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Subjects" }));
+    await user.click(filtersButton());
     expect(panel).toBeVisible();
-    expect(screen.getByRole("button", { name: "Subjects" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    expect(filtersButton()).toHaveAttribute("aria-expanded", "true");
     expect(
       within(panel)
         .getAllByRole("group")
         .map((group) => group.getAttribute("aria-label")),
-    ).toEqual(["Mood", "Subjects", "Other"]);
-    const subjects = within(panel).getByRole("group", { name: "Subjects" });
-    expect(subjects).toHaveAttribute("data-current", "true");
+    ).toEqual(["Mood", "Subjects", "Other", "View"]);
     expect(
-      within(subjects)
+      within(within(panel).getByRole("group", { name: "Subjects" }))
         .getAllByRole("button")
         .map((button) => button.textContent),
     ).toEqual(["Street", "Animal"]);
+    expect(within(panel).getByRole("button", { name: "Squares" })).toBeVisible();
     await user.click(within(panel).getByRole("button", { name: "Rain" }));
     await user.click(within(panel).getByRole("button", { name: "Animal" }));
     expect(onChange).toHaveBeenLastCalledWith(["rain", "animal"]);
-    expect(
-      within(screen.getByRole("button", { name: /Subjects/ })).getByText("1"),
-    ).toBeInTheDocument();
+    expect(within(filtersButton()).getByText("2")).toBeInTheDocument();
+    expect(within(panel).getByRole("group", { name: "Subjects" })).toHaveAttribute(
+      "data-current",
+      "true",
+    );
     const chips = screen.getByRole("list", { name: "Active filters" });
     expect(chips).toHaveTextContent("MoodRain");
     await user.click(
@@ -89,56 +89,39 @@ describe("Gallery filters", () => {
     expect(onChange).toHaveBeenLastCalledWith(["animal"]);
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(panel).not.toBeVisible();
-    expect(screen.getByRole("button", { name: /Subjects/ })).toHaveFocus();
+    expect(filtersButton()).toHaveFocus();
   });
 
   it("moves through departments and categories with the keyboard", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    screen.getByRole("button", { name: "Mood" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Subjects" })).toHaveFocus();
-    await user.keyboard("{ArrowLeft}{ArrowLeft}");
-    expect(screen.getByRole("button", { name: "Other" })).toHaveFocus();
+    filtersButton().focus();
     await user.keyboard("{ArrowDown}");
     await act(() => new Promise(requestAnimationFrame));
-    expect(screen.getByRole("button", { name: "Monochrome" })).toHaveFocus();
-    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("button", { name: "Rain" })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Street" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("button", { name: "Animal" })).toHaveFocus();
-    await user.keyboard("{ArrowUp}{ArrowUp}");
-    expect(screen.getByRole("button", { name: "Subjects" })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Monochrome" })).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Street" })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}{ArrowUp}");
+    expect(filtersButton()).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     await act(() => new Promise(requestAnimationFrame));
-    await user.keyboard("{ArrowRight}{Escape}");
+    await user.keyboard("{Escape}");
     expect(document.querySelector(".gallery-browse__panel")).not.toBeVisible();
-    expect(screen.getByRole("button", { name: "Other" })).toHaveFocus();
+    expect(filtersButton()).toHaveFocus();
   });
 
-  it("closes on a press outside and opens on hover with the mouse", async () => {
-    vi.useFakeTimers();
-    try {
-      render(<Harness />);
-      const mood = screen.getByRole("button", { name: "Mood" });
-      fireEvent.pointerEnter(mood, { pointerType: "mouse" });
-      act(() => vi.advanceTimersByTime(200));
-      expect(mood).toHaveAttribute("aria-expanded", "true");
-      // A click right after the hover opened it keeps it open.
-      fireEvent.click(mood);
-      expect(mood).toHaveAttribute("aria-expanded", "true");
-      fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
-      expect(mood).toHaveAttribute("aria-expanded", "false");
-      fireEvent.pointerEnter(mood, { pointerType: "mouse" });
-      act(() => vi.advanceTimersByTime(200));
-      fireEvent.pointerLeave(
-        screen.getByRole("region", { name: "Gallery filters" }),
-        { pointerType: "mouse" },
-      );
-      act(() => vi.advanceTimersByTime(400));
-      expect(mood).toHaveAttribute("aria-expanded", "false");
-    } finally {
-      vi.useRealTimers();
-    }
+  it("closes on a press outside", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(filtersButton());
+    expect(filtersButton()).toHaveAttribute("aria-expanded", "true");
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+    expect(filtersButton()).toHaveAttribute("aria-expanded", "false");
   });
 });

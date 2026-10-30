@@ -13,6 +13,7 @@ import { useSessionValue } from "./SessionProvider";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { groupGalleryCategories } from "./galleryCategoryGroups";
 import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
+import { GalleryPageLayoutEditor } from "./GalleryPageLayoutEditor";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
@@ -190,6 +191,14 @@ function Editor() {
               await save();
             }}
           >
+            <GalleryPageLayoutEditor
+              value={draft.pageLayout}
+              disabled={busy}
+              onChange={(pageLayout) => {
+                setDraft((previous) => ({ ...previous, pageLayout }));
+                setNotice("");
+              }}
+            />
             <fieldset disabled={busy} className="gallery-editor-style">
               <legend>Type & color</legend>
               <label>
