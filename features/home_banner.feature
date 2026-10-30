@@ -74,3 +74,11 @@ Feature: Home banner studio
     And the target under the pointer lights up and is named beside it
     And releasing applies it, while a press without movement or Escape changes nothing
     And arrow keys on a grip move the block the same way
+
+  Scenario: Arranged lists make room while dragging
+    Given the curator drags a slide, a Gallery block, a filter department or a collection piece by its grip
+    When the dragged item passes over another one
+    Then the others slide out of its way and it shows its new place before the drop
+    And dropping it keeps the new order
+    And Escape puts every item back where it was
+    And the arrow keys on a grip move the item one place

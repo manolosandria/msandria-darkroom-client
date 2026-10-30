@@ -1,5 +1,6 @@
 "use client";
 import { DragEvent, KeyboardEvent, useRef, useState } from "react";
+import { useLiveSort } from "../hooks/useLiveSort";
 import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import {
   GalleryDepartment,
@@ -13,7 +14,7 @@ import {
   newDepartment,
 } from "../galleryDepartmentEdits";
 
-type Drag = { kind: "category" | "department"; id: string } | null;
+type Drag = { kind: "category"; id: string } | null;
 type Target = { department: string | null; index: number } | null;
 
 /**
@@ -33,7 +34,9 @@ export function GalleryDepartmentsEditor({
   /** `undefined` returns to the suggested grouping. */
   onChange: (departments: GalleryDepartment[] | undefined) => void;
 }) {
-  const names = new Map(categories.map((category) => [category.id, category.name]));
+  const names = new Map(
+    categories.map((category) => [category.id, category.name]),
+  );
   // Categories deleted from the catalog drop out here, and with the next save.
   const departments = editableDepartments(categories, settings).map(
     (department) => ({
@@ -41,12 +44,13 @@ export function GalleryDepartmentsEditor({
       categoryIds: department.categoryIds.filter((id) => names.has(id)),
     }),
   );
-  const placed = new Set(departments.flatMap((department) => department.categoryIds));
+  const placed = new Set(
+    departments.flatMap((department) => department.categoryIds),
+  );
   const unsorted = categories.filter((category) => !placed.has(category.id));
   const drag = useRef<Drag>(null);
   const [dragging, setDragging] = useState<Drag>(null);
   const [target, setTarget] = useState<Target>(null);
-  const [departmentTarget, setDepartmentTarget] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const root = useRef<HTMLDivElement>(null);
   const focusLater = (selector: string) =>
@@ -80,6 +84,19 @@ export function GalleryDepartmentsEditor({
     setMessage(`${departments[from].name} is now department ${to + 1}.`);
     focusLater(`[data-department-grip="${CSS.escape(departments[from].id)}"]`);
   }
+  // Departments move by their grip; the others make room as one passes over them.
+  const {
+    order: sortOrder,
+    dragging: sortDragging,
+    attachList,
+    attachItem,
+    itemStyle,
+    gripProps,
+  } = useLiveSort({
+    keys: departments.map((department) => department.id),
+    onMove: shiftDepartment,
+    disabled,
+  });
   const onCategoryKey = (
     event: KeyboardEvent,
     categoryId: string,
@@ -100,7 +117,8 @@ export function GalleryDepartmentsEditor({
       placeCategory(categoryId, department.id, index + 1);
     } else if (event.key === "ArrowUp") {
       // The unsorted tray sits after the last department.
-      const previous = departmentIndex < 0 ? departments.length - 1 : departmentIndex - 1;
+      const previous =
+        departmentIndex < 0 ? departments.length - 1 : departmentIndex - 1;
       if (previous < 0) return;
       handled();
       placeCategory(categoryId, departments[previous].id);
@@ -120,7 +138,6 @@ export function GalleryDepartmentsEditor({
     drag.current = null;
     setDragging(null);
     setTarget(null);
-    setDepartmentTarget(null);
   };
   const overCategory = (
     event: DragEvent,
@@ -159,7 +176,8 @@ export function GalleryDepartmentsEditor({
       className="gallery-departments-editor__chip"
       draggable={!disabled}
       data-dragging={
-        (dragging?.kind === "category" && dragging.id === categoryId) || undefined
+        (dragging?.kind === "category" && dragging.id === categoryId) ||
+        undefined
       }
       data-drop-before={
         (target?.department === zone && target.index === index) || undefined
@@ -220,62 +238,45 @@ export function GalleryDepartmentsEditor({
         them to another department. Unsorted ones close the bar as Other.
       </p>
       <div ref={root} className="gallery-departments-editor__board">
-        <ol className="gallery-departments-editor__list">
-          {departments.map((department, departmentIndex) => {
+        <ol ref={attachList} className="gallery-departments-editor__list">
+          {sortOrder.map((departmentId, shownIndex) => {
+            const departmentIndex = departments.findIndex(
+              (item) => item.id === departmentId,
+            );
+            const department = departments[departmentIndex];
             const visible = department.categoryIds;
+            const grip = gripProps(department.id);
             return (
               <li
                 key={department.id}
+                ref={attachItem(department.id)}
+                style={itemStyle(department.id)}
                 className="gallery-departments-editor__department"
-                data-dragging={
-                  (dragging?.kind === "department" &&
-                    dragging.id === department.id) ||
-                  undefined
-                }
-                data-drop-before={departmentTarget === departmentIndex || undefined}
+                data-dragging={sortDragging === department.id || undefined}
                 data-drop-target={
                   (dragging?.kind === "category" &&
                     target?.department === department.id) ||
                   undefined
                 }
-                onDragOver={(event) => {
-                  if (drag.current?.kind === "department") {
-                    event.preventDefault();
-                    const box = event.currentTarget.getBoundingClientRect();
-                    setDepartmentTarget(
-                      event.clientY > box.top + box.height / 2
-                        ? departmentIndex + 1
-                        : departmentIndex,
-                    );
-                  } else
-                    overCategory(event, department.id, visible.length);
-                }}
-                onDrop={(event) => {
-                  if (drag.current?.kind === "department") {
-                    event.preventDefault();
-                    const from = departments.findIndex(
-                      (item) => item.id === drag.current!.id,
-                    );
-                    const to = departmentTarget ?? departmentIndex;
-                    shiftDepartment(from, from < to ? to - 1 : to);
-                    end();
-                  } else dropCategory(event);
-                }}
+                onDragOver={(event) =>
+                  overCategory(event, department.id, visible.length)
+                }
+                onDrop={dropCategory}
               >
                 <div className="gallery-departments-editor__head">
                   <button
                     type="button"
                     className="gallery-departments-editor__grip"
                     data-department-grip={department.id}
-                    draggable={!disabled}
                     aria-label={`Move department ${department.name}`}
                     title="Drag, or use ↑ ↓"
-                    onDragStart={(event) =>
-                      start(event, { kind: "department", id: department.id })
-                    }
-                    onDragEnd={end}
+                    {...grip}
                     onKeyDown={(event) => {
-                      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                      if (event.key === "Escape") grip.onKeyDown(event);
+                      else if (
+                        event.key === "ArrowUp" ||
+                        event.key === "ArrowDown"
+                      ) {
                         event.preventDefault();
                         shiftDepartment(
                           departmentIndex,
@@ -286,7 +287,7 @@ export function GalleryDepartmentsEditor({
                   >
                     <span aria-hidden="true">⠿</span>
                     <span className="gallery-departments-editor__number">
-                      {departmentIndex + 1}
+                      {shownIndex + 1}
                     </span>
                   </button>
                   <input
@@ -340,9 +341,6 @@ export function GalleryDepartmentsEditor({
               </li>
             );
           })}
-          {departmentTarget === departments.length && (
-            <li className="gallery-departments-editor__end" aria-hidden="true" />
-          )}
         </ol>
         <div
           className="gallery-departments-editor__unsorted"
@@ -356,8 +354,13 @@ export function GalleryDepartmentsEditor({
           <p>
             Unsorted <small>shown as Other</small>
           </p>
-          <ul aria-label="Unsorted categories" className="gallery-departments-editor__chips">
-            {unsorted.map((category, index) => chip(category.id, -1, index, null))}
+          <ul
+            aria-label="Unsorted categories"
+            className="gallery-departments-editor__chips"
+          >
+            {unsorted.map((category, index) =>
+              chip(category.id, -1, index, null),
+            )}
             {unsorted.length === 0 && (
               <li className="gallery-departments-editor__empty">
                 Every category has a department
@@ -373,7 +376,9 @@ export function GalleryDepartmentsEditor({
           onClick={() => {
             const added = newDepartment(departments);
             onChange([...departments, added]);
-            focusLater(`[aria-label="Name of department ${departments.length + 1}"]`);
+            focusLater(
+              `[aria-label="Name of department ${departments.length + 1}"]`,
+            );
           }}
         >
           + Add department

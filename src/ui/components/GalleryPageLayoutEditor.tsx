@@ -1,5 +1,6 @@
 "use client";
-import { ReactNode } from "react";
+import { Fragment, ReactNode } from "react";
+import { useLiveSort } from "../hooks/useLiveSort";
 import {
   defaultGalleryPageLayout,
   GalleryPageBlock,
@@ -10,11 +11,13 @@ import {
 /** The blocks in reading order, and whether each one shares a card with the next. */
 export function flattenGroups(groups: GalleryPageBlock[][]) {
   const order = groups.flat();
-  const joined = order.slice(0, -1).map((block, index) =>
-    groups.some(
-      (group) => group.includes(block) && group.includes(order[index + 1]),
-    ),
-  );
+  const joined = order
+    .slice(0, -1)
+    .map((block, index) =>
+      groups.some(
+        (group) => group.includes(block) && group.includes(order[index + 1]),
+      ),
+    );
   return { order, joined };
 }
 export function buildGroups(order: GalleryPageBlock[], joined: boolean[]) {
@@ -27,10 +30,19 @@ export function buildGroups(order: GalleryPageBlock[], joined: boolean[]) {
 }
 
 const presets: { label: string; groups: GalleryPageBlock[][] }[] = [
-  { label: "Title and filters together", groups: [["heading", "filters"], ["photos"]] },
+  {
+    label: "Title and filters together",
+    groups: [["heading", "filters"], ["photos"]],
+  },
   { label: "All in one card", groups: [["heading", "filters", "photos"]] },
-  { label: "Each in its own card", groups: [["heading"], ["filters"], ["photos"]] },
-  { label: "Filters with the photographs", groups: [["heading"], ["filters", "photos"]] },
+  {
+    label: "Each in its own card",
+    groups: [["heading"], ["filters"], ["photos"]],
+  },
+  {
+    label: "Filters with the photographs",
+    groups: [["heading"], ["filters", "photos"]],
+  },
 ];
 
 // A small drawing of the page: one rounded card per group, its blocks inside.
@@ -59,22 +71,57 @@ function LayoutDrawing({
         pairInside && block === "heading" ? heights.heading : heights[block];
       if (pairInside && block === "heading") {
         shapes.push(
-          <rect key={`${index}h`} x={5} y={inner} width={16} height={height} className="layout-drawing__heading" />,
-          <rect key={`${index}f`} x={23} y={inner + height - 4} width={20} height={4} className="layout-drawing__filters" />,
+          <rect
+            key={`${index}h`}
+            x={5}
+            y={inner}
+            width={16}
+            height={height}
+            className="layout-drawing__heading"
+          />,
+          <rect
+            key={`${index}f`}
+            x={23}
+            y={inner + height - 4}
+            width={20}
+            height={4}
+            className="layout-drawing__filters"
+          />,
         );
       } else
         shapes.push(
-          <rect key={`${index}${block}`} x={5} y={inner} width={38} height={height} className={`layout-drawing__${block}`} />,
+          <rect
+            key={`${index}${block}`}
+            x={5}
+            y={inner}
+            width={38}
+            height={height}
+            className={`layout-drawing__${block}`}
+          />,
         );
       inner += height + 2;
     });
     shapes.unshift(
-      <rect key={`card${index}`} x={2} y={top} width={44} height={inner - top} rx={2.5} className="layout-drawing__card" />,
+      <rect
+        key={`card${index}`}
+        x={2}
+        y={top}
+        width={44}
+        height={inner - top}
+        rx={2.5}
+        className="layout-drawing__card"
+      />,
     );
     y = inner + 2;
   });
   return (
-    <svg viewBox={`0 0 48 ${y}`} width="48" height={y} aria-hidden="true" className="layout-drawing">
+    <svg
+      viewBox={`0 0 48 ${y}`}
+      width="48"
+      height={y}
+      aria-hidden="true"
+      className="layout-drawing"
+    >
       {shapes}
     </svg>
   );
@@ -92,23 +139,36 @@ export function GalleryPageLayoutEditor({
   const { order, joined } = flattenGroups(value.groups);
   const set = (patch: Partial<GalleryPageLayout>) =>
     onChange({ ...value, ...patch });
-  const move = (index: number, step: number) => {
-    const to = index + step;
+  // Blocks move, the cards' seams stay where they are: a card keeps its place.
+  const moveTo = (from: number, to: number) => {
     if (to < 0 || to >= order.length) return;
     const next = [...order];
-    [next[index], next[to]] = [next[to], next[index]];
+    const [block] = next.splice(from, 1);
+    next.splice(to, 0, block);
     set({ groups: buildGroups(next, joined) });
   };
+  const {
+    order: sortOrder,
+    dragging: sortDragging,
+    attachList,
+    attachItem,
+    itemStyle,
+    gripProps,
+  } = useLiveSort({ keys: order, onMove: moveTo, disabled });
   const same = (a: GalleryPageBlock[][], b: GalleryPageBlock[][]) =>
     JSON.stringify(a) === JSON.stringify(b);
   return (
     <fieldset disabled={disabled} className="gallery-page-layout">
       <legend>Page layout</legend>
       <p className="gallery-page-layout__help">
-        Put the title, the filters and the photographs in cards: together, apart,
-        and in the order you want.
+        Put the title, the filters and the photographs in cards: together,
+        apart, and in the order you want.
       </p>
-      <div className="gallery-page-layout__presets" role="group" aria-label="Layouts">
+      <div
+        className="gallery-page-layout__presets"
+        role="group"
+        aria-label="Layouts"
+      >
         {presets.map((preset) => (
           <button
             key={preset.label}
@@ -117,14 +177,22 @@ export function GalleryPageLayoutEditor({
             title={preset.label}
             onClick={() => set({ groups: preset.groups })}
           >
-            <LayoutDrawing groups={preset.groups} side={value.filtersPlacement === "side"} />
+            <LayoutDrawing
+              groups={preset.groups}
+              side={value.filtersPlacement === "side"}
+            />
             <small>{preset.label}</small>
           </button>
         ))}
       </div>
-      <ol className="gallery-page-layout__sequence" aria-label="Blocks in reading order">
-        {order.map((block, index) => (
-          <li key={block}>
+      <div
+        ref={attachList}
+        role="list"
+        className="gallery-page-layout__sequence"
+        aria-label="Blocks in reading order"
+      >
+        {sortOrder.map((block, index) => (
+          <Fragment key={block}>
             {index > 0 && (
               <button
                 type="button"
@@ -132,7 +200,7 @@ export function GalleryPageLayoutEditor({
                 aria-pressed={joined[index - 1]}
                 title={
                   joined[index - 1]
-                    ? `${galleryPageBlockLabels[order[index - 1]]} and ${galleryPageBlockLabels[block]} share a card`
+                    ? `${galleryPageBlockLabels[sortOrder[index - 1]]} and ${galleryPageBlockLabels[block]} share a card`
                     : `${galleryPageBlockLabels[block]} starts a new card`
                 }
                 onClick={() => {
@@ -144,13 +212,31 @@ export function GalleryPageLayoutEditor({
                 {joined[index - 1] ? "Same card" : "New card"}
               </button>
             )}
-            <span className="gallery-page-layout__block" data-block={block}>
+            <div
+              role="listitem"
+              ref={attachItem(block)}
+              style={itemStyle(block)}
+              className="gallery-page-layout__block"
+              data-block={block}
+              data-dragging={sortDragging === block || undefined}
+            >
+              <button
+                type="button"
+                className="gallery-page-layout__grip"
+                aria-label={`Reorder ${galleryPageBlockLabels[block]}, position ${index + 1} of ${order.length}`}
+                title="Drag to reorder · arrow keys move it"
+                {...gripProps(block)}
+              >
+                <span aria-hidden="true">⠿</span>
+              </button>
               <span>{galleryPageBlockLabels[block]}</span>
               <button
                 type="button"
                 aria-label={`Move ${galleryPageBlockLabels[block]} earlier`}
                 disabled={index === 0}
-                onClick={() => move(index, -1)}
+                onClick={() =>
+                  moveTo(order.indexOf(block), order.indexOf(block) - 1)
+                }
               >
                 ↑
               </button>
@@ -158,15 +244,21 @@ export function GalleryPageLayoutEditor({
                 type="button"
                 aria-label={`Move ${galleryPageBlockLabels[block]} later`}
                 disabled={index === order.length - 1}
-                onClick={() => move(index, 1)}
+                onClick={() =>
+                  moveTo(order.indexOf(block), order.indexOf(block) + 1)
+                }
               >
                 ↓
               </button>
-            </span>
-          </li>
+            </div>
+          </Fragment>
         ))}
-      </ol>
-      <div className="gallery-page-layout__choice" role="radiogroup" aria-label="Filters">
+      </div>
+      <div
+        className="gallery-page-layout__choice"
+        role="radiogroup"
+        aria-label="Filters"
+      >
         <span>Filters</span>
         {(["below", "side"] as const).map((placement) => (
           <button
@@ -180,7 +272,11 @@ export function GalleryPageLayoutEditor({
           </button>
         ))}
       </div>
-      <div className="gallery-page-layout__choice" role="radiogroup" aria-label="Title alignment">
+      <div
+        className="gallery-page-layout__choice"
+        role="radiogroup"
+        aria-label="Title alignment"
+      >
         <span>Title</span>
         {(["start", "center", "end"] as const).map((align) => (
           <button
@@ -190,7 +286,11 @@ export function GalleryPageLayoutEditor({
             aria-checked={value.headingAlign === align}
             onClick={() => set({ headingAlign: align })}
           >
-            {align === "start" ? "Left" : align === "center" ? "Centered" : "Right"}
+            {align === "start"
+              ? "Left"
+              : align === "center"
+                ? "Centered"
+                : "Right"}
           </button>
         ))}
       </div>
