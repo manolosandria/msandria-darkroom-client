@@ -437,3 +437,61 @@
 }
 /* Over the photograph, the slide title moves to the side Welcome leaves free. */
 .home-gallery--text-overlay:not([class*="welcome-top-right"]):not(.home-gallery--welcome-right):not([class*="welcome-bottom-right"]) .home-carousel__caption { justify-content:flex-end; text-align:right; }
+
+/* Welcome placed freely over the photograph: its top-left corner at x and y, as a
+   share of the banner. On a phone it spans the width and keeps its height. */
+.home-gallery--text-overlay.home-gallery--welcome-free .home-gallery__intro {
+  position: absolute;
+  left: var(--welcome-x, 0%);
+  top: var(--welcome-y, 0%);
+  margin: 0;
+  max-width: calc(100% - var(--welcome-x, 0%));
+}
+@container (max-width: 800px) {
+  .home-gallery--text-overlay.home-gallery--welcome-free .home-gallery__intro {
+    left: var(--welcome-margin);
+    right: var(--welcome-margin);
+    max-width: none;
+  }
+}
+/* Curator: the panel moves with the pointer and resizes from its edge or corner. */
+.home-gallery--editing.home-gallery--text-overlay .home-gallery__intro {
+  cursor: move;
+  touch-action: none;
+  outline: 1px dashed color-mix(in srgb, var(--welcome-text, #fff) 55%, transparent);
+  outline-offset: 3px;
+}
+.home-gallery--editing .home-gallery__intro[data-own] {
+  outline-style: solid;
+  outline-color: #e2b64c;
+}
+.welcome-resize {
+  position: absolute;
+  z-index: 4;
+  touch-action: none;
+}
+.welcome-resize--edge {
+  top: 20%;
+  bottom: 20%;
+  right: -7px;
+  width: 12px;
+  cursor: ew-resize;
+}
+.welcome-resize--corner {
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px #4f6638, 0 2px 6px #0006;
+  cursor: nwse-resize;
+}
+.welcome-resize--edge::after {
+  content: "";
+  position: absolute;
+  inset: 25% 4px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #4f6638;
+}

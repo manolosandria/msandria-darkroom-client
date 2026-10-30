@@ -39,6 +39,16 @@ const getPhotos = {
       photo("p", "PRIVATE"),
     ]),
 };
+const general = {
+  eyebrow: "GENERAL",
+  title: "A moment.",
+  accentText: "Another way",
+  linkText: "Explore",
+  href: "/gallery",
+  position: "bottom-left" as const,
+  width: 50,
+  fontSize: 72,
+};
 const changes: NonNullable<HomeBanner["slides"]>[] = [];
 const latestOf = () => changes[changes.length - 1];
 function Harness({
@@ -56,6 +66,7 @@ function Harness({
       getPhotos={getPhotos}
       onFocusSlide={onFocusSlide}
       activePhotoId="b"
+      general={general}
     />
   );
 }
@@ -174,5 +185,32 @@ describe("BannerSlideList", () => {
     expect(
       screen.getByRole("button", { name: "Add Photo x to Home" }),
     ).toBeDisabled();
+  });
+  it("gives a slide its own title, edits it, puts it back in place and returns to the general one", async () => {
+    const onFocusSlide = vi.fn();
+    render(<Harness initial={[slide("a")]} onFocusSlide={onFocusSlide} />);
+    await screen.findAllByRole("listitem");
+    fireEvent.click(screen.getByText("Own title"));
+    fireEvent.click(screen.getByRole("button", { name: "Give it its own" }));
+    expect(latestOf()[0].heading).toEqual(general);
+    expect(onFocusSlide).toHaveBeenCalledWith("a");
+    expect(screen.getByText("on")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Calaca" },
+    });
+    fireEvent.change(screen.getByLabelText(/Title size/), {
+      target: { value: "40" },
+    });
+    expect(latestOf()[0].heading).toMatchObject({ title: "Calaca", fontSize: 40 });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Same place as the general title" }),
+    );
+    expect(latestOf()[0].heading).toMatchObject({
+      position: "bottom-left",
+      width: 50,
+      title: "Calaca",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use the general title" }));
+    expect(latestOf()[0].heading).toBeUndefined();
   });
 });
