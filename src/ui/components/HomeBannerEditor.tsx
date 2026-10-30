@@ -469,6 +469,44 @@ function Editor() {
                 onArrange={busy ? undefined : arrange}
                 focusSlide={focusSlide}
                 onActiveChange={onActiveChange}
+                onPlaceWelcome={
+                  busy
+                    ? undefined
+                    : ({ x, y, width, fontSize }, photoId) => {
+                        setDraft((previous) => {
+                          const free =
+                            x !== undefined && y !== undefined ? { x, y } : {};
+                          if (photoId)
+                            return {
+                              ...previous,
+                              slides: previous.slides?.map((item) =>
+                                item.photoId === photoId && item.heading
+                                  ? {
+                                      ...item,
+                                      heading: {
+                                        ...item.heading,
+                                        ...free,
+                                        width,
+                                        fontSize,
+                                      },
+                                    }
+                                  : item,
+                              ),
+                            };
+                          return {
+                            ...previous,
+                            fontSize,
+                            welcome: {
+                              ...defaultWelcomePanel,
+                              ...previous.welcome,
+                              ...free,
+                              width,
+                            },
+                          };
+                        });
+                        setNotice("");
+                      }
+                }
               />
             </div>
             <BannerSlideList
@@ -476,6 +514,22 @@ function Editor() {
               disabled={busy}
               activePhotoId={activePhotoId}
               onFocusSlide={(photoId) => setFocusSlide({ photoId })}
+              general={{
+                eyebrow: draft.eyebrow,
+                title: draft.title,
+                accentText: draft.accentText,
+                linkText: draft.linkText,
+                href: "/gallery",
+                position:
+                  draft.welcome?.position ?? defaultWelcomePanel.position,
+                ...(draft.welcome?.x !== undefined &&
+                  draft.welcome.y !== undefined && {
+                    x: draft.welcome.x,
+                    y: draft.welcome.y,
+                  }),
+                width: draft.welcome?.width ?? defaultWelcomePanel.width,
+                fontSize: draft.fontSize,
+              }}
               onChange={(slides) => {
                 setDraft((previous) => ({ ...previous, slides }));
                 setNotice("");
@@ -490,9 +544,9 @@ function Editor() {
               <header>
                 <h2>Composition</h2>
                 <p>
-                  Choose a layout, or drag the ⠿ grips of Welcome and Photographs
-                  in the preview: drop on an edge to sit beside the photographs, or
-                  inside to float over them.
+                  Choose a layout, or drag the ⠿ grips of Welcome and
+                  Photographs in the preview: drop on an edge to sit beside the
+                  photographs, or inside to float over them.
                 </p>
               </header>
               <BannerLayoutPicker

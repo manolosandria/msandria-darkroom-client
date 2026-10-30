@@ -298,3 +298,15 @@
 @media (min-width: 1101px) {
   .banner-editor__preview { max-height:calc(100vh - 2rem); overflow-x:clip; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 }
+.welcome-panel-controls__hint { margin:.4rem 0 0; font-size:.7rem; line-height:1.3; opacity:.75; max-width:14rem; }
+/* A slide's own title, folded under its card. */
+.slide-heading { margin:.4rem 0; border:1px solid #d2d7ca; border-radius:8px; background:#fafbf7; }
+.slide-heading summary { display:flex; align-items:center; gap:.4rem; padding:.45rem .6rem; font-size:.78rem; font-weight:600; cursor:pointer; }
+.slide-heading__on { padding:.05rem .45rem; border-radius:999px; background:#e2b64c; color:#2c2205; font-size:.65rem; text-transform:uppercase; letter-spacing:.06em; }
+.slide-heading__empty, .slide-heading__fields { margin:0; padding:0 .6rem .6rem; font-size:.75rem; }
+.slide-heading__fields { display:grid; gap:.1rem; }
+.slide-heading__fields label { margin:.25rem 0; }
+.slide-heading__fields input:not([type=range]) { width:100%; min-width:0; padding:.4rem; border:1px solid #b6c0ad; border-radius:4px; background:white; box-sizing:border-box; }
+.slide-heading__hint { margin:.2rem 0; opacity:.7; }
+.slide-heading__actions { display:flex; flex-wrap:wrap; gap:.35rem; }
+.banner-editor .slide-heading button { padding:.3rem .55rem; font-size:.7rem; }

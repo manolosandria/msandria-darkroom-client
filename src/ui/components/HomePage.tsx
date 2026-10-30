@@ -5,6 +5,7 @@ import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import { rememberViewerSequence } from "@/src/ui/viewerSequence";
 import { ArrangeTarget, BannerHandle, useBannerArrange } from "./BannerArrange";
 import { ResolutionBadge } from "./ResolutionBadge";
+import { useWelcomePlacement } from "./welcomePlacement";
 import Link from "next/link";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
 import { getHomePhotos as defaultGetAllPhotos } from "@/src/infrastructure/photoServices";
@@ -25,6 +26,7 @@ import {
   defaultHomeBanner,
   defaultWelcomePanel,
   HomeBanner,
+  WelcomePlacement,
 } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
 export default function HomePage({
@@ -36,6 +38,7 @@ export default function HomePage({
   onArrange,
   focusSlide,
   onActiveChange,
+  onPlaceWelcome,
 }: {
   getAllPhotos?: Pick<GetAllPhotos, "execute">;
   getPhotoById?: Pick<GetPhotoById, "execute">;
@@ -48,6 +51,11 @@ export default function HomePage({
   focusSlide?: { photoId: string };
   /** Curator only: told which slide is showing. */
   onActiveChange?: (photoId: string) => void;
+  /**
+   * Curator only: the Welcome panel over the photograph was moved or resized. The
+   * photo id names the slide whose own title it is; without it, the general one.
+   */
+  onPlaceWelcome?: (placement: WelcomePlacement, photoId?: string) => void;
 }) {
   const [savedBanner, setSavedBanner] = useState<HomeBanner>(defaultHomeBanner);
   useEffect(() => {
@@ -68,7 +76,9 @@ export default function HomePage({
   const banner = previewBanner ?? savedBanner;
   // Slides chosen in Curator decide the carousel, in their order. Without any, or when
   // none of them can be shown, Home draws eligible photos at random.
-  const slideIds = (banner.slides ?? []).map((slide) => slide.photoId).join("|");
+  const slideIds = (banner.slides ?? [])
+    .map((slide) => slide.photoId)
+    .join("|");
   const [details, setDetails] = useState<Record<string, Photo>>({});
   const fetchPhotos = useCallback(async () => {
     if (slideIds) {
@@ -146,8 +156,42 @@ export default function HomePage({
   const slide = banner.slides?.find((item) => item.photoId === photo?.getId());
   const destination =
     slide?.href ?? `/photo/${encodeURIComponent(photo?.getId() ?? "")}`;
-  const welcome = { ...defaultWelcomePanel, ...banner.welcome };
+  const general = { ...defaultWelcomePanel, ...banner.welcome };
+  // A slide's own title replaces the general one, text, link and placement alike.
+  const heading = slide?.heading;
+  const welcome = heading
+    ? {
+        ...general,
+        position: heading.position,
+        x: heading.x,
+        y: heading.y,
+        width: heading.width,
+      }
+    : general;
+  const free =
+    banner.layout === "text-overlay" &&
+    welcome.x !== undefined &&
+    welcome.y !== undefined;
+  const words = heading ?? {
+    eyebrow: banner.eyebrow,
+    title: banner.title,
+    accentText: banner.accentText,
+    linkText: banner.linkText,
+    href: "/gallery",
+    fontSize: banner.fontSize,
+  };
   const stage = useRef<HTMLElement>(null);
+  const placement = useWelcomePlacement({
+    stage,
+    current: {
+      width: welcome.width,
+      fontSize: words.fontSize,
+      ...(free && { x: welcome.x, y: welcome.y }),
+    },
+    onPlace:
+      onPlaceWelcome &&
+      ((value) => onPlaceWelcome(value, heading ? slide!.photoId : undefined)),
+  });
   const arrange = useBannerArrange({
     stage,
     layout: banner.layout,
@@ -177,7 +221,7 @@ export default function HomePage({
     <div className="home-banner-scope">
       <main
         ref={stage}
-        className={`home-gallery home-gallery--${banner.layout} home-gallery--${banner.shape} home-gallery--${banner.imageMode ?? "highlight"} home-gallery--nav-${banner.navigation ?? "dots"} home-gallery--controls-${banner.controlsPosition ?? "below"} home-gallery--welcome-${welcome.position} home-gallery--panel-${welcome.panel}${onArrange ? " home-gallery--editing" : ""}${arrange.dragging ? " is-arranging" : ""}`}
+        className={`home-gallery home-gallery--${banner.layout} home-gallery--${banner.shape} home-gallery--${banner.imageMode ?? "highlight"} home-gallery--nav-${banner.navigation ?? "dots"} home-gallery--controls-${banner.controlsPosition ?? "below"} home-gallery--welcome-${free ? "free" : welcome.position} home-gallery--panel-${welcome.panel}${onArrange ? " home-gallery--editing" : ""}${arrange.dragging ? " is-arranging" : ""}`}
         style={
           {
             "--banner-height": `${banner.bannerHeight ?? 620}px`,
@@ -188,30 +232,59 @@ export default function HomePage({
             "--banner-font":
               bannerFonts.find((font) => font.id === banner.font)?.family ??
               bannerFonts[0].family,
-            "--banner-font-size": `${banner.fontSize / 16}rem`,
+            "--banner-font-size": `${words.fontSize / 16}rem`,
             "--banner-align": banner.textAlign,
             "--welcome-width": `${welcome.width}%`,
             "--welcome-panel": welcome.panelColor,
             "--welcome-text": welcome.textColor,
             "--welcome-alpha": `${banner.overlayOpacity ?? 45}%`,
             "--welcome-radius": `${welcome.radius}px`,
+            ...(free && {
+              "--welcome-x": `${welcome.x}%`,
+              "--welcome-y": `${welcome.y}%`,
+            }),
           } as CSSProperties
         }
       >
-        <header className="home-gallery__intro">
+        <header
+          className="home-gallery__intro"
+          data-own={heading ? true : undefined}
+          {...(onPlaceWelcome && banner.layout === "text-overlay"
+            ? placement.panel
+            : {})}
+        >
           {onArrange && (
             <BannerHandle block="text" props={arrange.handle("text")} />
           )}
-          <p>{banner.eyebrow}</p>
+          <p>{words.eyebrow}</p>
           <h1>
-            {banner.title}
+            {words.title}
             <br />
-            <em>{banner.accentText}</em>
+            <em>{words.accentText}</em>
           </h1>
-          {banner.linkText && (
-            <Link href="/gallery">
-              {banner.linkText} <span aria-hidden="true">↗</span>
+          {words.linkText && (
+            <Link
+              href={words.href}
+              onClick={(event) => {
+                if (onPlaceWelcome) event.preventDefault();
+              }}
+            >
+              {words.linkText} <span aria-hidden="true">↗</span>
             </Link>
+          )}
+          {onPlaceWelcome && banner.layout === "text-overlay" && (
+            <>
+              <span
+                className="welcome-resize welcome-resize--edge"
+                aria-hidden="true"
+                {...placement.edge}
+              />
+              <span
+                className="welcome-resize welcome-resize--corner"
+                aria-hidden="true"
+                {...placement.corner}
+              />
+            </>
           )}
         </header>
         <section
