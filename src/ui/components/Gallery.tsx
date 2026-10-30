@@ -1,5 +1,12 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  CSSProperties,
+  ReactNode,
+} from "react";
 import { Catalog } from "@/src/domain/entities/Catalog";
 
 import { galleryCategories } from "@/src/infrastructure/catalogServices";
@@ -13,6 +20,8 @@ import { GalleryFilters } from "./GalleryFilters";
 import { galleryDepartments } from "./galleryCategoryGroups";
 import {
   defaultGallerySettings,
+  defaultGalleryPageLayout,
+  GalleryPageBlock,
   GallerySettings,
   galleryFonts,
   defaultVisitorOptions,
@@ -194,43 +203,52 @@ export default function Gallery({
     "--gallery-mobile-columns": 2,
     "--gallery-gap": `${appearance.gap}px`,
   } as CSSProperties;
-  return (
-    <main
-      className="public-catalog public-gallery gallery-styled"
-      style={style}
-    >
-      <div className="gallery-introduction">
-        <header className="gallery-heading">
-          <h1 className="gallery-sr-only">Gallery</h1>
-          {settings.blocks
-            .filter((block) => block.text.trim())
-            .map((block, index) => (
-              <p
-                key={index}
-                className={`gallery-heading__${block.kind}`}
-                style={
-                  {
-                    "--block-size": `${block.size}px`,
-                    fontFamily:
-                      galleryFonts[
-                        categoryStyle?.customize
+  const pageLayout = settings.pageLayout ?? defaultGalleryPageLayout;
+  const order = pageLayout.groups.flat();
+  // Title and filters that follow each other can sit side by side, inside one card or
+  // as two cards in a row.
+  const paired =
+    pageLayout.filtersPlacement === "side" &&
+    Math.abs(order.indexOf("heading") - order.indexOf("filters")) === 1;
+  const filtersFirst = order.indexOf("filters") < order.indexOf("heading");
+  const blocks: Record<GalleryPageBlock, ReactNode> = {
+    heading: (
+      <header
+        className="gallery-heading"
+        data-align={pageLayout.headingAlign}
+      >
+        <h1 className="gallery-sr-only">Gallery</h1>
+        {settings.blocks
+          .filter((block) => block.text.trim())
+          .map((block, index) => (
+            <p
+              key={index}
+              className={`gallery-heading__${block.kind}`}
+              style={
+                {
+                  "--block-size": `${block.size}px`,
+                  fontFamily:
+                    galleryFonts[
+                      categoryStyle?.customize
+                        ? appearance.font
+                        : block.font === "inherit"
                           ? appearance.font
-                          : block.font === "inherit"
-                            ? appearance.font
-                            : block.font
-                      ],
-                  } as CSSProperties
-                }
-              >
-                {block.text}
-              </p>
-            ))}
-        </header>
-      </div>
+                          : block.font
+                    ],
+                } as CSSProperties
+              }
+            >
+              {block.text}
+            </p>
+          ))}
+      </header>
+    ),
+    filters: (
       <GalleryFilters
         categories={catalog?.categories ?? []}
         settings={settings}
         selected={categoryIds}
+        anchor={paired && filtersFirst ? "start" : "end"}
         onChange={(ids) => {
           setCategoryIds(ids);
           setPage(1);
@@ -263,57 +281,125 @@ export default function Gallery({
             </span>
           </label>
         }
+        count={
+          <span className="gallery-filter-count" aria-live="polite">
+            {count} {count === 1 ? "photograph" : "photographs"}
+          </span>
+        }
         display={
-          <div className="gallery-browse__display">
-            <span className="gallery-filter-count" aria-live="polite">
-              {count} {count === 1 ? "photograph" : "photographs"}
-            </span>
-            <GalleryVisitorControls
-              options={options}
-              layout={layout}
-              crops={crops}
-              onChange={(key, value) => {
-                setDisplay((previous) => ({ ...previous, [key]: value }));
-                setPage(1);
-              }}
-            />
-          </div>
+          <GalleryVisitorControls
+            options={options}
+            layout={layout}
+            crops={crops}
+            onChange={(key, value) => {
+              setDisplay((previous) => ({ ...previous, [key]: value }));
+              setPage(1);
+            }}
+          />
         }
       />
-      {catalogError && (
-        <p role="alert">
-          Categories could not be loaded.{" "}
-          <button onClick={loadCatalog}>Reload categories</button>
-        </p>
-      )}
-      <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
-      {visible &&
-        (visible.length ? (
-          <div aria-busy={loading} className={loading ? "gallery-loading" : undefined}>
-            <GalleryTiles tiles={visible} layout={layout} context={context} />
-          </div>
-        ) : (
-          <p>No photos in this selection.</p>
-        ))}
-      {count > 0 && (
-        <nav className="gallery-pagination" aria-label="Gallery pagination">
-          <button
-            disabled={loading || currentPage === 1}
-            onClick={() => navigate(currentPage - 1)}
-          >
-            ← Previous
-          </button>
-          <span aria-live="polite">
-            Page {currentPage} of {pages}
-          </span>
-          <button
-            disabled={loading || currentPage >= pages}
-            onClick={() => navigate(currentPage + 1)}
-          >
-            Next →
-          </button>
-        </nav>
-      )}
+    ),
+    photos: (
+      <div className="gallery-photos">
+        {catalogError && (
+          <p role="alert">
+            Categories could not be loaded.{" "}
+            <button onClick={loadCatalog}>Reload categories</button>
+          </p>
+        )}
+        <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
+        {visible &&
+          (visible.length ? (
+            <div
+              aria-busy={loading}
+              className={loading ? "gallery-loading" : undefined}
+            >
+              <GalleryTiles tiles={visible} layout={layout} context={context} />
+            </div>
+          ) : (
+            <p>No photos in this selection.</p>
+          ))}
+        {count > 0 && (
+          <nav className="gallery-pagination" aria-label="Gallery pagination">
+            <button
+              disabled={loading || currentPage === 1}
+              onClick={() => navigate(currentPage - 1)}
+            >
+              ← Previous
+            </button>
+            <span aria-live="polite">
+              Page {currentPage} of {pages}
+            </span>
+            <button
+              disabled={loading || currentPage >= pages}
+              onClick={() => navigate(currentPage + 1)}
+            >
+              Next →
+            </button>
+          </nav>
+        )}
+      </div>
+    ),
+  };
+  // Inside a card, a paired title and filters share one row.
+  const cardContent = (group: GalleryPageBlock[]) => {
+    const items: ReactNode[] = [];
+    for (let index = 0; index < group.length; index++) {
+      const block = group[index];
+      const next = group[index + 1];
+      if (
+        paired &&
+        next &&
+        [block, next].includes("heading") &&
+        [block, next].includes("filters")
+      ) {
+        items.push(
+          <div key={block} className="gallery-card__row">
+            {blocks[block]}
+            {blocks[next]}
+          </div>,
+        );
+        index++;
+      } else items.push(<div key={block}>{blocks[block]}</div>);
+    }
+    return items;
+  };
+  const card = (group: GalleryPageBlock[]) => (
+    <div
+      key={group.join("-")}
+      className="gallery-card"
+      data-blocks={group.join(" ")}
+    >
+      {cardContent(group)}
+    </div>
+  );
+  // Two cards holding a paired title and filters alone sit in a row.
+  const cards: ReactNode[] = [];
+  for (let index = 0; index < pageLayout.groups.length; index++) {
+    const group = pageLayout.groups[index];
+    const next = pageLayout.groups[index + 1];
+    const pair = next && [group, next].every((item) => item.length === 1);
+    if (
+      paired &&
+      pair &&
+      [group[0], next[0]].includes("heading") &&
+      [group[0], next[0]].includes("filters")
+    ) {
+      cards.push(
+        <div key="row" className="gallery-cards-row">
+          {card(group)}
+          {card(next)}
+        </div>,
+      );
+      index++;
+    } else cards.push(card(group));
+  }
+  return (
+    <main
+      className="public-catalog public-gallery gallery-styled"
+      style={style}
+    >
+      {cards}
     </main>
   );
 }

@@ -12,14 +12,12 @@ import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import { GallerySettings } from "@/src/domain/entities/GallerySettings";
 import { galleryDepartments } from "./galleryCategoryGroups";
 
-const HOVER_OPEN_MS = 120;
-const HOVER_CLOSE_MS = 250;
-
 /**
- * The gallery's browse bar, laid out like the departments of a shop: search, one tab
- * per department and a reset share one bar; a tab opens a single panel under it where
- * every department is a column, so moving between them never leaves the panel. Any
- * category of a department matches, and each department chosen narrows the others.
+ * The gallery's browse bar: search, one **Filters** button and a reset. The button
+ * opens a single panel where every department is a column and the display options
+ * close it, so nothing about how to filter competes with the photographs until asked
+ * for. Any category of a department matches, and each department chosen narrows the
+ * others.
  */
 export function GalleryFilters({
   categories,
@@ -27,7 +25,9 @@ export function GalleryFilters({
   selected,
   onChange,
   search,
+  count,
   display,
+  anchor = "end",
 }: {
   categories: CatalogCategory[];
   settings: Pick<GallerySettings, "departments" | "categories">;
@@ -35,14 +35,17 @@ export function GalleryFilters({
   onChange: (ids: string[]) => void;
   /** The search field, which leads the bar. */
   search?: ReactNode;
-  /** Display options and the photograph count, at the end of the bar's second line. */
+  /** The photograph count, beside the chosen filters. */
+  count?: ReactNode;
+  /** How the photographs are shown, at the foot of the panel. */
   display?: ReactNode;
+  /** The edge of the bar the panel lines up with; it grows towards the other. */
+  anchor?: "start" | "end";
 }) {
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const hoverOpened = useRef({ department: "", at: 0 });
+  const toggleButton = useRef<HTMLButtonElement>(null);
   const departments = galleryDepartments(categories, settings);
   const chosen = departments.flatMap((department) =>
     department.categories
@@ -55,25 +58,19 @@ export function GalleryFilters({
         ? selected.filter((item) => item !== categoryId)
         : [...selected, categoryId],
     );
-  const later = (action: () => void, delay: number) => {
-    clearTimeout(timer.current);
-    timer.current = setTimeout(action, delay);
+  const close = (returnFocus: boolean) => {
+    setOpen(false);
+    if (returnFocus) toggleButton.current?.focus();
   };
-  useEffect(() => () => clearTimeout(timer.current), []);
   // A press anywhere outside the bar and its panel closes the panel.
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(null);
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
-  const tabs = () =>
-    Array.from(
-      root.current?.querySelectorAll<HTMLButtonElement>(".gallery-department") ??
-        [],
-    );
   const options = (departmentId: string) =>
     Array.from(
       root.current?.querySelectorAll<HTMLButtonElement>(
@@ -83,23 +80,6 @@ export function GalleryFilters({
   const focusOption = (departmentId: string, index: number) => {
     const list = options(departmentId);
     list[Math.max(0, Math.min(index, list.length - 1))]?.focus();
-  };
-  const onTabKey = (event: KeyboardEvent, departmentId: string) => {
-    const all = tabs();
-    const index = all.indexOf(event.currentTarget as HTMLButtonElement);
-    const move = (to: number) => {
-      event.preventDefault();
-      const target = all[(to + all.length) % all.length];
-      target?.focus();
-      if (open) setOpen(target?.dataset.department ?? open);
-    };
-    if (event.key === "ArrowRight") move(index + 1);
-    else if (event.key === "ArrowLeft") move(index - 1);
-    else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setOpen(departmentId);
-      requestAnimationFrame(() => focusOption(departmentId, 0));
-    }
   };
   const onOptionKey = (
     event: KeyboardEvent,
@@ -111,7 +91,6 @@ export function GalleryFilters({
       const next = departments[column + step];
       if (!next) return;
       event.preventDefault();
-      setOpen(next.id);
       focusOption(next.id, index);
     };
     if (event.key === "ArrowDown") {
@@ -119,105 +98,76 @@ export function GalleryFilters({
       focusOption(departmentId, index + 1);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      if (index === 0)
-        tabs()
-          .find((tab) => tab.dataset.department === departmentId)
-          ?.focus();
+      if (index === 0 && column === 0) toggleButton.current?.focus();
+      else if (index === 0) focusOption(departments[column - 1].id, 0);
       else focusOption(departmentId, index - 1);
     } else if (event.key === "ArrowRight") side(1);
     else if (event.key === "ArrowLeft") side(-1);
   };
   const panelId = `${id}-panel`;
+  const hasPanel = departments.length > 0 || Boolean(display);
   return (
     <section
       ref={root}
       className="gallery-browse"
       aria-label="Gallery filters"
-      data-open={open ? true : undefined}
-      onPointerEnter={(event) => {
-        if (event.pointerType === "mouse" && open) clearTimeout(timer.current);
-      }}
-      onPointerLeave={(event) => {
-        if (event.pointerType === "mouse") later(() => setOpen(null), HOVER_CLOSE_MS);
-      }}
+      data-open={open || undefined}
+      data-anchor={anchor}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(null);
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && open) {
-          const current = open;
-          setOpen(null);
-          tabs()
-            .find((tab) => tab.dataset.department === current)
-            ?.focus();
-        }
+        if (event.key === "Escape" && open) close(true);
       }}
     >
       <div className="gallery-browse__bar">
         {search}
-        {departments.length > 0 && (
-          <div
-            className="gallery-departments"
-            role="toolbar"
-            aria-label="Departments"
+        {hasPanel && (
+          <button
+            ref={toggleButton}
+            type="button"
+            className="gallery-browse__toggle"
+            aria-expanded={open}
+            aria-controls={panelId}
+            data-active={selected.length > 0 || undefined}
+            onClick={() => setOpen(!open)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" || !departments[0]) return;
+              event.preventDefault();
+              setOpen(true);
+              requestAnimationFrame(() => focusOption(departments[0].id, 0));
+            }}
           >
-            {departments.map((department) => {
-              const count = department.categories.filter((category) =>
-                selected.includes(category.id),
-              ).length;
-              return (
-                <button
-                  key={department.id}
-                  type="button"
-                  className="gallery-department"
-                  data-department={department.id}
-                  data-current={open === department.id || undefined}
-                  data-active={count > 0 || undefined}
-                  aria-expanded={open === department.id}
-                  aria-controls={panelId}
-                  onPointerEnter={(event) => {
-                    if (event.pointerType !== "mouse") return;
-                    later(() => {
-                      hoverOpened.current = {
-                        department: department.id,
-                        at: Date.now(),
-                      };
-                      setOpen(department.id);
-                    }, open ? 0 : HOVER_OPEN_MS);
-                  }}
-                  onClick={() => {
-                    clearTimeout(timer.current);
-                    const justHovered =
-                      hoverOpened.current.department === department.id &&
-                      Date.now() - hoverOpened.current.at < 600;
-                    setOpen(
-                      open === department.id && !justHovered
-                        ? null
-                        : department.id,
-                    );
-                  }}
-                  onKeyDown={(event) => onTabKey(event, department.id)}
-                >
-                  <span>{department.label}</span>
-                  {count > 0 && (
-                    <span className="gallery-department__badge">{count}</span>
-                  )}
-                  <svg
-                    className="gallery-department__caret"
-                    viewBox="0 0 12 12"
-                    width="10"
-                    height="10"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    aria-hidden="true"
-                  >
-                    <path d="M2 4l4 4 4-4" />
-                  </svg>
-                </button>
-              );
-            })}
-          </div>
+            <svg
+              viewBox="0 0 20 20"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
+              <path d="M3 5h14M6 10h8M8.5 15h3" />
+            </svg>
+            <span>Filters</span>
+            {selected.length > 0 && (
+              <span className="gallery-department__badge">
+                {selected.length}
+              </span>
+            )}
+            <svg
+              className="gallery-department__caret"
+              viewBox="0 0 12 12"
+              width="10"
+              height="10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
+              <path d="M2 4l4 4 4-4" />
+            </svg>
+          </button>
         )}
         <button
           type="button"
@@ -227,7 +177,7 @@ export function GalleryFilters({
           disabled={selected.length === 0}
           onClick={() => {
             onChange([]);
-            setOpen(null);
+            setOpen(false);
           }}
         >
           <svg
@@ -244,78 +194,83 @@ export function GalleryFilters({
           </svg>
         </button>
       </div>
-      <div
-        id={panelId}
-        className="gallery-browse__panel"
-        hidden={!open}
-        role="region"
-        aria-label="Browse by department"
-      >
-        <div className="gallery-browse__columns">
-          {departments.map((department) => {
-            const count = department.categories.filter((category) =>
-              selected.includes(category.id),
-            ).length;
-            return (
-              <div
-                key={department.id}
-                className="gallery-browse__column"
-                data-department={department.id}
-                data-current={open === department.id || undefined}
-                role="group"
-                aria-label={department.label}
-                onPointerEnter={(event) => {
-                  if (event.pointerType === "mouse") setOpen(department.id);
-                }}
-              >
-                <p className="gallery-browse__heading">
-                  {department.label}
-                  {count > 0 && <small>{count} chosen</small>}
-                </p>
-                <ul>
-                  {department.categories.map((category, index) => (
-                    <li key={category.id}>
-                      <button
-                        type="button"
-                        className="gallery-browse__option"
-                        aria-pressed={selected.includes(category.id)}
-                        onClick={() => toggle(category.id)}
-                        onFocus={() => setOpen(department.id)}
-                        onKeyDown={(event) =>
-                          onOptionKey(event, department.id, index)
-                        }
-                      >
-                        <span
-                          className="gallery-browse__check"
-                          aria-hidden="true"
-                        />
-                        {category.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+      {hasPanel && (
+        <div
+          id={panelId}
+          className="gallery-browse__panel"
+          hidden={!open}
+          role="region"
+          aria-label="Filters and view"
+        >
+          {departments.length > 0 && (
+            <div className="gallery-browse__columns">
+              {departments.map((department) => {
+                const chosenHere = department.categories.filter((category) =>
+                  selected.includes(category.id),
+                ).length;
+                return (
+                  <div
+                    key={department.id}
+                    className="gallery-browse__column"
+                    data-department={department.id}
+                    data-current={chosenHere > 0 || undefined}
+                    role="group"
+                    aria-label={department.label}
+                  >
+                    <p className="gallery-browse__heading">
+                      {department.label}
+                      {chosenHere > 0 && <small>{chosenHere} chosen</small>}
+                    </p>
+                    <ul>
+                      {department.categories.map((category, index) => (
+                        <li key={category.id}>
+                          <button
+                            type="button"
+                            className="gallery-browse__option"
+                            aria-pressed={selected.includes(category.id)}
+                            onClick={() => toggle(category.id)}
+                            onKeyDown={(event) =>
+                              onOptionKey(event, department.id, index)
+                            }
+                          >
+                            <span
+                              className="gallery-browse__check"
+                              aria-hidden="true"
+                            />
+                            {category.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {display && (
+            <div className="gallery-browse__view" role="group" aria-label="View">
+              <p className="gallery-browse__heading">View</p>
+              {display}
+            </div>
+          )}
+          <div className="gallery-browse__footer">
+            {departments.length > 0 && (
+              <p>
+                Any category within a department; every department chosen
+                narrows the rest.
+              </p>
+            )}
+            <button
+              type="button"
+              className="gallery-browse__done"
+              onClick={() => close(true)}
+            >
+              Done
+            </button>
+          </div>
         </div>
-        <div className="gallery-browse__footer">
-          <p>Any category within a department; every department chosen narrows the rest.</p>
-          <button
-            type="button"
-            className="gallery-browse__done"
-            onClick={() => {
-              const current = open;
-              setOpen(null);
-              tabs()
-                .find((tab) => tab.dataset.department === current)
-                ?.focus();
-            }}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-      {(chosen.length > 0 || display) && (
+      )}
+      {(chosen.length > 0 || count) && (
         <div className="gallery-browse__meta">
           {chosen.length > 0 && (
             <ul className="gallery-browse__chips" aria-label="Active filters">
@@ -334,7 +289,7 @@ export function GalleryFilters({
               ))}
             </ul>
           )}
-          {display}
+          {count}
         </div>
       )}
     </section>

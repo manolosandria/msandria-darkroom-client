@@ -623,15 +623,27 @@ Gallery's categories can be combined: the query sends `categories`, groups separ
 The URL keeps them comma-separated in `category`, so a single `?category=` link still
 works. The first chosen category with its own look themes the page.
 
-The filters are one browse bar (`GalleryFilters`, styles in `galleryFilters.css`) that
-stays at the top of the window: search, the departments as one aisle of joined tabs and
-the round reset icon on its first line; the chosen filters as chips (each with its
-department), the photograph count and the display icons on its second. A department
-opens on hover, click or the down arrow, and one panel continues the card under the
-bar with every department as a column, the chosen one marked; on phones the panel shows
-that department alone. Arrow keys move between tabs, categories and columns; Escape or
-**Done** closes it and returns to the tab. Any category of a department matches, and
-each department chosen narrows the others, so the departments are the query's groups.
+The filters are one browse bar (`GalleryFilters`, styles in `galleryFilters.css`):
+search, a **Filters ▾** button that counts the chosen categories, and the round reset
+icon on its first line; the chosen filters as chips (each with its department) and the
+photograph count on its second. **Filters** (click or the down arrow) opens one panel
+under the bar with every department as a column, those with a choice marked, and the
+display icons under **View**; on phones the departments stack. Arrow keys move between
+categories and columns, up from the first returns to the button; Escape, a press outside
+or **Done** closes it. Any category of a department matches, and each department chosen
+narrows the others, so the departments are the query's groups.
+
+The page is split into cards by `pageLayout` in the gallery settings: `groups` puts the
+title (`heading`), the filters and the photographs into one to three cards in reading
+order, `filtersPlacement` (`below`/`side`) sets the filters beside the title when the two
+are next to each other (in one card, or as two cards in a row; the panel then opens
+towards the page, `anchor`), and `headingAlign` aligns the title. Without it, title and
+filters share a card side by side and the photographs have theirs. The bar sticks to the
+top of the window only when it shares a card with the photographs. Curator → Gallery
+edits it under **Page layout** (`GalleryPageLayoutEditor`): four drawings, the blocks in
+order with ↑ ↓ and a **Same card / New card** switch between neighbours, the filters'
+placement and the title's alignment. The API must accept `pageLayout` before this client
+saves it.
 
 Departments come from `departments` in the gallery settings: an ordered list of
 `{ id, name, categoryIds }` (up to 12, a category in one at most), arranged in Curator →

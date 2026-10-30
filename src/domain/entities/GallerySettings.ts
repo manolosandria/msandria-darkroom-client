@@ -80,8 +80,32 @@ export type GalleryDepartment = {
   name: string;
   categoryIds: string[];
 };
+export const galleryPageBlocks = ["heading", "filters", "photos"] as const;
+export type GalleryPageBlock = (typeof galleryPageBlocks)[number];
+/**
+ * How the page splits into cards: each group is one card holding its blocks in
+ * reading order, and every block appears exactly once.
+ */
+export type GalleryPageLayout = {
+  groups: GalleryPageBlock[][];
+  /** Where the filters go when they follow or precede the title directly. */
+  filtersPlacement: "below" | "side";
+  headingAlign: "start" | "center" | "end";
+};
+export const defaultGalleryPageLayout: GalleryPageLayout = {
+  groups: [["heading", "filters"], ["photos"]],
+  filtersPlacement: "side",
+  headingAlign: "start",
+};
+export const galleryPageBlockLabels: Record<GalleryPageBlock, string> = {
+  heading: "Title",
+  filters: "Filters",
+  photos: "Photographs",
+};
 export type GallerySettings = {
   version: number;
+  /** Without it, the title and filters share a card and the photographs have theirs. */
+  pageLayout?: GalleryPageLayout;
   visitorOptions?: GalleryVisitorOptions;
   palettes?: GalleryPalette[];
   /** Without it, categories are grouped by the built-in vocabulary. */

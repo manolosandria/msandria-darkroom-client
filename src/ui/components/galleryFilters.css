@@ -1,12 +1,13 @@
-/* Gallery's browse bar: search, departments and display options in one card, and the
-   departments' panel continuing under it. Colors come from the gallery's theme. */
+/* Gallery's browse bar: search, the Filters button and reset in one card, and the panel
+   of departments and view options opening under it. Colors come from the gallery's
+   theme. */
 .gallery-browse {
   --browse-card: color-mix(in srgb, var(--gallery-surface) 55%, var(--gallery-background));
   --browse-line: var(--gallery-control-border);
   --browse-radius: 1.1rem;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
+  min-width: 0;
   display: grid;
   margin: 0 0 1.5rem;
   border: 1px solid var(--browse-line);
@@ -16,9 +17,12 @@
   transition: border-radius 0.15s;
 }
 .gallery-browse[data-open] {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
   box-shadow: 0 18px 40px -24px #0007;
+}
+/* Sharing a card with the photographs, the bar stays at the top of the window. */
+.gallery-card:has(.gallery-photos) .gallery-browse {
+  position: sticky;
+  top: 0;
 }
 .gallery-browse button {
   font: inherit;
@@ -75,50 +79,35 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--gallery-accent) 22%, transparent);
 }
 
-/* Departments read as one aisle of joined tabs rather than separate pills. */
-.gallery-departments {
-  display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
-  gap: 2px;
-  padding: 3px;
-  overflow-x: auto;
-  border: 1px solid var(--browse-line);
-  border-radius: 999px;
-  background: var(--gallery-control-fill);
-  scrollbar-width: none;
-}
-.gallery-departments::-webkit-scrollbar {
-  display: none;
-}
-.gallery-browse .gallery-department {
+/* One button holds every way of narrowing the archive. */
+.gallery-browse .gallery-browse__toggle {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 0.45rem;
-  height: calc(var(--gallery-control-height) - 8px);
-  padding: 0 0.95rem;
-  border: 0;
+  gap: 0.5rem;
+  height: var(--gallery-control-height);
+  padding: 0 1.05rem;
+  border: 1px solid var(--browse-line);
   border-radius: 999px;
-  background: transparent;
+  background: var(--gallery-control-fill);
   font-family: var(--gallery-font);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   white-space: nowrap;
   transition:
     background-color 0.15s,
     color 0.15s,
     box-shadow 0.15s;
 }
-.gallery-department:hover {
-  background: color-mix(in srgb, var(--gallery-background) 75%, transparent);
+.gallery-browse__toggle:hover {
+  background: var(--gallery-background);
 }
-.gallery-department[data-current] {
+.gallery-browse__toggle[aria-expanded="true"] {
   background: var(--gallery-background);
   box-shadow:
     0 1px 2px #0002,
     0 0 0 1px color-mix(in srgb, var(--gallery-accent) 40%, transparent);
 }
-.gallery-department[data-active] {
+.gallery-browse__toggle[data-active] {
   color: var(--gallery-accent);
 }
 .gallery-department__badge {
@@ -136,7 +125,7 @@
   opacity: 0.55;
   transition: transform 0.15s;
 }
-.gallery-department[aria-expanded="true"] .gallery-department__caret {
+.gallery-browse__toggle[aria-expanded="true"] .gallery-department__caret {
   transform: rotate(180deg);
 }
 .gallery-browse__reset {
@@ -163,7 +152,7 @@
   cursor: default;
 }
 
-/* Second line: what is chosen on the left, how it is shown on the right. */
+/* Second line: what is chosen on the left, the count on the right. */
 .gallery-browse__meta {
   display: flex;
   flex-wrap: wrap;
@@ -208,6 +197,7 @@
   margin-left: auto;
 }
 .gallery-browse .gallery-filter-count {
+  margin-left: auto;
   font-family: var(--gallery-font);
   font-size: 0.85rem;
   opacity: 0.75;
@@ -279,16 +269,17 @@
   opacity: 0.6;
 }
 
-/* The panel continues the card: every department is a column of it. */
+/* The panel drops from the bar: every department is a column, the view options close
+   it. It is at least wide enough for a few columns, and opens towards the page. */
 .gallery-browse__panel {
   position: absolute;
-  top: 100%;
-  left: -1px;
+  top: calc(100% + 0.4rem);
   right: -1px;
+  left: auto;
+  width: max(100% + 2px, min(44rem, 100cqw - 2rem));
   display: grid;
   border: 1px solid var(--browse-line);
-  border-top: 0;
-  border-radius: 0 0 var(--browse-radius) var(--browse-radius);
+  border-radius: var(--browse-radius);
   background: var(--browse-card);
   box-shadow: 0 24px 40px -22px #0008;
   animation: gallery-browse-open 0.16s ease-out;
@@ -302,12 +293,25 @@
     transform: translateY(-6px);
   }
 }
+.gallery-browse[data-anchor="start"] .gallery-browse__panel {
+  right: auto;
+  left: -1px;
+}
 .gallery-browse__columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-  max-height: min(60vh, 26rem);
+  max-height: min(50vh, 24rem);
   overflow-y: auto;
+}
+.gallery-browse__view {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 1.2rem 0.9rem;
   border-top: 1px solid color-mix(in srgb, var(--browse-line) 70%, transparent);
+}
+.gallery-browse__view .gallery-browse__heading {
+  padding: 0;
+  margin: 0;
 }
 .gallery-browse__column {
   display: grid;
@@ -418,23 +422,14 @@
   font-size: 0.82rem;
 }
 
-/* Narrow screens: search on its own line, the aisle scrolls sideways, and the panel
-   shows the chosen department alone. */
+/* Narrow screens: the panel spans the bar and its departments stack. */
 @container (max-width: 700px) {
-  .gallery-browse__bar {
-    flex-wrap: wrap;
-  }
-  .gallery-browse .gallery-search {
-    flex-basis: 100%;
-  }
-  .gallery-departments {
-    flex: 1 1 0;
-  }
-  .gallery-browse__column:not([data-current]) {
-    display: none;
+  .gallery-browse__panel {
+    width: calc(100% + 2px);
   }
   .gallery-browse__column {
     border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--browse-line) 60%, transparent);
   }
   .gallery-browse__column ul {
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
@@ -444,9 +439,6 @@
   }
   .gallery-browse__footer {
     justify-content: flex-end;
-  }
-  .gallery-browse__display {
-    margin-left: 0;
   }
   .gallery-browse .gallery-segmented__caption {
     display: none;
