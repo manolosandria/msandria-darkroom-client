@@ -54,11 +54,17 @@ Feature: Home banner studio
   Scenario: Manage Home slides like a collection
     Given an administrator opens Curator Home
     When they add public photographs from the thumbnail strip
-    And give each slide a title and a link destination
-    And drag a card by its grip or press an arrow key on it
+    And drag a slide's thumbnail from anywhere on it, or press an arrow key on it
     Then the slides keep that order, up to eight
     And a slide whose photograph is not enabled for Home is flagged
-    And clicking a card shows that slide in the preview
+    And clicking a thumbnail opens that slide's detail under the strip and shows it in the preview
+    And the detail edits the slide's title, link destination and place in the order
+
+  Scenario: Keep dragging a slide to the right
+    Given three slides in Curator → Home
+    When the curator drags the first thumbnail past the second and on past the third
+    Then it keeps following the pointer after each place it passes
+    And dropping it makes it the last slide
 
   Scenario: Place Welcome over the photograph
     Given an administrator chooses the Welcome over photo layout
@@ -76,7 +82,7 @@ Feature: Home banner studio
     And arrow keys on a grip move the block the same way
 
   Scenario: Arranged lists make room while dragging
-    Given the curator drags a slide, a Gallery block, a filter department or a collection piece by its grip
+    Given the curator drags a slide thumbnail, a Gallery block, a filter department or a collection piece by its grip
     When the dragged item passes over another one
     Then the others slide out of its way and it shows its new place before the drop
     And dropping it keeps the new order
@@ -93,8 +99,8 @@ Feature: Home banner studio
 
   Scenario: Give a slide its own title
     Given a slide in Curator → Home
-    When the curator opens Own title and gives the slide its own
+    When the curator switches the slide's Welcome title from General title to Own title
     Then it starts from the general title and its place
     And its words, link destination, size and place can be changed apart from the general title
     And Home shows it instead of the general title while that slide is on show
-    And Use the general title removes it
+    And switching back to General title removes it

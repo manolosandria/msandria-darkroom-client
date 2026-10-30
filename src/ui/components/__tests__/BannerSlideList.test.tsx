@@ -103,57 +103,75 @@ describe("BannerSlideList", () => {
     ).toBeNull();
   });
 
-  it("edits each slide's title and link and removes slides", async () => {
+  it("edits the chosen slide in a detail under the strip and removes slides", async () => {
     render(<Harness initial={[slide("a"), slide("b")]} />);
-    fireEvent.change(await screen.findByLabelText("Title for Photo b"), {
+    // The preview shows b, so b is the slide in the detail.
+    const thumbB = await screen.findByRole("button", {
+      name: "Slide 2 of 2: Photo b",
+    });
+    expect(thumbB).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText("Title for Photo a")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Title for Photo b"), {
       target: { value: "Follow me" },
     });
     expect(latestOf()[1]).toEqual({ ...slide("b"), text: "Follow me" });
-    const card = screen.getByLabelText("Title for Photo a").closest("li")!;
-    expect(card).not.toHaveClass("is-active");
-    expect(
-      screen.getByLabelText("Title for Photo b").closest("li"),
-    ).toHaveClass("is-active");
-    await within(card).findByRole("option", { name: "Gallery category" });
-    fireEvent.change(within(card).getByLabelText("Link destination"), {
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Slide 1 of 2: Photo a" }),
+    );
+    const detail = screen.getByRole("region", { name: "Slide 1: Photo a" });
+    expect(within(detail).getByLabelText("Title for Photo a")).toBeVisible();
+    await within(detail).findByRole("option", { name: "Gallery category" });
+    fireEvent.change(within(detail).getByLabelText("Link destination"), {
       target: { value: "category" },
     });
     expect(latestOf()[0].href).toBe("/gallery?category=city");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Remove Photo a from Home" }),
-    );
+    fireEvent.click(within(detail).getByRole("button", { name: "Remove" }));
     expect(latestOf().map((item) => item.photoId)).toEqual(["b"]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Photo b from Home" }),
+    );
+    expect(latestOf()).toEqual([]);
   });
 
-  it("reorders by dragging a card's grip, by arrow keys or by buttons", async () => {
-    render(<Harness initial={[slide("a"), slide("b"), slide("c")]} />);
-    const cards = await screen.findAllByRole("listitem");
-    cards.forEach((card, index) => {
-      card.getBoundingClientRect = () =>
-        ({ left: index * 220, top: 0, width: 200, height: 300 }) as DOMRect;
+  it("reorders by dragging a thumbnail from anywhere, by arrow keys or by buttons", async () => {
+    const onFocusSlide = vi.fn();
+    render(
+      <Harness
+        initial={[slide("a"), slide("b"), slide("c")]}
+        onFocusSlide={onFocusSlide}
+      />,
+    );
+    const items = within(
+      await screen.findByRole("list", { name: "Slide order" }),
+    ).getAllByRole("listitem");
+    items.forEach((item, index) => {
+      item.getBoundingClientRect = () =>
+        ({ left: index * 140, top: 0, width: 132, height: 88 }) as DOMRect;
     });
-    const grip = screen.getByRole("button", {
-      name: "Reorder Photo a, position 1 of 3",
-    });
-    fireEvent.pointerDown(grip, { button: 0, clientX: 100, clientY: 20 });
-    fireEvent.pointerMove(grip, { clientX: 540, clientY: 40 });
-    expect(cards[0]).toHaveClass("is-dragged");
-    // The others make room while dragging: the card already shows its new place.
+    const thumb = screen.getByRole("button", { name: "Slide 1 of 3: Photo a" });
+    fireEvent.pointerDown(thumb, { button: 0, clientX: 60, clientY: 40 });
+    fireEvent.pointerMove(thumb, { clientX: 350, clientY: 40 });
+    expect(items[0]).toHaveClass("is-dragged");
+    // The others make room while dragging: the thumbnail already shows its new place.
     expect(
-      screen
-        .getAllByRole("button", { name: /^Reorder/ })
-        .map((grip) => grip.getAttribute("aria-label")),
+      within(screen.getByRole("list", { name: "Slide order" }))
+        .getAllByRole("button", { name: /^Slide/ })
+        .map((button) => button.getAttribute("aria-label")),
     ).toEqual([
-      "Reorder Photo b, position 1 of 3",
-      "Reorder Árbol del Médano, position 2 of 3",
-      "Reorder Photo a, position 3 of 3",
+      "Slide 1 of 3: Photo b",
+      "Slide 2 of 3: Árbol del Médano",
+      "Slide 3 of 3: Photo a",
     ]);
-    fireEvent.pointerUp(grip, { clientX: 540, clientY: 40 });
+    fireEvent.pointerUp(thumb, { clientX: 350, clientY: 40 });
+    // The click that follows a drop does not pick the slide.
+    fireEvent.click(thumb);
+    expect(onFocusSlide).not.toHaveBeenCalled();
     expect(latestOf().map((item) => item.photoId)).toEqual(["b", "c", "a"]);
     expect(screen.getByText(/moved to position 3 of 3/)).toBeInTheDocument();
 
     fireEvent.keyDown(
-      screen.getByRole("button", { name: "Reorder Photo a, position 3 of 3" }),
+      screen.getByRole("button", { name: "Slide 3 of 3: Photo a" }),
       { key: "ArrowLeft" },
     );
     expect(latestOf().map((item) => item.photoId)).toEqual(["b", "a", "c"]);
@@ -190,18 +208,26 @@ describe("BannerSlideList", () => {
     const onFocusSlide = vi.fn();
     render(<Harness initial={[slide("a")]} onFocusSlide={onFocusSlide} />);
     await screen.findAllByRole("listitem");
-    fireEvent.click(screen.getByText("Own title"));
-    fireEvent.click(screen.getByRole("button", { name: "Give it its own" }));
+    expect(
+      screen.getByRole("button", { name: "General title" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Own title" }));
     expect(latestOf()[0].heading).toEqual(general);
     expect(onFocusSlide).toHaveBeenCalledWith("a");
-    expect(screen.getByText("on")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Own title" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Calaca" },
     });
     fireEvent.change(screen.getByLabelText(/Title size/), {
       target: { value: "40" },
     });
-    expect(latestOf()[0].heading).toMatchObject({ title: "Calaca", fontSize: 40 });
+    expect(latestOf()[0].heading).toMatchObject({
+      title: "Calaca",
+      fontSize: 40,
+    });
     fireEvent.click(
       screen.getByRole("button", { name: "Same place as the general title" }),
     );
@@ -210,7 +236,7 @@ describe("BannerSlideList", () => {
       width: 50,
       title: "Calaca",
     });
-    fireEvent.click(screen.getByRole("button", { name: "Use the general title" }));
+    fireEvent.click(screen.getByRole("button", { name: "General title" }));
     expect(latestOf()[0].heading).toBeUndefined();
   });
 });

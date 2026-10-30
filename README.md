@@ -526,12 +526,15 @@ Unsaved edits participate in the Curator leave-page protection.
 
 **Slides** sit under the Home preview and are managed like a collection
 (`BannerSlideList`): a strip of public photographs (searched by title, accents
-ignored) adds one with a click, each slide is a card with its thumbnail, a **Slide
+ignored) adds one with a click, and each slide has a **Slide
 title** and a **Link destination** (`SlideDestination`: this photograph, Gallery, a
-category, a collection or an HTTPS address), and cards reorder by dragging their ⠿
-grip, by arrow keys on the grip or with ← →. Up to eight. A card warns when its
-photograph has no framing enabled for Home, since Home skips it. Clicking a card's
-thumbnail shows that slide in the preview, and the card of the slide on show is marked.
+category, a collection or an HTTPS address). The slides form a strip of thumbnails
+that reorder by dragging a thumbnail from anywhere on it or by arrow keys on it; a
+click (not a drop) opens that slide's detail, fixed under the strip, and shows it in
+the preview; when the preview moves to another slide, the detail follows. It holds the
+slide's title, destination, ← → and Remove, and its Welcome title. Up to eight. A
+thumbnail and its detail warn when the photograph has no framing enabled for Home,
+since Home skips it.
 
 **Composition** above the preview chooses the layout from five drawings
 (`BannerLayoutPicker`). **Welcome over photo** opens `WelcomePanelControls`: a 3 × 3
@@ -547,7 +550,8 @@ the Gallery page's blocks, the filter departments and the collection mosaic. The
 item follows the pointer and the others slide out of its way as it passes over them, as
 icons do on a phone, with a short FLIP animation (none under reduced motion); the order
 is committed only on the drop, Escape or a cancelled pointer puts everything back, and
-the arrow keys on a grip move an item one place. Positions are measured against the
+the arrow keys on a grip move an item one place. The drag is followed from the window, not
+the grip: moving the dragged node in the document releases its pointer capture. Positions are measured against the
 list after each change, so rows, columns and wrapping grids with mixed spans all work.
 Categories still move between departments by native drag and drop.
 
@@ -561,9 +565,10 @@ On phones a freely placed panel keeps its height and spans the width.
 Each slide can carry its own title (`heading` on the slide: eyebrow, title, accent, link
 text and destination, anchor or free `x`/`y`, width and title size). Home shows it
 instead of the general one while that slide is on show, panel style aside; without link
-text it has no link. In the slide's card, **Own title** starts one from the general title
-and its place, edits its words, destination and size, puts it back in the general
-title's place or returns to the general one. While a slide with its own title is in the
+text it has no link. In the slide's detail, a **General title / Own title** switch
+starts one from the general title and its place or returns to the general one; while
+on, it edits its words, destination and size, or puts it back in the general title's
+place. While a slide with its own title is in the
 preview, dragging or resizing the panel changes that title, marked with a gold outline;
 otherwise it changes the general one. The API must accept `heading` and `x`/`y` before
 this client saves them.
