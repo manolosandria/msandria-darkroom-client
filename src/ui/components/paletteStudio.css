@@ -59,25 +59,79 @@
 }
 .palette-library__colors {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
+.palette-library__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6b7262;
+}
+/* Each color is one row that can be clicked anywhere to open its picker. */
 .banner-editor label.palette-color,
 .palette-color {
   display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr);
+  grid-template-columns: 2.8rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem 0.45rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.palette-color:hover,
+.palette-color[data-linked] {
+  background: #fff;
+  border-color: #c5cdb8;
+  box-shadow: 0 6px 16px -12px #2b332299;
+}
+.palette-color[data-linked] {
+  border-color: #65724a;
+}
+.palette-color:focus-within {
+  border-color: #4d6b3a;
+  box-shadow: 0 0 0 3px #4d6b3a40;
+}
+.palette-color__chip {
+  position: relative;
+  display: grid;
 }
 .palette-color input[type="color"] {
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.8rem;
+  height: 2.8rem;
   padding: 0;
   border: 1px solid #0002;
-  border-radius: 0.5rem;
+  border-radius: 0.55rem;
   background: none;
   cursor: pointer;
+  transition: transform 0.15s;
 }
-.palette-color span {
+.palette-color input[type="color"]:focus-visible {
+  outline: none;
+}
+.palette-color:hover input[type="color"],
+.palette-color[data-linked] input[type="color"] {
+  transform: scale(1.06);
+}
+.palette-color__number {
+  position: absolute;
+  top: -0.35rem;
+  left: -0.35rem;
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  font: 700 0.6rem/1 Arial, sans-serif;
+  box-shadow: 0 0 0 2px #f6f7f2;
+  pointer-events: none;
+}
+.palette-color__text {
   display: grid;
 }
 .palette-color strong {
@@ -86,6 +140,30 @@
 .palette-color small {
   font-size: 0.72rem;
   color: #6b7262;
+}
+.palette-color__edit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.4rem;
+  color: #6b7262;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s,
+    color 0.15s;
+}
+.palette-color__edit code {
+  font: 600 0.7rem/1 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+.palette-color:hover .palette-color__edit,
+.palette-color:focus-within .palette-color__edit,
+.palette-color[data-linked] .palette-color__edit {
+  opacity: 1;
+  background: #eef1e7;
+  color: #2f3d27;
 }
 .palette-library__actions,
 .palette-manager__actions {
@@ -299,12 +377,13 @@
   display: grid;
   gap: 0.35rem;
 }
-.palette-diagram__heading > span {
+.palette-diagram__rule {
   width: 3rem;
   height: 2px;
-  opacity: 0.6;
 }
 .palette-diagram__heading strong {
+  position: relative;
+  justify-self: start;
   font-size: 1.9rem;
   font-weight: 400;
   letter-spacing: -0.04em;
@@ -328,8 +407,7 @@
   flex: 1 1 100%;
   height: 1.4rem;
   border-radius: 1rem;
-  border: 1px solid currentColor;
-  opacity: 0.35;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
 }
 .palette-diagram__chip {
   position: relative;
@@ -375,12 +453,84 @@
   }
 }
 .palette-diagram__heading .palette-diagram__mark {
-  top: auto;
-  right: auto;
-  left: 7.5rem;
-  bottom: 0.6rem;
+  top: 0.15rem;
+  right: -1.7rem;
+  letter-spacing: 0;
 }
 .palette-diagram__chip .palette-diagram__mark {
   top: -0.65rem;
   right: -0.65rem;
+}
+.palette-diagram__heading small {
+  font: 0.7rem Arial, sans-serif;
+  opacity: 0.8;
+}
+
+/* Pointing: every zone painted with the color pointed at gets a ring, and its
+   numbered mark grows. The ring is white over black so it reads on any palette. */
+.palette-diagram,
+.palette-diagram [data-zone] {
+  cursor: pointer;
+  transition:
+    box-shadow 0.18s,
+    outline-color 0.18s;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.palette-diagram[data-highlight="text"] [data-zone="text"],
+.palette-diagram[data-highlight="accent"] [data-zone="accent"],
+.palette-diagram[data-highlight="surface"] [data-zone="surface"],
+.palette-diagram[data-highlight="background"] [data-zone="background"] {
+  outline-color: #fff;
+  box-shadow:
+    0 0 0 4px #111c,
+    0 0 16px 5px #fff9;
+  animation: palette-zone-pulse 1.6s ease-in-out infinite;
+}
+.palette-diagram[data-highlight="background"] {
+  box-shadow:
+    inset 0 0 0 3px #fff,
+    inset 0 0 0 5px #111c;
+}
+.palette-diagram[data-highlight="background"] > .palette-diagram__mark,
+.palette-diagram[data-highlight="text"]
+  .palette-diagram__heading
+  .palette-diagram__mark,
+.palette-diagram[data-highlight="accent"]
+  .palette-diagram__chip
+  .palette-diagram__mark,
+.palette-diagram[data-highlight="surface"]
+  .palette-diagram__tools
+  > .palette-diagram__mark {
+  transform: scale(1.35);
+  background: #fff;
+  color: #111;
+  box-shadow: 0 0 0 2px #111;
+}
+.palette-diagram__mark {
+  transition: transform 0.18s;
+}
+@keyframes palette-zone-pulse {
+  50% {
+    box-shadow:
+      0 0 0 4px #111c,
+      0 0 22px 8px #fffc;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .palette-diagram [data-zone] {
+    animation: none !important;
+  }
+}
+
+/* The legend follows the same pointing. */
+.palette-guide__legend li {
+  padding: 0.35rem;
+  margin: -0.35rem;
+  border-radius: 0.6rem;
+  transition: background-color 0.15s;
+}
+.palette-guide__legend li[data-linked] {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #65724a;
 }

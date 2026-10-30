@@ -122,3 +122,14 @@ Feature: Editing the current version of a photo
     Then each palette shows its four colors and a drawing says where each one goes
     When I rename a palette and save
     Then the Gallery studio keeps its own draft and adopts the new palettes
+
+  Scenario: See where a palette color goes by pointing at it
+    Given I open Curator Palettes
+    When I hover over or focus a color row in the palette editor
+    Then the row lights up, shows its value and a pencil, and can be clicked anywhere to change the color
+    And every zone of the drawing painted with that color is ringed, with its number enlarged
+    When I hover over a zone of the drawing
+    Then its color row and its legend entry light up
+    When I click that zone
+    Then the picker for its color opens in the editor
+    And choosing a palette in the library or in the drawing's selector shows the same palette in both

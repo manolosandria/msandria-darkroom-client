@@ -62,6 +62,64 @@ describe("Palette manager", () => {
     window.removeEventListener(GALLERY_SETTINGS_SAVED, saved);
   });
 
+  it("lights up a color's zones in the drawing while its row is pointed at", async () => {
+    render(<PaletteManager />);
+    const guide = await screen.findByRole("complementary", {
+      name: "Where each color goes",
+    });
+    const drawing = guide.querySelector(".palette-diagram")!;
+    const accent = screen.getByLabelText("Palette accent");
+    const row = accent.closest("label")!;
+    fireEvent.pointerEnter(row);
+    expect(drawing).toHaveAttribute("data-highlight", "accent");
+    const legend = within(guide).getAllByRole("listitem");
+    expect(legend[2]).toHaveAttribute("data-linked");
+    fireEvent.pointerLeave(row);
+    expect(drawing).not.toHaveAttribute("data-highlight");
+    fireEvent.focus(screen.getByLabelText("Palette surface"));
+    expect(drawing).toHaveAttribute("data-highlight", "surface");
+    fireEvent.blur(screen.getByLabelText("Palette surface"));
+    expect(drawing).not.toHaveAttribute("data-highlight");
+    expect(row).toHaveTextContent(/#[0-9A-F]{6}/);
+  });
+
+  it("marks the row of a zone pointed at and opens its picker on click", async () => {
+    render(<PaletteManager />);
+    const guide = await screen.findByRole("complementary", {
+      name: "Where each color goes",
+    });
+    const chip = guide.querySelector(".palette-diagram__chip")!;
+    fireEvent.pointerOver(chip);
+    const accent = screen.getByLabelText("Palette accent");
+    expect(accent.closest("label")).toHaveAttribute("data-linked");
+    expect(within(guide).getAllByRole("listitem")[2]).toHaveAttribute(
+      "data-linked",
+    );
+    const opened = vi.fn();
+    accent.addEventListener("click", opened);
+    fireEvent.click(chip);
+    expect(opened).toHaveBeenCalled();
+    expect(accent).toHaveFocus();
+    fireEvent.pointerLeave(guide.querySelector(".palette-diagram")!);
+    expect(accent.closest("label")).not.toHaveAttribute("data-linked");
+  });
+
+  it("draws and edits the same palette, whichever side chooses it", async () => {
+    render(<PaletteManager />);
+    const preview = await screen.findByLabelText("Preview");
+    fireEvent.click(screen.getByRole("button", { name: "Night" }));
+    expect(
+      (preview as HTMLSelectElement).selectedOptions[0],
+    ).toHaveTextContent("Night");
+    const other = within(preview).getAllByRole("option")[0];
+    fireEvent.change(preview, {
+      target: { value: (other as HTMLOptionElement).value },
+    });
+    expect(
+      screen.getByRole("button", { name: other.textContent! }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("does not load administrative settings for visitors", () => {
     vi.mocked(useSessionValue).mockReturnValue({
       user: null,
