@@ -1,0 +1,462 @@
+/* Gallery's browse bar: search, departments and display options in one card, and the
+   departments' panel continuing under it. Colors come from the gallery's theme. */
+.gallery-browse {
+  --browse-card: color-mix(in srgb, var(--gallery-surface) 55%, var(--gallery-background));
+  --browse-line: var(--gallery-control-border);
+  --browse-radius: 1.1rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  margin: 0 0 1.5rem;
+  border: 1px solid var(--browse-line);
+  border-radius: var(--browse-radius);
+  background: var(--browse-card);
+  font-family: Arial, sans-serif;
+  transition: border-radius 0.15s;
+}
+.gallery-browse[data-open] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 18px 40px -24px #0007;
+}
+.gallery-browse button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.gallery-browse button:focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 2px;
+}
+
+/* The bar: one line where search, departments and reset sit side by side. */
+.gallery-browse__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem;
+}
+.gallery-browse .gallery-search {
+  flex: 1 1 15rem;
+  min-width: 0;
+  margin: 0;
+}
+.gallery-browse .gallery-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.gallery-browse .gallery-search__field svg {
+  position: absolute;
+  left: 0.95rem;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.gallery-browse .gallery-search__field input {
+  width: 100%;
+  height: var(--gallery-control-height);
+  padding: 0 1rem 0 2.6rem;
+  border: 1px solid var(--browse-line);
+  border-radius: 999px;
+  background: var(--gallery-background);
+  color: var(--gallery-text);
+  font: 0.92rem Arial, sans-serif;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.gallery-browse .gallery-search__field input:hover {
+  border-color: color-mix(in srgb, var(--gallery-text) 35%, transparent);
+}
+.gallery-browse .gallery-search__field input:focus {
+  outline: none;
+  border-color: var(--gallery-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gallery-accent) 22%, transparent);
+}
+
+/* Departments read as one aisle of joined tabs rather than separate pills. */
+.gallery-departments {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 2px;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--browse-line);
+  border-radius: 999px;
+  background: var(--gallery-control-fill);
+  scrollbar-width: none;
+}
+.gallery-departments::-webkit-scrollbar {
+  display: none;
+}
+.gallery-browse .gallery-department {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.45rem;
+  height: calc(var(--gallery-control-height) - 8px);
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--gallery-font);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.gallery-department:hover {
+  background: color-mix(in srgb, var(--gallery-background) 75%, transparent);
+}
+.gallery-department[data-current] {
+  background: var(--gallery-background);
+  box-shadow:
+    0 1px 2px #0002,
+    0 0 0 1px color-mix(in srgb, var(--gallery-accent) 40%, transparent);
+}
+.gallery-department[data-active] {
+  color: var(--gallery-accent);
+}
+.gallery-department__badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--gallery-accent);
+  color: var(--gallery-background);
+  font: 700 0.68rem/1 Arial, sans-serif;
+}
+.gallery-department__caret {
+  opacity: 0.55;
+  transition: transform 0.15s;
+}
+.gallery-department[aria-expanded="true"] .gallery-department__caret {
+  transform: rotate(180deg);
+}
+.gallery-browse__reset {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--gallery-control-height);
+  height: var(--gallery-control-height);
+  border: 1px solid var(--browse-line);
+  border-radius: 50%;
+  background: var(--gallery-background);
+  transition:
+    transform 0.2s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.gallery-browse__reset:not(:disabled):hover {
+  color: var(--gallery-accent);
+  border-color: var(--gallery-accent);
+  transform: rotate(-35deg);
+}
+.gallery-browse__reset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Second line: what is chosen on the left, how it is shown on the right. */
+.gallery-browse__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--browse-line) 70%, transparent);
+}
+.gallery-browse__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gallery-browse__chips button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--gallery-accent) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery-accent) 10%, var(--gallery-background));
+  font-size: 0.8rem;
+  transition: background-color 0.15s;
+}
+.gallery-browse__chips button:hover {
+  background: color-mix(in srgb, var(--gallery-accent) 20%, var(--gallery-background));
+}
+.gallery-browse__chips small {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.gallery-browse__display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-left: auto;
+}
+.gallery-browse .gallery-filter-count {
+  font-family: var(--gallery-font);
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+.gallery-browse .gallery-visitor-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.gallery-browse .gallery-segmented {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.gallery-browse .gallery-segmented__options {
+  display: inline-flex;
+  gap: 0;
+  padding: 2px;
+  border: 1px solid var(--browse-line);
+  border-radius: 999px;
+  background: var(--gallery-control-fill);
+}
+.gallery-browse .gallery-segmented label {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--gallery-text) 70%, transparent);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.gallery-browse .gallery-segmented label:hover {
+  color: var(--gallery-text);
+  background: color-mix(in srgb, var(--gallery-background) 70%, transparent);
+}
+.gallery-browse .gallery-segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.gallery-browse .gallery-segmented label:has(input:checked) {
+  background: var(--gallery-background);
+  color: var(--gallery-accent);
+  box-shadow:
+    0 1px 2px #0002,
+    0 0 0 1px color-mix(in srgb, var(--gallery-accent) 45%, transparent);
+}
+.gallery-browse .gallery-segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 1px;
+}
+.gallery-browse .gallery-segmented__caption {
+  min-width: 7.5em;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* The panel continues the card: every department is a column of it. */
+.gallery-browse__panel {
+  position: absolute;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  display: grid;
+  border: 1px solid var(--browse-line);
+  border-top: 0;
+  border-radius: 0 0 var(--browse-radius) var(--browse-radius);
+  background: var(--browse-card);
+  box-shadow: 0 24px 40px -22px #0008;
+  animation: gallery-browse-open 0.16s ease-out;
+}
+.gallery-browse__panel[hidden] {
+  display: none;
+}
+@keyframes gallery-browse-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.gallery-browse__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  max-height: min(60vh, 26rem);
+  overflow-y: auto;
+  border-top: 1px solid color-mix(in srgb, var(--browse-line) 70%, transparent);
+}
+.gallery-browse__column {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.9rem 0.7rem 1rem;
+  border-left: 1px solid color-mix(in srgb, var(--browse-line) 60%, transparent);
+  transition: background-color 0.15s;
+}
+.gallery-browse__column:first-child {
+  border-left: 0;
+}
+.gallery-browse__column[data-current] {
+  background: color-mix(in srgb, var(--gallery-accent) 7%, transparent);
+}
+.gallery-browse__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  padding: 0 0.5rem 0.45rem;
+  border-bottom: 2px solid transparent;
+  font-family: var(--gallery-font);
+  font-size: 1.05rem;
+  transition: border-color 0.15s;
+}
+.gallery-browse__column[data-current] .gallery-browse__heading {
+  border-color: var(--gallery-accent);
+}
+.gallery-browse__heading small {
+  font: 600 0.68rem Arial, sans-serif;
+  color: var(--gallery-accent);
+}
+.gallery-browse__column ul {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gallery-browse__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  font-size: 0.88rem;
+  text-align: left;
+  transition: background-color 0.12s;
+}
+.gallery-browse__option:hover {
+  background: color-mix(in srgb, var(--gallery-text) 7%, transparent);
+}
+.gallery-browse__option[aria-pressed="true"] {
+  color: var(--gallery-accent);
+  font-weight: 600;
+}
+.gallery-browse__check {
+  position: relative;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid color-mix(in srgb, var(--gallery-text) 40%, transparent);
+  border-radius: 0.3rem;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s;
+}
+.gallery-browse__option[aria-pressed="true"] .gallery-browse__check {
+  border-color: var(--gallery-accent);
+  background: var(--gallery-accent);
+}
+.gallery-browse__option[aria-pressed="true"] .gallery-browse__check::after {
+  content: "";
+  position: absolute;
+  left: 0.28rem;
+  top: 0.08rem;
+  width: 0.28rem;
+  height: 0.55rem;
+  border: solid var(--gallery-background);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.gallery-browse__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--browse-line) 70%, transparent);
+}
+.gallery-browse__footer p {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+.gallery-browse .gallery-browse__done {
+  padding: 0.45rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gallery-accent);
+  color: var(--gallery-background);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+/* Narrow screens: search on its own line, the aisle scrolls sideways, and the panel
+   shows the chosen department alone. */
+@container (max-width: 700px) {
+  .gallery-browse__bar {
+    flex-wrap: wrap;
+  }
+  .gallery-browse .gallery-search {
+    flex-basis: 100%;
+  }
+  .gallery-departments {
+    flex: 1 1 0;
+  }
+  .gallery-browse__column:not([data-current]) {
+    display: none;
+  }
+  .gallery-browse__column {
+    border-left: 0;
+  }
+  .gallery-browse__column ul {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+  .gallery-browse__footer p {
+    display: none;
+  }
+  .gallery-browse__footer {
+    justify-content: flex-end;
+  }
+  .gallery-browse__display {
+    margin-left: 0;
+  }
+  .gallery-browse .gallery-segmented__caption {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gallery-browse,
+  .gallery-browse *,
+  .gallery-browse__panel {
+    animation: none !important;
+    transition: none !important;
+  }
+}

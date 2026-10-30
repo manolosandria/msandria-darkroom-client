@@ -98,11 +98,12 @@ Feature: Curated collections
 
   Scenario: Browse grouped gallery categories
     Given categories include subjects, colors, themes and unrecognized names
+    And the curator has not arranged departments
     When I open Gallery
-    Then category chips appear under their nonempty groups
+    Then the browse bar offers Subjects, Color & treatment and Themes as departments
     And unrecognized names remain available under Other
     And there is no duplicate category dropdown
-    When I choose All photographs
+    When I press the round reset icon
     Then the category filter is cleared
 
   Scenario: Configure the archive in Curator
@@ -162,9 +163,9 @@ Feature: Curated collections
     And deleting a library palette retains previously applied design colors
 
   Scenario: Reach hover options without a gap
-    When I move from a category button into its open options
-    Then the menu stays open until I choose an option or leave it
-    And the photo count appears outside the menus beside the grid
+    When I move from a department into the open panel
+    Then the panel stays open until I choose a category, press Done or leave it
+    And the photo count stays in the bar, outside the panel
 
   Scenario: Start a collection from the plasma card
     Given I am on Curator Collections

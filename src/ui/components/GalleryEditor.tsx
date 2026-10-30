@@ -12,6 +12,7 @@ import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { useSessionValue } from "./SessionProvider";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { groupGalleryCategories } from "./galleryCategoryGroups";
+import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
@@ -207,27 +208,6 @@ function Editor() {
               </label>
               {target && (
                 <>
-                  <label>
-                    Category group
-                    <select
-                      value={
-                        category?.group ??
-                        groupGalleryCategories(categories).find((group) =>
-                          group.categories.some((item) => item.id === target),
-                        )?.label ??
-                        "Other"
-                      }
-                      onChange={(event) =>
-                        updateCategory({ group: event.target.value })
-                      }
-                    >
-                      {["Subjects", "Color & treatment", "Themes", "Other"].map(
-                        (group) => (
-                          <option key={group}>{group}</option>
-                        ),
-                      )}
-                    </select>
-                  </label>
                   <label className="gallery-editor-check">
                     <input
                       type="checkbox"
@@ -275,6 +255,19 @@ function Editor() {
                 </p>
               </details>
             </fieldset>
+            <GalleryDepartmentsEditor
+              categories={categories}
+              settings={draft}
+              disabled={busy}
+              onChange={(departments) => {
+                setDraft((previous) => {
+                  const next = { ...previous, departments };
+                  if (!departments) delete next.departments;
+                  return next;
+                });
+                setNotice("");
+              }}
+            />
             <ArrangementFields
               value={appearance}
               disabled={busy || (!!target && !category?.customize)}

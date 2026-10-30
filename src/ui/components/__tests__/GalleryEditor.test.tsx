@@ -42,9 +42,6 @@ describe("Gallery studio", () => {
     fireEvent.change(screen.getByLabelText("Edit style for"), {
       target: { value: "animal" },
     });
-    fireEvent.change(screen.getByLabelText("Category group"), {
-      target: { value: "Themes" },
-    });
     fireEvent.click(screen.getByLabelText("Customize this category"));
     fireEvent.change(screen.getByLabelText("Gallery font"), {
       target: { value: "mono" },
@@ -63,7 +60,7 @@ describe("Gallery studio", () => {
         categories: [
           expect.objectContaining({
             categoryId: "animal",
-            group: "Themes",
+            group: "Subjects",
             customize: true,
             appearance: expect.objectContaining({ font: "mono" }),
           }),
