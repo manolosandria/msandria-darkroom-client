@@ -45,6 +45,11 @@ import {
 import { useSessionValue } from "./SessionProvider";
 import { VariantAssignment } from "./VariantAssignment";
 import { InspectorSection } from "./InspectorSection";
+import { PhotoSectionBar } from "./PhotoSectionBar";
+import {
+  readHiddenSections,
+  writeHiddenSections,
+} from "@/src/ui/photoSectionPreference";
 import {
   PhotoCategoryField,
   PhotoCollectionField,
@@ -532,6 +537,9 @@ const SECTIONS = [
   { id: "file", label: "File" },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
+const SECTION_IDS = SECTIONS.map((item) => item.id);
+// Details holds the required title, so it can never be hidden away from validation.
+const LOCKED: SectionId[] = ["details"];
 const DEFAULT_OPEN: SectionId[] = [
   "details",
   "visibility",
@@ -573,6 +581,13 @@ function PhotoEditor({
   const [saved, setSaved] = useState(initialSaved);
   const [openSections, setOpenSections] = useState<SectionId[]>(DEFAULT_OPEN);
   const [current, setCurrent] = useState<SectionId>("details");
+  const [hiddenSections, setHiddenSections] = useState<SectionId[]>(
+    () =>
+      readHiddenSections(SECTION_IDS).filter(
+        (id) => !LOCKED.includes(id as SectionId),
+      ) as SectionId[],
+  );
+  const sectionsRef = useRef<HTMLFieldSetElement>(null);
   const [stageView, setStageView] = useState("original");
   const { confirm } = useEditingWorkspace();
   const form = useRef<HTMLFormElement>(null);
@@ -659,15 +674,42 @@ function PhotoEditor({
         : previous.filter((item) => item !== id),
     );
   }
+  // Until this time, a jump's own smooth scroll is not taken for the reader's.
+  const jumpingUntil = useRef(0);
   function jump(id: SectionId) {
     toggleSection(id, true);
     setCurrent(id);
+    jumpingUntil.current = Date.now() + 1200;
     requestAnimationFrame(() =>
       document
         .getElementById(`${prefix}-${id}`)
         ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
     );
   }
+  // Follows the reader: the section crossing the upper third of the window is current.
+  useEffect(() => {
+    const root = sectionsRef.current;
+    if (!active || !root || typeof IntersectionObserver === "undefined")
+      return;
+    const inBand = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.section ?? "";
+          if (entry.isIntersecting) inBand.add(id);
+          else inBand.delete(id);
+        }
+        if (Date.now() < jumpingUntil.current) return;
+        const top = SECTION_IDS.find((id) => inBand.has(id));
+        if (top) setCurrent(top);
+      },
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    root
+      .querySelectorAll<HTMLElement>(".photo-develop__slot:not([hidden])")
+      .forEach((slot) => observer.observe(slot));
+    return () => observer.disconnect();
+  }, [active, hiddenSections]);
   const actions = () => (
     <div className={styles.actions}>
       <button type="submit" className="upload-primary" disabled={saving}>
@@ -696,16 +738,23 @@ function PhotoEditor({
     children: React.ReactNode,
     options: { lazy?: boolean; summary?: React.ReactNode } = {},
   ) => (
-    <InspectorSection
-      id={`${prefix}-${id}`}
-      label={SECTIONS.find((item) => item.id === id)!.label}
-      summary={options.summary}
-      open={openSections.includes(id)}
-      lazy={options.lazy}
-      onToggle={(open) => toggleSection(id, open)}
+    // Always wrapped, so hiding a section keeps its state instead of remounting it.
+    <div
+      className="photo-develop__slot"
+      data-section={id}
+      hidden={hiddenSections.includes(id)}
     >
-      {children}
-    </InspectorSection>
+      <InspectorSection
+        id={`${prefix}-${id}`}
+        label={SECTIONS.find((item) => item.id === id)!.label}
+        summary={options.summary}
+        open={openSections.includes(id)}
+        lazy={options.lazy}
+        onToggle={(open) => toggleSection(id, open)}
+      >
+        {children}
+      </InspectorSection>
+    </div>
   );
   if (!active) return null;
   const pending = report.filter((issue) => issue.isPending()).length;
@@ -738,39 +787,40 @@ function PhotoEditor({
       />
       <div className="photo-develop__inspector">
         <div className="photo-develop__header">
-          <div className="photo-develop__heading">
-            <h2>{title || photo.getTitle()}</h2>
-            {dirty && <span className="studio-dirty">Unsaved</span>}
+          <div className="photo-develop__titlebar">
+            <div className="photo-develop__heading">
+              <h2>{title || photo.getTitle()}</h2>
+              {dirty && <span className="studio-dirty">Unsaved</span>}
+            </div>
+            {actions()}
           </div>
-          {actions()}
-          <nav className="photo-develop__tabs" aria-label="Photo sections">
-            {SECTIONS.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                aria-current={current === item.id ? "true" : undefined}
-                onClick={() => jump(item.id)}
-              >
-                {item.label}
-                {item.id === "file" && pending > 0 && (
-                  <span className="photo-develop__tab-badge">{pending}</span>
-                )}
-              </button>
-            ))}
-          </nav>
-          <div className="photo-develop__expand">
-            <button
-              type="button"
-              onClick={() => setOpenSections(SECTIONS.map((item) => item.id))}
-            >
-              Expand all
-            </button>
-            <button type="button" onClick={() => setOpenSections([])}>
-              Collapse all
-            </button>
-          </div>
+          <PhotoSectionBar
+            sections={SECTIONS.map((item) => ({
+              ...item,
+              badge: item.id === "file" ? pending : undefined,
+              locked: LOCKED.includes(item.id),
+            }))}
+            current={current}
+            open={openSections}
+            hidden={hiddenSections}
+            onJump={(id) => jump(id as SectionId)}
+            onExpandAll={() => setOpenSections([...SECTION_IDS])}
+            onCollapseAll={() => setOpenSections([])}
+            onHiddenChange={(next) => {
+              const hidden = next.filter(
+                (id) => !LOCKED.includes(id as SectionId),
+              ) as SectionId[];
+              setHiddenSections(hidden);
+              writeHiddenSections(hidden);
+              if (hidden.includes(current)) setCurrent("details");
+            }}
+          />
         </div>
-        <fieldset className="photo-develop__sections" disabled={saving}>
+        <fieldset
+          ref={sectionsRef}
+          className="photo-develop__sections"
+          disabled={saving}
+        >
           {section(
             "details",
             <div className="photo-develop__fields">
