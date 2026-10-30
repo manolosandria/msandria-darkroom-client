@@ -891,3 +891,9 @@
   box-shadow: 0 14px 28px #29312633;
   cursor: grabbing;
 }
+/* The open filters panel lies over the next card, photographs included. */
+.gallery-card:has(.gallery-browse),
+.gallery-cards-row:has(.gallery-browse) {
+  position: relative;
+  z-index: 25;
+}
