@@ -99,8 +99,9 @@ export function choosePhotoView(
   target: "gallery" | "home",
   seed: string,
   context?: GalleryViewContext,
-) {
+): PhotoView | undefined {
   const views = enabledPhotoViews(photo, target, context);
+  if (!views.length) return undefined;
   let hash = 0;
   for (const char of seed + photo.getId())
     hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;
