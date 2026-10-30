@@ -1,0 +1,211 @@
+/* Curator as a workstation: on wide screens the page is exactly the window. The tabs
+   stay on top and every tab is a panel with its own scroll, so a long editor never
+   pushes its preview or its buttons out of reach. Phones keep the flowing page. */
+
+.curator-workspace .curator-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-block: 0.5rem;
+}
+.curator-workspace .curator-tabs button {
+  flex: none;
+  padding: 0.5rem 1rem;
+}
+
+@media (min-width: 900px) {
+  .curator-page {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .curator-page > .curator-workspace {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .curator-workspace > .curator-tabs {
+    flex: none;
+  }
+  /* Every scrolling box is positioned: an absolute descendant (the screen-reader
+     texts among them) would otherwise belong to the body, escape the clip and make
+     the whole page scroll behind the panels. */
+  .curator-panel {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Studios with a preview (Home, Gallery, Palettes) fill their panel; each column
+     scrolls by itself, like the panels around the photo in a develop module. */
+  .curator-panel:has(> .banner-editor) {
+    overflow: hidden;
+  }
+  .curator-panel > .banner-editor {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem 0;
+  }
+  .curator-panel > .banner-editor > header {
+    flex: none;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    max-width: none;
+    margin: 0 0 0.75rem;
+  }
+  .curator-panel > .banner-editor > header h1 {
+    font-size: 1.35rem;
+    margin: 0;
+  }
+  .curator-panel > .banner-editor > header > p:not(.banner-editor__eyebrow) {
+    display: none;
+  }
+  .curator-panel > .banner-editor > [role="alert"],
+  .curator-panel > .banner-editor > [role="status"] {
+    flex: none;
+    margin: 0 0 0.5rem;
+  }
+  .curator-panel > .banner-editor > .banner-editor__workspace {
+    flex: 1;
+    min-height: 0;
+  }
+  .curator-panel .banner-editor__workspace {
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+    height: 100%;
+  }
+  .curator-panel .banner-editor__workspace > * {
+    position: relative;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-bottom: 1rem;
+  }
+  .curator-panel .banner-editor__workspace > form {
+    align-content: start;
+    padding-right: 0.35rem;
+  }
+  .curator-panel .banner-editor__preview,
+  .curator-panel .gallery-editor .banner-editor__preview.device-preview {
+    position: static;
+    max-height: none;
+    align-self: stretch;
+  }
+  /* Save and cancel stay at the foot of the controls column. */
+  .curator-panel .banner-editor__workspace > form > .banner-editor__actions {
+    position: sticky;
+    bottom: -1rem;
+    z-index: 2;
+    margin: 0 -0.35rem -1rem 0;
+    padding: 0.75rem 0.35rem 1rem 0;
+    background: linear-gradient(#f7f7f200, #f7f7f2 0.75rem);
+    gap: 0.35rem;
+  }
+  .curator-panel .banner-editor__workspace > form > .banner-editor__actions button {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.8rem;
+  }
+  /* Gallery's monitor or phone takes the column's height; the page scrolls inside it. */
+  .curator-panel .gallery-editor .banner-editor__preview.device-preview {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .curator-panel .gallery-editor .device-frame {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .curator-panel .gallery-editor .device-frame--desktop {
+    width: 100%;
+  }
+  .curator-panel .gallery-editor .device-frame--mobile {
+    width: min(414px, 100%);
+  }
+  .curator-panel .gallery-editor .device-frame .banner-editor__viewport {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+  .curator-panel .banner-editor__preview-bar,
+  .curator-panel .device-preview__bar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  /* Home has a third column: composition and the chosen photo's settings. With less
+     room they share the controls column, each half with its own scroll. */
+  .curator-panel .banner-editor__workspace:has(> .banner-editor__inspector) {
+    grid-template-areas:
+      "form preview"
+      "inspector preview";
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .curator-panel .banner-editor__workspace > .banner-editor__inspector {
+    border-top: 1px solid #d2d7ca;
+    padding-top: 0.75rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .curator-panel .banner-editor__workspace:has(> .banner-editor__inspector) {
+    grid-template-columns: 300px minmax(0, 1fr) 320px;
+    grid-template-areas: "form preview inspector";
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .curator-panel .banner-editor__workspace > .banner-editor__inspector {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Home names its areas; on a phone composition comes before the preview, as it did
+   before the inspector existed. */
+.banner-editor__workspace:has(> .banner-editor__inspector) > form {
+  grid-area: form;
+}
+.banner-editor__workspace:has(> .banner-editor__inspector) > .banner-editor__preview {
+  grid-area: preview;
+}
+.banner-editor__workspace > .banner-editor__inspector {
+  grid-area: inspector;
+  min-width: 0;
+}
+@media (max-width: 899px) {
+  .banner-editor__workspace:has(> .banner-editor__inspector) {
+    grid-template-areas: "form" "inspector" "preview";
+  }
+}
+
+/* Inside Curator the tab already names the screen: the big page headings shrink to
+   one line so the work starts at the top of the panel. */
+@media (min-width: 900px) {
+  .curator-panel .upload-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .curator-panel .upload-heading h1 {
+    font-size: 1.35rem;
+    margin: 0;
+  }
+  .curator-panel .upload-heading > p {
+    display: none;
+  }
+  .curator-panel .photo-develop {
+    --stage-height: calc(100dvh - 13rem);
+  }
+}
