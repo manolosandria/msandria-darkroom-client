@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { resetHiddenSectionsForTests } from "@/src/ui/photoSectionPreference";
 import userEvent from "@testing-library/user-event";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -535,6 +536,87 @@ describe("ManagePhotos", () => {
     expect(frame).not.toHaveAttribute("open");
     await user.click(within(screen.getByRole("navigation", { name: "Photo sections" })).getByRole("button", { name: "Frame" }));
     expect(frame).toHaveAttribute("open");
+  });
+
+  it("hides a section without losing its state and remembers it for the next visit", async () => {
+    const user = userEvent.setup();
+    window.localStorage.clear();
+    resetHiddenSectionsForTests();
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    const nav = await screen.findByRole("navigation", { name: "Photo sections" });
+    await user.click(screen.getByRole("button", { name: "Show or hide sections" }));
+    await user.click(screen.getByRole("checkbox", { name: /Frame/ }));
+    const slot = screen
+      .getByText("Frame", { selector: "summary span" })
+      .closest(".photo-develop__slot");
+    expect(slot).toHaveAttribute("hidden");
+    expect(within(nav).queryByRole("button", { name: "Frame" })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("photoInspectorHiddenSections")).toBe('["frame"]');
+    await user.click(screen.getByRole("checkbox", { name: /Frame/ }));
+    expect(slot).not.toHaveAttribute("hidden");
+    expect(screen.getByRole("checkbox", { name: /Details/ })).toBeDisabled();
+    await user.click(within(nav).getByRole("button", { name: "Frame" }));
+    await user.click(screen.getByRole("button", { name: "Show or hide sections" }));
+    await user.click(screen.getByRole("checkbox", { name: /Frame/ }));
+    expect(within(nav).getByRole("button", { name: "Details" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    window.localStorage.clear();
+    resetHiddenSectionsForTests();
+  });
+
+  it("starts with the remembered sections hidden and follows the section being read", async () => {
+    const user = userEvent.setup();
+    resetHiddenSectionsForTests();
+    window.localStorage.setItem(
+      "photoInspectorHiddenSections",
+      '["details","highlights"]',
+    );
+    const observed: Element[] = [];
+    let report: (entries: Partial<IntersectionObserverEntry>[]) => void = () => {};
+    const original = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = class {
+      constructor(callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {
+        report = callback;
+      }
+      observe(element: Element) {
+        observed.push(element);
+      }
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver;
+    try {
+      show();
+      await user.click(await screen.findByRole("button", { name: "The coast" }));
+      const nav = await screen.findByRole("navigation", { name: "Photo sections" });
+      expect(within(nav).getByRole("button", { name: "Details" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: "Highlights" })).not.toBeInTheDocument();
+      const frame = observed.find(
+        (element) => (element as HTMLElement).dataset.section === "frame",
+      )!;
+      act(() =>
+        report([
+          { target: frame, isIntersecting: true },
+          { target: document.createElement("div"), isIntersecting: false },
+        ]),
+      );
+      expect(within(nav).getByRole("button", { name: "Frame" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      await user.click(within(nav).getByRole("button", { name: "Visibility" }));
+      act(() => report([{ target: frame, isIntersecting: false }]));
+      expect(within(nav).getByRole("button", { name: "Visibility" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      act(() => report([]));
+    } finally {
+      globalThis.IntersectionObserver = original;
+      window.localStorage.clear();
+      resetHiddenSectionsForTests();
+    }
   });
 
   it("warns that a replacement loses the current file and lets the curator keep it", async () => {

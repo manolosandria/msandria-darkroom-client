@@ -1,0 +1,366 @@
+.section-bar {
+  container-type: inline-size;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.section-bar__icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The map of sections: an even grid of icon tiles, every section in sight. */
+.section-bar__nav {
+  min-width: 0;
+  padding: 0.25rem;
+  border-radius: 0.8rem;
+  background: #eef0e8;
+}
+.section-bar__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--section-columns, 4), minmax(0, 1fr));
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.section-bar__tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 2.15rem;
+  padding: 0 0.4rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--studio-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.section-bar__tab > span:not(.section-bar__badge) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Very narrow inspectors stack the icon over its word. */
+@container (max-width: 24rem) {
+  .section-bar__tab {
+    flex-direction: column;
+    gap: 0.15rem;
+    height: 3rem;
+    padding: 0 0.1rem;
+    font-size: 0.64rem;
+    letter-spacing: -0.01em;
+  }
+}
+/* An open section's button carries a small dot: the map shows what is unfolded. */
+.section-bar__tab--open {
+  color: var(--studio-ink);
+}
+.section-bar__tab--open::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0.12rem;
+  width: 0.25rem;
+  height: 0.25rem;
+  margin-left: -0.125rem;
+  border-radius: 50%;
+  background: var(--studio-accent);
+  opacity: 0.7;
+}
+.section-bar__tab:hover {
+  background: #fffc;
+  color: var(--studio-ink);
+}
+.section-bar__tab:focus-visible,
+.section-bar__fold button:focus-visible,
+.section-bar__menu-button:focus-visible,
+.section-bar__show-all:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+.section-bar__tab[aria-current="true"] {
+  background: #fff;
+  color: var(--studio-accent);
+  box-shadow:
+    0 1px 2px #0000001a,
+    0 4px 10px -6px #2b332266;
+}
+.section-bar__tab[aria-current="true"]::after {
+  opacity: 1;
+}
+.section-bar__tab .section-bar__badge {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.25rem;
+}
+.section-bar__badge {
+  min-width: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 1rem;
+  background: #d08a12;
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+/* Fold controls and the sections menu share one row under the strip. */
+.section-bar__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.section-bar__fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 999px;
+  background: #fff;
+}
+.section-bar__fold button,
+.section-bar__menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.9rem;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--studio-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    opacity 0.15s;
+}
+.section-bar__fold button:hover:not(:disabled) {
+  background: #e7eddc;
+}
+.section-bar__fold button:disabled {
+  color: var(--studio-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+.section-bar__meter {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 1.25rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef0e8;
+}
+.section-bar__meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #cfdcbf;
+  transition: width 0.25s ease;
+}
+.section-bar__meter-text {
+  position: relative;
+  color: var(--studio-ink);
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.section-bar__menu-anchor {
+  position: relative;
+}
+.section-bar__menu-button {
+  border: 1px solid var(--studio-line);
+  background: #fff;
+}
+.section-bar__menu-button:hover,
+.section-bar__menu-button[aria-expanded="true"] {
+  background: #e7eddc;
+}
+.section-bar__hidden-count {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #eef0e8;
+  color: var(--studio-muted);
+  font-size: 0.65rem;
+}
+.section-bar__hidden-count--alert {
+  background: #d08a12;
+  color: #fff;
+}
+.section-bar__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 6;
+  width: min(17rem, 80vw);
+  padding: 0.6rem;
+  border: 1px solid #0000001a;
+  border-radius: 0.8rem;
+  background: #fff;
+  box-shadow: 0 16px 32px -16px #2b3322a6;
+  animation: section-bar-menu-in 0.14s ease-out;
+}
+@keyframes section-bar-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.section-bar__menu-title {
+  margin: 0.1rem 0.4rem 0.4rem;
+  color: var(--studio-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.section-bar__menu ul {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.section-bar__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.55rem;
+  color: var(--studio-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.section-bar__option:hover {
+  background: #f3f5ee;
+}
+.section-bar__option--locked {
+  cursor: default;
+  color: var(--studio-muted);
+}
+.section-bar__option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+/* A small switch drawn for the hidden checkbox. */
+.section-bar__switch {
+  position: relative;
+  flex: none;
+  width: 1.9rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #cfd3c8;
+  transition: background-color 0.15s;
+}
+.section-bar__switch::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px #0003;
+  transition: transform 0.15s;
+}
+.section-bar__option input:checked + .section-bar__switch {
+  background: var(--studio-accent);
+}
+.section-bar__option input:checked + .section-bar__switch::after {
+  transform: translateX(0.8rem);
+}
+.section-bar__option input:focus-visible + .section-bar__switch {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+.section-bar__option input:disabled + .section-bar__switch {
+  opacity: 0.55;
+}
+.section-bar__option-label {
+  flex: 1;
+}
+.section-bar__option-note {
+  color: var(--studio-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+.section-bar__show-all {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.5rem;
+  border: 1px dashed var(--studio-line);
+  border-radius: 0.55rem;
+  background: none;
+  color: var(--studio-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.section-bar__show-all:hover:not(:disabled) {
+  background: #f3f5ee;
+}
+.section-bar__show-all:disabled {
+  color: var(--studio-muted);
+  cursor: default;
+}
+
+/* Narrow inspectors keep the icons and drop the words of the fold buttons. */
+@container (max-width: 22rem) {
+  .section-bar__fold button span,
+  .section-bar__menu-button > span:not(.section-bar__hidden-count) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-bar__menu {
+    animation: none;
+  }
+  .section-bar__meter-fill,
+  .section-bar__switch::after {
+    transition: none;
+  }
+}
+
+/* Jumps land below the sticky header, which is taller with the bar's two rows. */
+.photo-develop__slot > .inspector-section {
+  scroll-margin-top: 13.5rem;
+}
+/* On a phone a sticky header would cover half the screen; it scrolls with the form. */
+@media (max-width: 600px) {
+  .photo-develop__header {
+    position: static;
+  }
+  .photo-develop__slot > .inspector-section {
+    scroll-margin-top: 1rem;
+  }
+}

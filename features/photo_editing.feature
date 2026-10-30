@@ -33,6 +33,23 @@ Feature: Editing the current version of a photo
     When I collapse every section and choose Frame among the section tabs
     Then the Frame section opens and scrolls into view
 
+  Scenario: Arrange the inspector's sections
+    Given I am editing a photo
+    Then every section shows as a tile in an even grid under the title and its Save button
+    And the tile of the section I am reading is marked as I scroll
+    When I hide Frame and Variants from the Sections menu
+    Then their tiles and sections disappear without losing their edits
+    And they stay hidden the next time I open the Photos editor in this browser
+    And Details cannot be hidden, because it holds the required title
+    When I choose Show all sections
+    Then every section is back
+
+  Scenario: Expand and collapse every section at a glance
+    Given I am editing a photo with some sections open
+    Then a meter between Expand and Collapse shows how many are open
+    When I collapse every section
+    Then Collapse is disabled and the meter shows none open
+
   Scenario: Classify a photo visually
     Given I am editing a photo
     Then visibility is chosen among four cards with a picture each

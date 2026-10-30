@@ -633,9 +633,17 @@ camera and **Needs optimization** sit above it. Opening a photo turns the librar
 filmstrip and shows the editor: a dark stage on the left with the photo large (its title
 in the chosen corner) and chips to show any highlight large instead, and an inspector on
 the right. The inspector's sections (Details, Visibility, Categories, Collections,
-Variants, Frame, Highlights, File) are disclosures; tabs in its sticky header open and
-scroll to one, and **Expand all**/**Collapse all** act on every one. Variants mounts on
-first opening, so its catalog loads only then.
+Variants, Frame, Highlights, File) are disclosures. Its sticky header (`PhotoSectionBar`)
+puts the title with Save and Cancel on one line, then an even grid of icon tiles, one per
+section, at most two rows: a tile opens and scrolls to its section, the one being read is
+marked as the page scrolls, and a dot marks each open one. **Expand all**/**Collapse
+all** are icon buttons around a meter of how many are open, each disabled when it would
+change nothing. **Sections** hides the ones a curator does not use (Details, which holds
+the required title, always stays); hidden sections keep their state, the choice is kept
+per visitor in `localStorage` under `photoInspectorHiddenSections` (guarded, falling back
+to memory), and pending file issues in a hidden section show on that button. Arrow keys,
+Home and End move between tiles. On phones the header scrolls with the form. Variants
+mounts on first opening, so its catalog loads only then.
 
 `PhotoClassificationFields` exports its parts (`PhotoVisibilityField`,
 `PhotoCategoryField`, `PhotoCollectionField`); Upload still uses the whole set.
