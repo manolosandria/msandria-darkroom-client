@@ -74,10 +74,18 @@ export type GalleryCategoryStyle = {
   customize: boolean;
   appearance: GalleryAppearance;
 };
+/** A department offers its categories, in this order, as one column of filters. */
+export type GalleryDepartment = {
+  id: string;
+  name: string;
+  categoryIds: string[];
+};
 export type GallerySettings = {
   version: number;
   visitorOptions?: GalleryVisitorOptions;
   palettes?: GalleryPalette[];
+  /** Without it, categories are grouped by the built-in vocabulary. */
+  departments?: GalleryDepartment[];
   blocks: GalleryText[];
   appearance: GalleryAppearance;
   categories: GalleryCategoryStyle[];

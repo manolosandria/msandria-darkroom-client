@@ -480,7 +480,7 @@ slides it draws up to eight eligible photos at random on each visit, one per wor
 click on the photo only focuses the carousel for the arrow keys, without a focus
 frame; the slide title is the link to its photo, page or external destination. It
 never advances automatically. Header links react to hover and keyboard focus; the current route is
-marked. Gallery groups category chips into Subjects, Color & treatment and Themes, with unrecognized names in Other. Empty groups are hidden; All photographs clears the selection.
+marked. Gallery offers its categories by department (see "Highlights, palettes and filters"); empty departments are hidden and the reset icon clears the selection.
 Categories uses selectable cards showing photo counts.
 
 **Variants** is a peer of Upload, Photos and Collections in Curator. Select a work's
@@ -736,10 +736,27 @@ also shows it large on the stage (`onActiveChange`).
 Gallery's categories can be combined: the query sends `categories`, groups separated by
 `|` and ids by `,`, and the API returns photos with any category of each chosen group.
 The URL keeps them comma-separated in `category`, so a single `?category=` link still
-works. The round reset icon clears every filter; the chosen ones show as chips. The first
-chosen category with its own look themes the page. The display controls are icons with
-the chosen option written underneath, and every control shares one height, radius and
-surface from the theme variables.
+works. The first chosen category with its own look themes the page.
+
+The filters are one browse bar (`GalleryFilters`, styles in `galleryFilters.css`) that
+stays at the top of the window: search, the departments as one aisle of joined tabs and
+the round reset icon on its first line; the chosen filters as chips (each with its
+department), the photograph count and the display icons on its second. A department
+opens on hover, click or the down arrow, and one panel continues the card under the
+bar with every department as a column, the chosen one marked; on phones the panel shows
+that department alone. Arrow keys move between tabs, categories and columns; Escape or
+**Done** closes it and returns to the tab. Any category of a department matches, and
+each department chosen narrows the others, so the departments are the query's groups.
+
+Departments come from `departments` in the gallery settings: an ordered list of
+`{ id, name, categoryIds }` (up to 12, a category in one at most), arranged in Curator →
+Gallery under **Filter departments** (`GalleryDepartmentsEditor`): departments reorder by
+dragging their grip or with ↑ ↓ on it, categories move by dragging or with ← → (order)
+and ↑ ↓ (department) on theirs, and × leaves a category unsorted. Unsorted categories
+close the bar as Other. Without `departments`, `galleryDepartments` groups by the
+built-in vocabulary (Subjects, Color & treatment, Themes, Other), which is also where
+the editor starts; **Use suggested departments** returns to it. The API must accept
+`departments` before this client saves them.
 
 Variants show as small round thumbnails (`VariantThumbs`) on Gallery tiles, at the
 bottom of the viewer, and in a collection mosaic only when the collection's

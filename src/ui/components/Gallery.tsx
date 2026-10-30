@@ -10,7 +10,7 @@ import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { GalleryVisitorControls } from "./GalleryVisitorControls";
 import { GalleryTiles } from "./GalleryTiles";
 import { GalleryFilters } from "./GalleryFilters";
-import { groupGalleryCategories } from "./galleryCategoryGroups";
+import { galleryDepartments } from "./galleryCategoryGroups";
 import {
   defaultGallerySettings,
   GallerySettings,
@@ -87,7 +87,7 @@ export default function Gallery({
     settingsReady &&
     (categoryIds.length === 0 || Boolean(catalog) || catalogError);
   const categoryGroups = catalog
-    ? groupGalleryCategories(catalog.categories, settings.categories)
+    ? galleryDepartments(catalog.categories, settings)
         .map((group) =>
           group.categories
             .filter((category) => categoryIds.includes(category.id))
@@ -226,9 +226,18 @@ export default function Gallery({
               </p>
             ))}
         </header>
-        <div className="gallery-tools">
+      </div>
+      <GalleryFilters
+        categories={catalog?.categories ?? []}
+        settings={settings}
+        selected={categoryIds}
+        onChange={(ids) => {
+          setCategoryIds(ids);
+          setPage(1);
+        }}
+        search={
           <label className="gallery-search">
-            Search the archive
+            <span className="gallery-sr-only">Search the archive</span>
             <span className="gallery-search__field">
               <svg
                 viewBox="0 0 20 20"
@@ -244,7 +253,7 @@ export default function Gallery({
               </svg>
               <input
                 type="search"
-                placeholder="Photo title or category"
+                placeholder="Search the archive"
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -253,19 +262,24 @@ export default function Gallery({
               />
             </span>
           </label>
-          {catalog && (
-            <GalleryFilters
-              categories={catalog.categories}
-              settings={settings}
-              selected={categoryIds}
-              onChange={(ids) => {
-                setCategoryIds(ids);
+        }
+        display={
+          <div className="gallery-browse__display">
+            <span className="gallery-filter-count" aria-live="polite">
+              {count} {count === 1 ? "photograph" : "photographs"}
+            </span>
+            <GalleryVisitorControls
+              options={options}
+              layout={layout}
+              crops={crops}
+              onChange={(key, value) => {
+                setDisplay((previous) => ({ ...previous, [key]: value }));
                 setPage(1);
               }}
             />
-          )}
-        </div>
-      </div>
+          </div>
+        }
+      />
       {catalogError && (
         <p role="alert">
           Categories could not be loaded.{" "}
@@ -273,20 +287,6 @@ export default function Gallery({
         </p>
       )}
       <PhotoFetchStatus loading={loading} error={error} onRetry={retry} />
-      <div className="gallery-grid-toolbar">
-        <GalleryVisitorControls
-          options={options}
-          layout={layout}
-          crops={crops}
-          onChange={(key, value) => {
-            setDisplay((previous) => ({ ...previous, [key]: value }));
-            setPage(1);
-          }}
-        />
-        <span className="gallery-filter-count" aria-live="polite">
-          {count} {count === 1 ? "photograph" : "photographs"}
-        </span>
-      </div>
       {visible &&
         (visible.length ? (
           <div aria-busy={loading} className={loading ? "gallery-loading" : undefined}>
