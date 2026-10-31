@@ -1,3 +1,4 @@
+import type { FilterGroup } from "../galleryFilterLayout";
 export type GalleryVisitorOptions = {
   layouts: string[];
   crops: string[];
@@ -110,6 +111,8 @@ export type GallerySettings = {
   palettes?: GalleryPalette[];
   /** Without it, categories are grouped by the built-in vocabulary. */
   departments?: GalleryDepartment[];
+  /** The filter bar arranged in Curator; without it, the bar keeps its usual shape. */
+  filterLayout?: FilterGroup;
   blocks: GalleryText[];
   appearance: GalleryAppearance;
   categories: GalleryCategoryStyle[];

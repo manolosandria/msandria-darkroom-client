@@ -3,6 +3,10 @@ import { useState } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GalleryFilters } from "../GalleryFilters";
+import {
+  defaultFilterLayout,
+  placeFilterNode,
+} from "@/src/domain/galleryFilterLayout";
 
 const categories = [
   { id: "animal", name: "Animal" },
@@ -15,7 +19,11 @@ const departments = [
   { id: "subjects", name: "Subjects", categoryIds: ["street", "animal"] },
 ];
 
-function Harness({ onChange = vi.fn() }: { onChange?: (ids: string[]) => void }) {
+function Harness({
+  onChange = vi.fn(),
+}: {
+  onChange?: (ids: string[]) => void;
+}) {
   const [selected, setSelected] = useState<string[]>([]);
   return (
     <>
@@ -72,15 +80,16 @@ describe("Gallery filters", () => {
         .getAllByRole("button")
         .map((button) => button.textContent),
     ).toEqual(["Street", "Animal"]);
-    expect(within(panel).getByRole("button", { name: "Squares" })).toBeVisible();
+    expect(
+      within(panel).getByRole("button", { name: "Squares" }),
+    ).toBeVisible();
     await user.click(within(panel).getByRole("button", { name: "Rain" }));
     await user.click(within(panel).getByRole("button", { name: "Animal" }));
     expect(onChange).toHaveBeenLastCalledWith(["rain", "animal"]);
     expect(within(filtersButton()).getByText("2")).toBeInTheDocument();
-    expect(within(panel).getByRole("group", { name: "Subjects" })).toHaveAttribute(
-      "data-current",
-      "true",
-    );
+    expect(
+      within(panel).getByRole("group", { name: "Subjects" }),
+    ).toHaveAttribute("data-current", "true");
     const chips = screen.getByRole("list", { name: "Active filters" });
     expect(chips).toHaveTextContent("MoodRain");
     await user.click(
@@ -123,5 +132,43 @@ describe("Gallery filters", () => {
     expect(filtersButton()).toHaveAttribute("aria-expanded", "true");
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
     expect(filtersButton()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("builds the bar from the arranged tree, moving pieces out of the panel", () => {
+    const onChange = vi.fn();
+    let filterLayout = placeFilterNode(
+      defaultFilterLayout(),
+      { id: "department-mood", type: "department", departmentId: "mood" },
+      "meta",
+      0,
+    );
+    filterLayout = placeFilterNode(
+      filterLayout,
+      { id: "view", type: "view" },
+      "bar",
+      3,
+    );
+    render(
+      <GalleryFilters
+        categories={categories}
+        settings={{ categories: [], departments }}
+        layout={filterLayout}
+        selected={[]}
+        onChange={onChange}
+        search={<input aria-label="Search" />}
+        count={<span>12 photographs</span>}
+        display={<button type="button">Squares</button>}
+      />,
+    );
+    const bar = screen.getByRole("region", { name: "Gallery filters" });
+    const mood = within(bar).getByRole("group", { name: "Mood" });
+    fireEvent.click(within(mood).getByRole("button", { name: "Rain" }));
+    expect(onChange).toHaveBeenLastCalledWith(["rain"]);
+    expect(
+      within(within(bar).getByRole("group", { name: "View" })).getByRole(
+        "button",
+        { name: "Squares" },
+      ),
+    ).toBeVisible();
   });
 });

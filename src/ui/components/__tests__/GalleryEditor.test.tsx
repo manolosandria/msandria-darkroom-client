@@ -71,6 +71,7 @@ describe("Gallery studio", () => {
   it("removes and adds text and cancels back to saved state", async () => {
     render(<GalleryEditor />);
     await screen.findByLabelText("Text 1");
+    fireEvent.click(screen.getByRole("tab", { name: "Introduction" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove text 1" }));
     expect(screen.getAllByRole("textbox", { name: /^Text \d+$/ })).toHaveLength(
       2,

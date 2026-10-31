@@ -14,6 +14,8 @@ import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { groupGalleryCategories } from "./galleryCategoryGroups";
 import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
 import { GalleryPageLayoutEditor } from "./GalleryPageLayoutEditor";
+import { GalleryFilterBuilder } from "./GalleryFilterBuilder";
+import { PropertyTabs, propertyPanel } from "./PropertyTabs";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
@@ -21,6 +23,16 @@ import { GALLERY_SETTINGS_SAVED } from "./PaletteManager";
 import { DisplayIcon } from "./DisplayIcon";
 import "./homeBannerEditor.css";
 import "./galleryStudio.css";
+
+// The studio's settings, one group at a time beside the preview.
+const galleryTabs = [
+  "Style",
+  "Page",
+  "Filters",
+  "Photos",
+  "Introduction",
+  "Visitors",
+] as const;
 
 export default function GalleryEditor() {
   const { user } = useSessionValue();
@@ -39,6 +51,7 @@ function Editor() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [mobile, setMobile] = useState(false);
+  const [tab, setTab] = useState<(typeof galleryTabs)[number]>("Style");
   const lock = useRef(false);
   const { confirm } = useEditingWorkspace();
   const dirty =
@@ -186,20 +199,34 @@ function Editor() {
       ) : (
         <div className="banner-editor__workspace">
           <form
+            className="banner-editor__properties"
             onSubmit={async (event) => {
               event.preventDefault();
               await save();
             }}
           >
-            <GalleryPageLayoutEditor
-              value={draft.pageLayout}
-              disabled={busy}
-              onChange={(pageLayout) => {
-                setDraft((previous) => ({ ...previous, pageLayout }));
-                setNotice("");
-              }}
+            <PropertyTabs
+              label="Gallery properties"
+              idPrefix="gallery"
+              tabs={galleryTabs}
+              value={tab}
+              onChange={setTab}
             />
-            <fieldset disabled={busy} className="gallery-editor-style">
+            <div {...propertyPanel("gallery", "Page", tab)}>
+              <GalleryPageLayoutEditor
+                value={draft.pageLayout}
+                disabled={busy}
+                onChange={(pageLayout) => {
+                  setDraft((previous) => ({ ...previous, pageLayout }));
+                  setNotice("");
+                }}
+              />
+            </div>
+            <fieldset
+              disabled={busy}
+              className="gallery-editor-style"
+              {...propertyPanel("gallery", "Style", tab)}
+            >
               <legend>Type & color</legend>
               <label>
                 Edit style for
@@ -264,25 +291,45 @@ function Editor() {
                 </p>
               </details>
             </fieldset>
-            <GalleryDepartmentsEditor
-              categories={categories}
-              settings={draft}
+            <div {...propertyPanel("gallery", "Filters", tab)}>
+              <GalleryFilterBuilder
+                categories={categories}
+                settings={draft}
+                disabled={busy}
+                onChange={(filterLayout) => {
+                  setDraft((previous) => {
+                    const next = { ...previous, filterLayout };
+                    if (!filterLayout) delete next.filterLayout;
+                    return next;
+                  });
+                  setNotice("");
+                }}
+              />
+              <GalleryDepartmentsEditor
+                categories={categories}
+                settings={draft}
+                disabled={busy}
+                onChange={(departments) => {
+                  setDraft((previous) => {
+                    const next = { ...previous, departments };
+                    if (!departments) delete next.departments;
+                    return next;
+                  });
+                  setNotice("");
+                }}
+              />
+            </div>
+            <div {...propertyPanel("gallery", "Photos", tab)}>
+              <ArrangementFields
+                value={appearance}
+                disabled={busy || (!!target && !category?.customize)}
+                onChange={changeAppearance}
+              />
+            </div>
+            <fieldset
               disabled={busy}
-              onChange={(departments) => {
-                setDraft((previous) => {
-                  const next = { ...previous, departments };
-                  if (!departments) delete next.departments;
-                  return next;
-                });
-                setNotice("");
-              }}
-            />
-            <ArrangementFields
-              value={appearance}
-              disabled={busy || (!!target && !category?.customize)}
-              onChange={changeAppearance}
-            />
-            <fieldset disabled={busy}>
+              {...propertyPanel("gallery", "Introduction", tab)}
+            >
               <legend>Introduction</legend>
               <p>
                 Empty text is hidden. Remove every block to show only the
@@ -414,14 +461,16 @@ function Editor() {
                 + Add text
               </button>
             </fieldset>
-            <GalleryOptionsEditor
-              value={draft.visitorOptions}
-              disabled={busy}
-              onChange={(visitorOptions) => {
-                setDraft((previous) => ({ ...previous, visitorOptions }));
-                setNotice("");
-              }}
-            />
+            <div {...propertyPanel("gallery", "Visitors", tab)}>
+              <GalleryOptionsEditor
+                value={draft.visitorOptions}
+                disabled={busy}
+                onChange={(visitorOptions) => {
+                  setDraft((previous) => ({ ...previous, visitorOptions }));
+                  setNotice("");
+                }}
+              />
+            </div>
             <div className="banner-editor__actions">
               <button disabled={busy || !dirty} type="submit">
                 {busy ? "Saving…" : "Save gallery"}
