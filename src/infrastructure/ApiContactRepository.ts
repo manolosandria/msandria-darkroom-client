@@ -1,6 +1,7 @@
 import {
   ContactDraft,
   ContactRepository,
+  CuratorDashboard,
   CuratorNotifications,
   InboxMessage,
 } from "../domain/repositories/ContactRepository";
@@ -18,6 +19,9 @@ export class ApiContactRepository implements ContactRepository {
   }
   async notifications(): Promise<CuratorNotifications> {
     return (await this.request("GET", "/curator/notifications")).json();
+  }
+  async dashboard(): Promise<CuratorDashboard> {
+    return (await this.request("GET", "/curator/dashboard")).json();
   }
   async read(id: string) {
     await this.request(

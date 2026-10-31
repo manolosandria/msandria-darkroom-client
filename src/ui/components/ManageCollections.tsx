@@ -20,8 +20,11 @@ const toggle = (ids: string[], id: string) =>
 
 export default function ManageCollections({
   variants = false,
+  only,
 }: {
   variants?: boolean;
+  /** Shows one part of the catalog without its own tabs, as Curator's menu does. */
+  only?: "Collections" | "Categories";
 }) {
   const session = useSessionValue();
   return (
@@ -29,7 +32,8 @@ export default function ManageCollections({
       <div className="upload-container">
         <div className="upload-heading">
           <span className="upload-eyebrow">
-            THE DARKROOM / {variants ? "VARIANTS" : "COLLECTIONS"}
+            THE DARKROOM /{" "}
+            {variants ? "VARIANTS" : (only ?? "Collections").toUpperCase()}
           </span>
           <h1>
             {variants
@@ -48,7 +52,7 @@ export default function ManageCollections({
         ) : session.error ? (
           <ErrorMessage message={session.error} onRetry={session.reload} />
         ) : session.user?.isAdmin() ? (
-          <CatalogEditor variants={variants} />
+          <CatalogEditor variants={variants} only={only} />
         ) : (
           <p>
             Sign in as the gallery&apos;s administrator to edit collections.
@@ -59,15 +63,27 @@ export default function ManageCollections({
   );
 }
 
-export function CatalogEditor({ variants = false }: { variants?: boolean }) {
+export function CatalogEditor({
+  variants = false,
+  only,
+}: {
+  variants?: boolean;
+  only?: (typeof TABS)[number];
+}) {
   return (
     <EditingBoundary>
-      <CatalogEditorContent variants={variants} />
+      <CatalogEditorContent variants={variants} only={only} />
     </EditingBoundary>
   );
 }
 
-function CatalogEditorContent({ variants }: { variants: boolean }) {
+function CatalogEditorContent({
+  variants,
+  only,
+}: {
+  variants: boolean;
+  only?: (typeof TABS)[number];
+}) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [error, setError] = useState("");
@@ -79,7 +95,10 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
   const [photoCategories, setPhotoCategories] = useState<string[]>([]);
   const [workId, setWorkId] = useState("");
   const [work, setWork] = useState<WorkDraft>({ title: "", photoIds: [] });
-  const [tab, setTab] = useState<Tab>(variants ? "Variants" : "Collections");
+  const [chosen, setTab] = useState<Tab>(
+    variants ? "Variants" : "Collections",
+  );
+  const tab = only ?? chosen;
   const load = useCallback(async () => {
     const [nextCatalog, nextPhotos] = await Promise.all([
       editCatalog.load(),
@@ -185,7 +204,7 @@ function CatalogEditorContent({ variants }: { variants: boolean }) {
         <p>Loading catalog…</p>
       ) : (
         <>
-          {!variants && (
+          {!variants && !only && (
             <div role="tablist" aria-label="Catalog" className="studio-tabs">
               {TABS.map((name) => (
                 <button

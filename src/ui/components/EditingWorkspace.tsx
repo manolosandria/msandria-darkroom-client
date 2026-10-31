@@ -32,6 +32,19 @@ type Workspace = {
 };
 const Context = createContext<Workspace | null>(null);
 
+// What the floating save bars need: the editors with unsaved changes, and a way to save
+// or discard them all at once. Kept apart from the workspace so its identity changes
+// only when the list does.
+export type PendingEdits = {
+  labels: string[];
+  saveAll: () => Promise<boolean>;
+  discardAll: () => Promise<void>;
+  saving: boolean;
+  error: string;
+};
+const PendingContext = createContext<PendingEdits | null>(null);
+export const usePendingEdits = () => useContext(PendingContext);
+
 export function useOptionalEditingWorkspace() {
   return useContext(Context);
 }
@@ -76,6 +89,17 @@ export function EditingWorkspace({
   const [error, setError] = useState("");
   const allowed = useRef(false);
   const questionRef = useRef<Question | null>(null);
+  const [labels, setLabels] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  // Editors register again whenever their callbacks change, so the list is only
+  // replaced when its labels do: anything else would render the workspace in a loop.
+  const syncLabels = useCallback(() => {
+    const next = Array.from(editors.current.values(), (editor) => editor.label);
+    setLabels((previous) =>
+      previous.join("\n") === next.join("\n") ? previous : next,
+    );
+  }, []);
   const confirm = useCallback(
     (title: string, message: string) =>
       new Promise<boolean>((resolve) => {
@@ -88,9 +112,30 @@ export function EditingWorkspace({
   const register = useCallback((id: string, editor: Editor) => {
     allowed.current = false;
     editors.current.set(id, editor);
+    syncLabels();
     return () => {
       editors.current.delete(id);
+      syncLabels();
     };
+  }, [syncLabels]);
+  const saveAll = useCallback(async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      for (const editor of Array.from(editors.current.values()))
+        if (!(await editor.save())) {
+          setSaveError(
+            "Some changes could not be saved. Your drafts are still here.",
+          );
+          return false;
+        }
+      return true;
+    } catch {
+      setSaveError("Could not save all changes. Your drafts are still here.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }, []);
   const requestExit = useCallback((action: () => void) => {
     if (!editors.current.size) {
@@ -103,6 +148,21 @@ export function EditingWorkspace({
   const context = useMemo(
     () => ({ register, confirm, requestExit }),
     [register, confirm, requestExit],
+  );
+  const discardAll = useCallback(async () => {
+    if (
+      !(await confirm(
+        "Discard all changes?",
+        `Unsaved changes in ${Array.from(editors.current.values(), (editor) => editor.label).join(", ")} will be lost.`,
+      ))
+    )
+      return;
+    for (const editor of Array.from(editors.current.values())) editor.discard();
+    setSaveError("");
+  }, [confirm]);
+  const pending = useMemo(
+    () => ({ labels, saveAll, discardAll, saving, error: saveError }),
+    [labels, saveAll, discardAll, saving, saveError],
   );
   useEffect(() => () => questionRef.current?.resolve(false), []);
   useEffect(() => {
@@ -191,6 +251,7 @@ export function EditingWorkspace({
   }
   return (
     <Context.Provider value={context}>
+      <PendingContext.Provider value={pending}>
       <div
         className="editor-workspace-content"
         inert={question || leaving ? true : undefined}
@@ -310,6 +371,7 @@ export function EditingWorkspace({
         </div>,
         document.body,
       )}
+      </PendingContext.Provider>
     </Context.Provider>
   );
 }
