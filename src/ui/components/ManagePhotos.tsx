@@ -47,8 +47,11 @@ import { VariantAssignment } from "./VariantAssignment";
 import { InspectorSection } from "./InspectorSection";
 import { PhotoSectionBar } from "./PhotoSectionBar";
 import {
+  InspectorView,
   readHiddenSections,
+  readInspectorView,
   writeHiddenSections,
+  writeInspectorView,
 } from "@/src/ui/photoSectionPreference";
 import {
   PhotoCategoryField,
@@ -581,6 +584,8 @@ function PhotoEditor({
   const [saved, setSaved] = useState(initialSaved);
   const [openSections, setOpenSections] = useState<SectionId[]>(DEFAULT_OPEN);
   const [current, setCurrent] = useState<SectionId>("details");
+  const [view, setView] = useState<InspectorView>(readInspectorView);
+  const tabs = view === "tabs";
   const [hiddenSections, setHiddenSections] = useState<SectionId[]>(
     () =>
       readHiddenSections(SECTION_IDS).filter(
@@ -679,6 +684,8 @@ function PhotoEditor({
   function jump(id: SectionId) {
     toggleSection(id, true);
     setCurrent(id);
+    // As tabs, the chosen section replaces the others: nothing to scroll to.
+    if (tabs) return;
     jumpingUntil.current = Date.now() + 1200;
     requestAnimationFrame(() =>
       document
@@ -742,13 +749,13 @@ function PhotoEditor({
     <div
       className="photo-develop__slot"
       data-section={id}
-      hidden={hiddenSections.includes(id)}
+      hidden={hiddenSections.includes(id) || (tabs && current !== id)}
     >
       <InspectorSection
         id={`${prefix}-${id}`}
         label={SECTIONS.find((item) => item.id === id)!.label}
         summary={options.summary}
-        open={openSections.includes(id)}
+        open={tabs || openSections.includes(id)}
         lazy={options.lazy}
         onToggle={(open) => toggleSection(id, open)}
       >
@@ -764,7 +771,15 @@ function PhotoEditor({
       ref={form}
       onSubmit={async (event) => {
         event.preventDefault();
-        if (saving || !form.current?.checkValidity()) return;
+        if (saving) return;
+        if (!form.current?.checkValidity()) {
+          // The required title lives in Details, which a tab may be hiding.
+          if (tabs) {
+            setCurrent("details");
+            requestAnimationFrame(() => form.current?.reportValidity());
+          }
+          return;
+        }
         if (
           await confirm(
             file ? "Replace the file and save?" : "Save photo changes?",
@@ -806,6 +821,11 @@ function PhotoEditor({
             onJump={(id) => jump(id as SectionId)}
             onExpandAll={() => setOpenSections([...SECTION_IDS])}
             onCollapseAll={() => setOpenSections([])}
+            view={view}
+            onViewChange={(next) => {
+              setView(next);
+              writeInspectorView(next);
+            }}
             onHiddenChange={(next) => {
               const hidden = next.filter(
                 (id) => !LOCKED.includes(id as SectionId),

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { resetHiddenSectionsForTests } from "@/src/ui/photoSectionPreference";
+import {
+  resetHiddenSectionsForTests,
+  writeInspectorView,
+} from "@/src/ui/photoSectionPreference";
 import userEvent from "@testing-library/user-event";
 import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -63,6 +66,8 @@ function show() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  // Most of these tests read the sections in one scroll; the tabs have their own.
+  writeInspectorView("scroll");
   vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo]);
   vi.mocked(savePhoto.execute).mockImplementation(async (updated) => {
     vi.mocked(getPhotoById.execute).mockResolvedValue(updated);
@@ -536,6 +541,43 @@ describe("ManagePhotos", () => {
     expect(frame).not.toHaveAttribute("open");
     await user.click(within(screen.getByRole("navigation", { name: "Photo sections" })).getByRole("button", { name: "Frame" }));
     expect(frame).toHaveAttribute("open");
+  });
+
+  it("shows one section at a time as tabs, keeping the others' edits", async () => {
+    const user = userEvent.setup();
+    writeInspectorView("tabs");
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    const nav = await screen.findByRole("navigation", { name: "Photo sections" });
+    const slotOf = (name: string) =>
+      screen.getByText(name, { selector: "summary span" }).closest(".photo-develop__slot");
+    expect(slotOf("Details")).not.toHaveAttribute("hidden");
+    expect(slotOf("Frame")).toHaveAttribute("hidden");
+    expect(screen.queryByRole("button", { name: "Collapse all" })).not.toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Title"));
+    await user.type(screen.getByLabelText("Title"), "The bay");
+    await user.click(within(nav).getByRole("button", { name: "Frame" }));
+    expect(slotOf("Frame")).not.toHaveAttribute("hidden");
+    expect(slotOf("Frame")!.querySelector("details")).toHaveAttribute("open");
+    expect(slotOf("Details")).toHaveAttribute("hidden");
+    await user.click(within(nav).getByRole("button", { name: "Details" }));
+    expect(screen.getByLabelText("Title")).toHaveValue("The bay");
+  });
+
+  it("returns to Details when the title is missing on another tab, and remembers the view", async () => {
+    const user = userEvent.setup();
+    writeInspectorView("tabs");
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    const nav = await screen.findByRole("navigation", { name: "Photo sections" });
+    await user.clear(screen.getByLabelText("Title"));
+    await user.click(within(nav).getByRole("button", { name: "Frame" }));
+    fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
+    expect(within(nav).getByRole("button", { name: "Details" })).toHaveAttribute("aria-current", "true");
+    expect(savePhoto.execute).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "All in one scroll" }));
+    expect(window.localStorage.getItem("photoInspectorView")).toBe("scroll");
+    expect(screen.getByRole("button", { name: "Collapse all" })).toBeInTheDocument();
   });
 
   it("hides a section without losing its state and remembers it for the next visit", async () => {

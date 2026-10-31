@@ -2,6 +2,7 @@
 import { Photo } from "@/src/domain/entities/Photo";
 import { photoDetails } from "@/src/ui/photoDetails";
 import { PhotoComments } from "./PhotoComments";
+import { PhotoReactions } from "./PhotoReactions";
 
 interface PhotoInfoPanelProps {
   photo: Photo;
@@ -36,6 +37,10 @@ export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
           <p className="whitespace-pre-line leading-relaxed">{description}</p>
         </section>
       )}
+
+      <section className="photo-viewer__panel-section">
+        <PhotoReactions photoId={photo.getId()} />
+      </section>
 
       <section aria-label="Details" className="photo-viewer__panel-section">
         <h3 className="photo-viewer__panel-heading">Details</h3>

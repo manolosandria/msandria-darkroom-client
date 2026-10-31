@@ -8,10 +8,12 @@ import { setViewerPanelOpen } from "@/src/ui/viewerPanelState";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
-// Comments have their own tests and need a session; here they only mark their place.
+// Comments and reactions have their own tests and need a session; here they only mark
+// their place.
 vi.mock("../PhotoComments", () => ({
   PhotoComments: ({ photoId }: { photoId: string }) => <section aria-label="Comments">{photoId}</section>,
 }));
+vi.mock("../PhotoReactions", () => ({ PhotoReactions: () => null }));
 
 function makePhoto(id: string, frame?: ReturnType<Photo["getFrame"]>) {
   return new Photo({

@@ -15,6 +15,7 @@ import {
 } from "@/src/ui/commentMessages";
 import { readCommentDraft, saveCommentDraft } from "@/src/ui/commentDrafts";
 import { useSessionValue } from "./SessionProvider";
+import { CommentAuthor } from "./ProfileParts";
 
 type LoadState =
   | { status: "loading" }
@@ -128,13 +129,17 @@ function CommentItem({ comment, onDeleted }: { comment: PhotoComment; onDeleted:
   return (
     <li className={`photo-comments__card${comment.isPending() ? " is-pending" : ""}`}>
       <p className="photo-comments__meta">
-        <span
-          className={
-            comment.getAuthorName() ? "photo-comments__author" : "photo-comments__author is-deleted"
-          }
-        >
-          {author}
-        </span>
+        {comment.getAuthor() ? (
+          <CommentAuthor author={comment.getAuthor()!} name={author} id={comment.getId()} />
+        ) : (
+          <span
+            className={
+              comment.getAuthorName() ? "photo-comments__author" : "photo-comments__author is-deleted"
+            }
+          >
+            {author}
+          </span>
+        )}
         <time dateTime={comment.getCreatedAt().toISOString()}>
           {formatCommentDate(comment.getCreatedAt())}
         </time>

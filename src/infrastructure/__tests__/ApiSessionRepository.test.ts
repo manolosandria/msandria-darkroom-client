@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiSessionRepository } from "../ApiSessionRepository";
+import { EmailSignInError } from "../../domain/errors/EmailSignInError";
 
 const API_URL = "http://api.test";
 
@@ -197,6 +198,36 @@ describe("ApiSessionRepository", () => {
       await expect(
         new ApiSessionRepository(API_URL, fetchFn).updatePublicName("ALIAS", null),
       ).rejects.toMatchObject({ name: "PublicNameError" });
+    });
+  });
+  describe("email sign-in", () => {
+    it("asks for a link with the address only", async () => {
+      const fetchFn = respondWith({}, 202);
+      await new ApiSessionRepository(API_URL, fetchFn).requestEmailLink("ana@example.com");
+      expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/auth/email`, expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ email: "ana@example.com" }),
+      }));
+    });
+
+    it.each([
+      [400, "invalidEmail"],
+      [503, "unavailable"],
+    ])("names a %i refusal of the request", async (status, reason) => {
+      await expect(
+        new ApiSessionRepository(API_URL, respondWith({}, status)).requestEmailLink("x"),
+      ).rejects.toEqual(new EmailSignInError(reason as "invalidEmail"));
+    });
+
+    it("trades the token for the signed-in user, or says the link is spent", async () => {
+      const fetchFn = respondWith(apiUser({ role: "VIEWER" }));
+      const user = await new ApiSessionRepository(API_URL, fetchFn).signInWithEmailLink("tok");
+      expect(user.getEmail()).toBe("manolo@example.com");
+      expect(optionsOf(fetchFn).body).toBe(JSON.stringify({ token: "tok" }));
+      await expect(
+        new ApiSessionRepository(API_URL, respondWith({}, 400)).signInWithEmailLink("old"),
+      ).rejects.toMatchObject({ reason: "invalidLink" });
     });
   });
 });

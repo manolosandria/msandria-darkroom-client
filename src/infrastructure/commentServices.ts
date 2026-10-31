@@ -4,8 +4,13 @@ import { GetPendingComments } from "../application/use-cases/GetPendingComments"
 import { GetPhotoComments } from "../application/use-cases/GetPhotoComments";
 import { PostComment } from "../application/use-cases/PostComment";
 import { ApiCommentRepository } from "./ApiCommentRepository";
+import { profileRepository } from "./profileServices";
 
-const commentRepository = new ApiCommentRepository(process.env.NEXT_PUBLIC_API_URL);
+const commentRepository = new ApiCommentRepository(
+  process.env.NEXT_PUBLIC_API_URL,
+  undefined,
+  (entry) => profileRepository.toCard(entry),
+);
 
 export const getPhotoComments = new GetPhotoComments(commentRepository);
 export const postComment = new PostComment(commentRepository);

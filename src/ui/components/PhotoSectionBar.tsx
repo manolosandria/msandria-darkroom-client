@@ -88,6 +88,8 @@ export function PhotoSectionBar({
   onExpandAll,
   onCollapseAll,
   onHiddenChange,
+  view = "scroll",
+  onViewChange,
 }: {
   sections: readonly SectionBarItem[];
   current: string;
@@ -97,6 +99,9 @@ export function PhotoSectionBar({
   onExpandAll: () => void;
   onCollapseAll: () => void;
   onHiddenChange: (hidden: string[]) => void;
+  /** Tabs show one section at a time; scroll shows them all, as disclosures. */
+  view?: "tabs" | "scroll";
+  onViewChange?: (view: "tabs" | "scroll") => void;
 }) {
   const visible = sections.filter((item) => !hidden.includes(item.id));
   const openCount = visible.filter((item) => open.includes(item.id)).length;
@@ -202,46 +207,67 @@ export function PhotoSectionBar({
         role="group"
         aria-label="Section display"
       >
-        <div className="section-bar__fold">
-          <button
-            type="button"
-            aria-label="Expand all"
-            title="Expand all sections"
-            disabled={openCount === visible.length}
-            onClick={onExpandAll}
+        {onViewChange && (
+          <div
+            className="section-bar__view"
+            role="group"
+            aria-label="Show sections"
           >
-            <Icon>
-              <path d="M5 4.5l5 4 5-4M5 11l5 4 5-4" />
-            </Icon>
-            <span>Expand</span>
-          </button>
-          <span
-            className="section-bar__meter"
-            aria-label={`${openCount} of ${visible.length} sections open`}
-          >
+            {(["tabs", "scroll"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={view === option}
+                onClick={() => onViewChange(option)}
+              >
+                {option === "tabs" ? "One at a time" : "All in one scroll"}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* As tabs every shown section is open, so folding has nothing to do. */}
+        {view === "scroll" && (
+          <div className="section-bar__fold">
+            <button
+              type="button"
+              aria-label="Expand all"
+              title="Expand all sections"
+              disabled={openCount === visible.length}
+              onClick={onExpandAll}
+            >
+              <Icon>
+                <path d="M5 4.5l5 4 5-4M5 11l5 4 5-4" />
+              </Icon>
+              <span>Expand</span>
+            </button>
             <span
-              className="section-bar__meter-fill"
-              style={{
-                width: `${visible.length ? (openCount / visible.length) * 100 : 0}%`,
-              }}
-            />
-            <span className="section-bar__meter-text" aria-hidden="true">
-              {openCount}/{visible.length}
+              className="section-bar__meter"
+              aria-label={`${openCount} of ${visible.length} sections open`}
+            >
+              <span
+                className="section-bar__meter-fill"
+                style={{
+                  width: `${visible.length ? (openCount / visible.length) * 100 : 0}%`,
+                }}
+              />
+              <span className="section-bar__meter-text" aria-hidden="true">
+                {openCount}/{visible.length}
+              </span>
             </span>
-          </span>
-          <button
-            type="button"
-            aria-label="Collapse all"
-            title="Collapse all sections"
-            disabled={openCount === 0}
-            onClick={onCollapseAll}
-          >
-            <Icon>
-              <path d="M5 8.5l5-4 5 4M5 15l5-4 5 4" />
-            </Icon>
-            <span>Collapse</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              aria-label="Collapse all"
+              title="Collapse all sections"
+              disabled={openCount === 0}
+              onClick={onCollapseAll}
+            >
+              <Icon>
+                <path d="M5 8.5l5-4 5 4M5 15l5-4 5 4" />
+              </Icon>
+              <span>Collapse</span>
+            </button>
+          </div>
+        )}
         <div className="section-bar__menu-anchor">
           <button
             ref={menuButton}

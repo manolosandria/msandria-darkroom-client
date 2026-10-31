@@ -52,10 +52,15 @@ export default function SessionMenu() {
 
   if (!session.user) {
     return (
-      <GoogleSignInButton
-        clientId={googleClientId}
-        onCredential={session.signIn}
-      />
+      <div className="session-menu__sign-in">
+        <GoogleSignInButton
+          clientId={googleClientId}
+          onCredential={session.signIn}
+        />
+        <Link href="/sign-in/email" className="session-menu__email">
+          Sign in by email
+        </Link>
+      </div>
     );
   }
 
