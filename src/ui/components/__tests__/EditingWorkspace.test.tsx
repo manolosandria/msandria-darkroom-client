@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   EditingWorkspace,
   useEditingWorkspace,
+  usePendingEdits,
   useUnsavedEditor,
 } from "../EditingWorkspace";
 
@@ -157,5 +158,26 @@ describe("EditingWorkspace", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(navigate).not.toHaveBeenCalled();
     history.replaceState({}, "", original);
+  });
+  it("registers a dirty editor once, however often it renders with new callbacks", async () => {
+    const renders = vi.fn();
+    function Bar() {
+      const pending = usePendingEdits();
+      renders(pending?.labels);
+      return <p>{pending?.labels.join(", ")}</p>;
+    }
+    const save = vi.fn().mockResolvedValue(true);
+    render(
+      <EditingWorkspace>
+        <Draft name="Only draft" save={save} />
+        <Bar />
+      </EditingWorkspace>,
+    );
+    await userEvent.type(screen.getByLabelText("Only draft"), "a");
+    const settled = renders.mock.calls.length;
+    await userEvent.type(screen.getByLabelText("Only draft"), "bcd");
+    // Typing re-renders the editor with fresh callbacks; the list stays the same.
+    expect(renders).toHaveBeenCalledTimes(settled);
+    expect(screen.getByText("Only draft", { selector: "p" })).toBeInTheDocument();
   });
 });

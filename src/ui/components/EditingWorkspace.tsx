@@ -60,12 +60,26 @@ export function useEditingWorkspace() {
   return workspace;
 }
 
+// Editors pass fresh callbacks on every render. Registering them again each time would
+// remove and re-add the entry, and every save bar would render twice per render of
+// the editor; so the entry is registered once while dirty and reads the latest
+// callbacks when it is used.
 export function useUnsavedEditor(dirty: boolean, editor: Editor) {
   const id = useId();
   const { register } = useEditingWorkspace();
+  const latest = useRef(editor);
   useEffect(() => {
-    if (dirty) return register(id, editor);
-  }, [dirty, editor, id, register]);
+    latest.current = editor;
+  });
+  const { label } = editor;
+  useEffect(() => {
+    if (!dirty) return;
+    return register(id, {
+      label,
+      save: () => latest.current.save(),
+      discard: () => latest.current.discard(),
+    });
+  }, [dirty, label, id, register]);
 }
 
 const navigateTo = (url: string) => window.location.assign(url);
