@@ -364,3 +364,20 @@
     scroll-margin-top: 1rem;
   }
 }
+
+/* One section at a time, or all of them in one scroll. */
+.section-bar__view {
+  display: inline-flex;
+  border: 1px solid #0002;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.section-bar__view button {
+  padding: 3px 10px;
+  font-size: 12px;
+  background: transparent;
+}
+.section-bar__view button[aria-pressed="true"] {
+  background: #4f6244;
+  color: #fff;
+}

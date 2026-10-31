@@ -4,6 +4,7 @@ import { rateLimitError } from "./rateLimitError";
 import { User, UserRole } from "../domain/entities/User";
 import { PublicName, PublicNameStyle } from "../domain/entities/PublicName";
 import { PublicNameError } from "../domain/errors/PublicNameError";
+import { EmailSignInError } from "../domain/errors/EmailSignInError";
 import { SessionRepository } from "../domain/repositories/SessionRepository";
 
 // What the API answers about an account. There is no token here on purpose: the
@@ -27,6 +28,19 @@ export class ApiSessionRepository implements SessionRepository, AccountRepositor
     const response = await this.send("POST", "/auth/google", {
       idToken: googleIdToken,
     });
+    return this.toDomainUser((await this.ensureOk(response).json()) as ApiUser);
+  }
+
+  async requestEmailLink(email: string): Promise<void> {
+    const response = await this.send("POST", "/auth/email", { email });
+    if (response.status === 400) throw new EmailSignInError("invalidEmail");
+    if (response.status === 503) throw new EmailSignInError("unavailable");
+    this.ensureOk(response);
+  }
+
+  async signInWithEmailLink(token: string): Promise<User> {
+    const response = await this.send("POST", "/auth/email/verify", { token });
+    if (response.status === 400) throw new EmailSignInError("invalidLink");
     return this.toDomainUser((await this.ensureOk(response).json()) as ApiUser);
   }
 

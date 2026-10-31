@@ -17,6 +17,10 @@ vi.mock("@/src/infrastructure/sessionServices", () => ({
   getAccountDeletionPreview: { execute: vi.fn() },
   updatePublicName: { execute: vi.fn() },
 }));
+// The profile has its own tests; here it only waits.
+vi.mock("@/src/infrastructure/profileServices", () => ({
+  manageProfile: { mine: () => new Promise(() => {}) },
+}));
 vi.mock("@/src/infrastructure/googleIdentity", () => ({
   disableGoogleAutoSelect: vi.fn(),
 }));

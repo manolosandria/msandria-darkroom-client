@@ -11,6 +11,7 @@ import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import { usePhotoFetch } from "../hooks/usePhotoFetch";
 import { ErrorMessage } from "./ErrorMessage";
 import { PublicNameSettings } from "./PublicNameSettings";
+import { ProfileSettings } from "./ProfileSettings";
 import { useSessionValue } from "./SessionProvider";
 
 const loadPreview = () => getAccountDeletionPreview.execute();
@@ -48,6 +49,7 @@ export default function AccountSettings() {
                 onSaved={session.replaceUser}
               />
             )}
+            <ProfileSettings key={`profile:${session.user.getId()}`} />
             <DeletionPanel
               key={`deletion:${session.user.getId()}`}
               onDeleted={() => {

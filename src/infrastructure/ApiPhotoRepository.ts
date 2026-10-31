@@ -369,6 +369,15 @@ export class ApiPhotoRepository
     return "The API rejected the photo.";
   }
 
+  /**
+   * A photo as another endpoint lists it (a profile's likes, a comment author's
+   * photo): the same compact shape as `GET /photos`, or null when it has no file.
+   */
+  fromListing(entry: unknown): Photo | null {
+    const item = entry as ApiPhotoListItem;
+    return this.isDeliverable(item) ? this.toDomainPhoto(item) : null;
+  }
+
   // A photo whose stored file is gone comes without renditions: nothing to show.
   private isDeliverable(entry: ApiPhotoListItem) {
     return entry.renditions.length > 0;

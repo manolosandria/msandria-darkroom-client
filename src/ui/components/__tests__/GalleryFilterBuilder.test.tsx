@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { GalleryFilterBuilder } from "../GalleryFilterBuilder";
+import { defaultGallerySettings } from "@/src/domain/entities/GallerySettings";
 import { FilterGroup, findFilterNode } from "@/src/domain/galleryFilterLayout";
 
 function Harness({
@@ -13,7 +14,7 @@ function Harness({
   return (
     <GalleryFilterBuilder
       categories={[{ id: "animal", name: "Animal" }]}
-      settings={{ categories: [], filterLayout }}
+      settings={{ ...defaultGallerySettings, filterLayout }}
       onChange={(next) => {
         setLayout(next);
         onChange(next);

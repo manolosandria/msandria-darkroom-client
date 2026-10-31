@@ -133,3 +133,10 @@ Feature: Editing the current version of a photo
     When I click that zone
     Then the picker for its color opens in the editor
     And choosing a palette in the library or in the drawing's selector shows the same palette in both
+
+  Scenario: Edit one section at a time
+    Given I opened a photo in Curator Photos
+    Then the inspector shows its sections as tabs, one at a time
+    And a section I leave keeps its unsaved edits
+    When I choose "All in one scroll"
+    Then every section shows in one scroll, and the choice is remembered

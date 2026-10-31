@@ -1,3 +1,5 @@
+import { ProfileCard } from "./Profile";
+
 export type PhotoCommentStatus = "PENDING" | "APPROVED";
 
 export type PhotoCommentParams = {
@@ -9,6 +11,8 @@ export type PhotoCommentParams = {
   createdAt: Date;
   // Whether the visitor asking wrote it, so they can see it pending and delete it.
   mine: boolean;
+  // The author's profile card, only when their profile is public.
+  author?: ProfileCard | null;
 };
 
 export class PhotoComment {
@@ -33,6 +37,9 @@ export class PhotoComment {
   }
   isMine() {
     return this.params.mine;
+  }
+  getAuthor() {
+    return this.params.author ?? null;
   }
 }
 

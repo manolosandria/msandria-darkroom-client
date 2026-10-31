@@ -6,6 +6,10 @@ import {
 } from "../domain/entities/PhotoComment";
 import { CommentRepository } from "../domain/repositories/CommentRepository";
 import { rateLimitError } from "./rateLimitError";
+import { ProfileCard } from "../domain/entities/Profile";
+
+// Turns the author card a comment carries into the domain's.
+export type AuthorCardMapper = (entry: never) => ProfileCard;
 
 type ApiComment = {
   id: string;
@@ -14,6 +18,7 @@ type ApiComment = {
   status: PhotoCommentStatus;
   createdAt: string;
   mine: boolean;
+  author?: unknown;
 };
 
 type ApiPendingComment = {
@@ -35,17 +40,26 @@ export class ApiCommentRepository implements CommentRepository {
   constructor(
     private readonly baseUrl: string | undefined,
     private readonly fetchFn: typeof fetch = (...args) => fetch(...args),
+    private readonly toCard?: AuthorCardMapper,
   ) {}
 
   async listForPhoto(photoId: string): Promise<PhotoComment[]> {
     const response = await this.send("GET", `/photos/${encodeURIComponent(photoId)}/comments`);
     const entries = (await (await this.ensureOk(response)).json()) as ApiComment[];
-    return entries.map(toComment);
+    return entries.map((entry) => this.toComment(entry));
+  }
+
+  private toComment({ author, ...entry }: ApiComment): PhotoComment {
+    return new PhotoComment({
+      ...entry,
+      createdAt: new Date(entry.createdAt),
+      author: author && this.toCard ? this.toCard(author as never) : null,
+    });
   }
 
   async create(photoId: string, body: string): Promise<PhotoComment> {
     const response = await this.send("POST", `/photos/${encodeURIComponent(photoId)}/comments`, { body });
-    return toComment((await (await this.ensureOk(response)).json()) as ApiComment);
+    return this.toComment((await (await this.ensureOk(response)).json()) as ApiComment);
   }
 
   async pending(): Promise<PendingComment[]> {
@@ -90,8 +104,4 @@ export class ApiCommentRepository implements CommentRepository {
     }
     throw new Error(`The API answered ${response.status} ${response.statusText}`.trim());
   }
-}
-
-function toComment(entry: ApiComment): PhotoComment {
-  return new PhotoComment({ ...entry, createdAt: new Date(entry.createdAt) });
 }

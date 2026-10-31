@@ -55,7 +55,7 @@ Linux shows up in the pull request.
 
 | Path | What it holds |
 |---|---|
-| `app/` | Routes: `/` (home), `/gallery`, `/photo/[id]`, `/curator`, `/upload`, `/manage`, `/moderate`, `/collections`, `/contact`, `/account` |
+| `app/` | Routes: `/` (home), `/gallery`, `/photo/[id]`, `/curator`, `/upload`, `/manage`, `/moderate`, `/collections`, `/contact`, `/account`, `/profile/[id]`, `/sign-in/email` |
 | `src/domain/` | Entities (`Photo`, `User`, `PhotoComment`, `PublicName`, `Catalog`) and repository interfaces, `ContactRepository` included |
 | `src/application/` | Use cases, one class each |
 | `src/infrastructure/` | Repository implementations, the HTTP client, service wiring |
@@ -418,9 +418,24 @@ while the inspector scrolls. Every scrolling box is positioned, so absolute
 descendants such as screen-reader texts stay inside it instead of making the page
 scroll. Phones keep the flowing page.
 
-Its tabs are **Upload**, **Photos**, **Collections**, **Variants**, **Moderation** and **Inbox**: the
-screens of `/upload`, `/manage`, the collection editor and `/moderate`, plus the contact
-inbox. Upload, Photos and Collections stay mounted once visited, so switching tabs
+Its menu is grouped by purpose (`curatorGroups`): **Sections** (Home, Gallery,
+Collections), **Palettes**, **Photos** (Photos, Upload, Categories, Variants) and
+**Admin** (Dashboard, Comments, Inbox): the screens of `/upload`, `/manage`, the
+collection editor and `/moderate`, plus the contact inbox. **Dashboard**
+(`CuratorDashboard`) counts what waits, from admin-only `GET /curator/dashboard`
+(comments, unread messages, photos to re-export, storage tasks, photos, accounts),
+and each count opens its tab. Older remembered tab names still open their new place.
+
+`CuratorSaveBar` sits at the top and at the bottom of Curator, beside each editor's own
+buttons: it names how many editors have unsaved changes and offers **Save** (**Save all** for several) and
+**Cancel** through `EditingWorkspace` (`usePendingEdits`). Its arrow button hides both, leaving a
+small tab that brings them back; the choice is kept in `localStorage` under
+`curatorSaveBarHidden` (guarded, falling back to memory).
+
+Home and Gallery group their properties in tabs beside the preview (`PropertyTabs`,
+arrow keys, Home and End between tabs): Home has Text, Palette, Typography, Highlight,
+Carousel and Composition; Gallery has Style, Page, Filters, Photos, Introduction and
+Visitors. Upload, Photos and Collections stay mounted once visited, so switching tabs
 does not lose unsaved edits. The older routes still work on their own.
 
 - **Upload**: every card has its own **Upload** button at its bottom right, and the
@@ -578,7 +593,10 @@ camera and **Needs optimization** sit above it. Opening a photo turns the librar
 filmstrip and shows the editor: a dark stage on the left with the photo large (its title
 in the chosen corner) and chips to show any highlight large instead, and an inspector on
 the right. The inspector's sections (Details, Visibility, Categories, Collections,
-Variants, Frame, Highlights, File) are disclosures. Its sticky header (`PhotoSectionBar`)
+Variants, Frame, Highlights, File) show one at a time, as tabs, by default; **All in
+one scroll** shows them all as disclosures instead (kept per visitor in `localStorage`
+under `photoInspectorView`, guarded). Hidden tabs keep their edits, and saving without
+a title returns to Details. Its sticky header (`PhotoSectionBar`)
 puts the title with Save and Cancel on one line, then an even grid of icon tiles, one per
 section, at most two rows: a tile opens and scrolls to its section, the one being read is
 marked as the page scrolls, and a dot marks each open one. **Expand all**/**Collapse
@@ -736,3 +754,42 @@ over the photographs and leaves for an edge past the last one. Changes animate w
 view transitions where the browser has them, and not under reduced motion. The preview
 column scrolls on its own on wide screens, so composition, preview and slides stay in
 reach.
+
+## Profiles, reactions and email sign-in
+
+**Filter bar builder.** Curator → Gallery → Filters → **Arrange the filter bar**
+(`GalleryFilterBuilder`) turns the bar into a tree (`galleryFilterLayout`, saved as
+`filterLayout` in `PUT /gallery/settings`): groups are rows or columns, plain or as a
+card, with gap, alignment, spread, wrap, a label and grow; pieces are search, the
+Filters button, reset, chosen filters, count, the view options and single
+departments, each at most once. Pieces and groups are dragged from the palette into a
+group or between groups, or moved with buttons (earlier, later, out of the group,
+remove) from the keyboard. A department or View placed in the bar leaves the Filters
+panel and shows its choices inline. The API validates the same limits (depth 4, 40
+nodes, 12 children per group). **Use the usual bar** removes the tree, and the gallery
+keeps the bar it always had.
+
+**Profiles.** `/account` adds **Profile** (`ProfileSettings`): a public switch for the
+profile and, once public, for its likes and its favorites (all private by default), a
+profile photo and a cover chosen only among the public gallery's photographs (the API
+refuses any other with 400), and the visitor's own likes and favorites.
+`/profile/[id]` (`ProfileView`) shows a public profile with cover, photo, name, email
+and the lists it shares; a private one shows only the public name the person chose.
+In comments, the author of a public profile is a link to it, and pointing at it or
+focusing it shows a card with photo, cover, name and email (`CommentAuthor`); a
+private author keeps the plain name. It is not a social network: no followers and no
+feed. Endpoints: `GET`/`PATCH /auth/me/profile`, `GET /profiles/:id`.
+
+**Likes and favorites.** The info panel of the viewer has **Like** with the public
+count and **Save** (`PhotoReactions`): `GET /photos/:id/reactions`, and `PUT`/`DELETE`
+on `/photos/:id/like` or `/photos/:id/favorite`. Signed out, the count shows and the
+buttons are disabled with a hint. Saved photographs are the profile's favorites.
+
+**Email sign-in.** Beside Google, the header offers **Sign in by email**, which opens
+`/sign-in/email` (`EmailSignIn`): `POST /auth/email` emails a link, with the same answer
+whether or not the address has an account. The link opens
+`/sign-in/email#token=…`; the page removes the token from the address at once and
+trades it, a single time, with `POST /auth/email/verify`, which answers like
+`POST /auth/google` with the user and the session cookie. An expired or used link
+offers a new one. The API needs `WEB_ORIGIN` and its mail settings; without them it
+answers 503 and the page points to Google.

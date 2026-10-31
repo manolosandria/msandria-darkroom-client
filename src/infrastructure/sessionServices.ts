@@ -2,6 +2,7 @@ import { GetAccountDeletionPreview } from "../application/use-cases/GetAccountDe
 import { DeleteAccount } from "../application/use-cases/DeleteAccount";
 import { GetCurrentUser } from "../application/use-cases/GetCurrentUser";
 import { SignIn } from "../application/use-cases/SignIn";
+import { SignInByEmail } from "../application/use-cases/SignInByEmail";
 import { SignOut } from "../application/use-cases/SignOut";
 import { UpdatePublicName } from "../application/use-cases/UpdatePublicName";
 import { ApiSessionRepository } from "./ApiSessionRepository";
@@ -14,6 +15,7 @@ const sessionRepository = new ApiSessionRepository(process.env.NEXT_PUBLIC_API_U
 export const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export const signIn = new SignIn(sessionRepository);
+export const signInByEmail = new SignInByEmail(sessionRepository);
 export const getCurrentUser = new GetCurrentUser(sessionRepository);
 export const signOut = new SignOut(sessionRepository);
 

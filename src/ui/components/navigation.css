@@ -52,3 +52,17 @@
 .site-header__reveal-dot { position:absolute; top:.2rem; right:.35rem; width:7px; height:7px; border-radius:50%; background:#61744e; box-shadow:0 0 0 2px #f6f5f1; }
 @media(max-width:640px) { .main-header { gap:.7rem; } .main-header__brand { flex-basis:190px; } .main-header__actions { width:100%; justify-content:space-between; gap:.3rem; } .main-header__nav { gap:0; } .main-header__nav a { padding:.65rem .45rem; font-size:.78rem; } }
 @media(prefers-reduced-motion:reduce) { .main-header *,.site-header *,.site-header__reveal svg { transition:none!important; } }
+
+/* Google and the email link side by side, wrapping on narrow headers. */
+.session-menu__sign-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+}
+.session-menu__email {
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

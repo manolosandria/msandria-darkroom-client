@@ -27,6 +27,33 @@ export function writeHiddenSections(hidden: readonly string[]) {
   }
 }
 
+/**
+ * How the inspector shows its sections: one at a time as tabs (the default), or all of
+ * them in one scroll. Kept per visitor under `photoInspectorView`, guarded like the
+ * hidden sections.
+ */
+export type InspectorView = "tabs" | "scroll";
+const VIEW_KEY = "photoInspectorView";
+let viewInMemory: InspectorView | null = null;
+
+export function readInspectorView(): InspectorView {
+  if (viewInMemory) return viewInMemory;
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "scroll" ? "scroll" : "tabs";
+  } catch {
+    return "tabs";
+  }
+}
+
+export function writeInspectorView(view: InspectorView) {
+  viewInMemory = view;
+  try {
+    window.localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Kept in memory only.
+  }
+}
+
 export function resetHiddenSectionsForTests() {
   hiddenInMemory = null;
 }
