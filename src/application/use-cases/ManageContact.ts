@@ -19,4 +19,7 @@ export class ManageContact {
   notifications() {
     return this.repository.notifications();
   }
+  dashboard() {
+    return this.repository.dashboard();
+  }
 }

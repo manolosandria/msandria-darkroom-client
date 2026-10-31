@@ -14,7 +14,17 @@ import {
 vi.mock("../UploadPanel", () => ({ default: () => <p>Upload workshop</p> }));
 vi.mock("../ManagePhotos", () => ({ default: () => <p>Photo library</p> }));
 vi.mock("../ManageCollections", () => ({
-  default: () => <p>Collection editor</p>,
+  default: ({ only, variants }: { only?: string; variants?: boolean }) => (
+    <p>{variants ? "Variant studio" : `${only} editor`}</p>
+  ),
+}));
+vi.mock("../HomeBannerEditor", () => ({ default: () => <p>Home studio</p> }));
+vi.mock("../CuratorDashboard", () => ({
+  default: ({ onOpen }: { onOpen: (section: string) => void }) => (
+    <button type="button" onClick={() => onOpen("Inbox")}>
+      Dashboard tiles
+    </button>
+  ),
 }));
 vi.mock("../CommentModeration", () => ({
   default: () => <p>Moderation queue</p>,
@@ -85,33 +95,52 @@ describe("Curator", () => {
   });
   it("opens on Upload and switches between its sections", async () => {
     show(admin);
-    await screen.findByRole("button", { name: "Moderation2" });
+    await screen.findByRole("button", { name: "Admin3" });
     expect(screen.getByRole("button", { name: "Upload" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     expect(screen.getByText("Upload workshop")).toBeVisible();
+    // The open group shows its tabs; the others, only their names.
+    expect(
+      ["Photos", "Upload", "Categories", "Variants"].map((name) =>
+        screen.getByRole("button", { name }),
+      ),
+    ).toHaveLength(4);
+    expect(screen.queryByRole("button", { name: "Home" })).toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Photos" }));
     expect(screen.getByText("Photo library")).toBeVisible();
     expect(screen.getByText("Upload workshop")).not.toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Categories" }));
+    expect(screen.getByText("Categories editor")).toBeVisible();
 
+    await userEvent.click(screen.getByRole("button", { name: "Sections" }));
+    expect(screen.getByText("Home studio")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Collections" }));
-    expect(screen.getByText("Collection editor")).toBeVisible();
+    expect(screen.getByText("Collections editor")).toBeVisible();
     // A visited section keeps its state while hidden.
     expect(screen.getByText("Photo library")).not.toBeVisible();
+    // A group opens on the tab last open in it.
+    await userEvent.click(screen.getByRole("button", { name: "Photos" }));
+    expect(screen.getByText("Categories editor")).toBeVisible();
   });
 
-  it("badges the moderation queue and the inbox with what is pending", async () => {
+  it("badges the admin group, comments and inbox, and opens them from the dashboard", async () => {
     show(admin);
-    expect(
-      await screen.findByRole("button", { name: "Moderation2" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Inbox1" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Inbox1" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Admin3" }),
+    );
+    await userEvent.click(screen.getByText("Dashboard tiles"));
     expect(screen.getByText("Contact inbox")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Moderation2" }));
+    await userEvent.click(screen.getByRole("button", { name: "Comments2" }));
     expect(screen.getByText("Moderation queue")).toBeInTheDocument();
+  });
+
+  it("opens a tab remembered under its earlier name", async () => {
+    sessionStorage.setItem("curatorSection", "Moderation");
+    show(admin);
+    expect(await screen.findByText("Moderation queue")).toBeInTheDocument();
   });
 });
 
