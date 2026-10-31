@@ -31,10 +31,33 @@ describe("Home banner editor", () => {
   it("applies a palette and changes composition using keyboard destinations", async () => {
     render(<HomeBannerEditor />);
     await screen.findByLabelText("Title");
+    // One group of properties at a time: the others are hidden.
+    expect(screen.getByRole("tab", { name: "Text" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Apply Atlantic palette" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Palette" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Apply Atlantic palette" }),
     );
     expect(screen.getByLabelText("Background")).toHaveValue("#e9eff1");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Palette" }), {
+      key: "ArrowLeft",
+    });
+    expect(screen.getByRole("tab", { name: "Text" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Text" }), {
+      key: "ArrowLeft",
+    });
+    expect(screen.getByRole("tab", { name: "Composition" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Composition" }), {
+      key: "Enter",
+    });
     fireEvent.click(screen.getByRole("radio", { name: "Welcome below" }));
     expect(screen.getByRole("radio", { name: "Welcome below" })).toHaveAttribute(
       "aria-checked",
@@ -50,6 +73,7 @@ describe("Home banner editor", () => {
     render(<HomeBannerEditor />);
     await screen.findByLabelText("Title");
     expect(screen.queryByRole("radiogroup", { name: "Welcome position" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Composition" }));
     fireEvent.click(screen.getByRole("radio", { name: "Welcome over photo" }));
     fireEvent.click(screen.getByRole("radio", { name: "Top right" }));
     fireEvent.click(screen.getByRole("radio", { name: /Frosted glass/ }));
