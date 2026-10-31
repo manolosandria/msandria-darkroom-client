@@ -23,17 +23,17 @@ describe("CuratorDashboard", () => {
     render(<CuratorDashboard onOpen={onOpen} load={load} />);
 
     const comments = await screen.findByRole("button", {
-      name: /^2s*Comments to moderate/,
+      name: /^2\s*Comments to moderate/,
     });
     expect(comments.closest("li")).toHaveClass("is-pending");
     expect(
-      screen.getByRole("button", { name: /^0s*Unread messages/ }).closest("li"),
+      screen.getByRole("button", { name: /^0\s*Unread messages/ }).closest("li"),
     ).not.toHaveClass("is-pending");
     expect(screen.getByText("Accounts")).toBeInTheDocument();
     await userEvent.click(comments);
     expect(onOpen).toHaveBeenCalledWith("Comments");
     await userEvent.click(
-      screen.getByRole("button", { name: /^1s*Photos to re-export/ }),
+      screen.getByRole("button", { name: /^1\s*Photos to re-export/ }),
     );
     expect(onOpen).toHaveBeenLastCalledWith("Photos");
 

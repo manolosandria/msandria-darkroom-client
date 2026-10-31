@@ -18,6 +18,17 @@ import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
 
+// The banner's properties, one group at a time beside the preview.
+const propertyTabs = [
+  "Text",
+  "Palette",
+  "Typography",
+  "Highlight",
+  "Carousel",
+  "Composition",
+] as const;
+type PropertyTab = (typeof propertyTabs)[number];
+
 export default function HomeBannerEditor() {
   const { user } = useSessionValue();
   return user?.isAdmin() ? (
@@ -42,6 +53,7 @@ function Editor() {
   const [notice, setNotice] = useState("");
   const [highlightDirty, setHighlightDirty] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [propertyTab, setPropertyTab] = useState<PropertyTab>("Text");
   const [focusSlide, setFocusSlide] = useState<{ photoId: string }>();
   const [activePhotoId, setActivePhotoId] = useState<string>();
   const onActiveChange = useCallback((id: string) => setActivePhotoId(id), []);
@@ -149,14 +161,56 @@ function Editor() {
       {!saved ? (
         <p>{busy ? "Loading banner…" : "Banner settings are unavailable."}</p>
       ) : (
-        <div className="banner-editor__workspace">
+        <div className="banner-editor__workspace banner-editor__workspace--home">
           <form
+            className="banner-editor__properties"
+            aria-label="Banner properties"
             onSubmit={async (event) => {
               event.preventDefault();
               await save();
             }}
           >
-            <fieldset disabled={busy}>
+            <div
+              role="tablist"
+              aria-label="Banner properties"
+              className="banner-editor__tabs"
+              onKeyDown={(event) => {
+                const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+                if (!step) return;
+                event.preventDefault();
+                const next =
+                  propertyTabs[
+                    (propertyTabs.indexOf(propertyTab) +
+                      step +
+                      propertyTabs.length) %
+                      propertyTabs.length
+                  ];
+                setPropertyTab(next);
+                document.getElementById(`home-tab-${next}`)?.focus();
+              }}
+            >
+              {propertyTabs.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  role="tab"
+                  id={`home-tab-${name}`}
+                  aria-controls={`home-properties-${name}`}
+                  aria-selected={propertyTab === name}
+                  tabIndex={propertyTab === name ? 0 : -1}
+                  onClick={() => setPropertyTab(name)}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            <fieldset
+              disabled={busy}
+              role="tabpanel"
+              id="home-properties-Text"
+              aria-labelledby="home-tab-Text"
+              hidden={propertyTab !== "Text"}
+            >
               <legend>Words</legend>
               {(
                 [
@@ -177,7 +231,13 @@ function Editor() {
                 </label>
               ))}
             </fieldset>
-            <fieldset disabled={busy}>
+            <fieldset
+              disabled={busy}
+              role="tabpanel"
+              id="home-properties-Palette"
+              aria-labelledby="home-tab-Palette"
+              hidden={propertyTab !== "Palette"}
+            >
               <legend>Palette</legend>
               <div className="banner-editor__palettes">
                 {bannerPalettes.map((palette) => (
@@ -236,8 +296,14 @@ function Editor() {
                 ))}
               </div>
             </fieldset>
-            <fieldset disabled={busy}>
-              <legend>Typography & composition</legend>
+            <fieldset
+              disabled={busy}
+              role="tabpanel"
+              id="home-properties-Typography"
+              aria-labelledby="home-tab-Typography"
+              hidden={propertyTab !== "Typography"}
+            >
+              <legend>Typography</legend>
               <label>
                 Font
                 <select
@@ -286,7 +352,13 @@ function Editor() {
                 </select>
               </label>
             </fieldset>
-            <fieldset disabled={busy}>
+            <fieldset
+              disabled={busy}
+              role="tabpanel"
+              id="home-properties-Highlight"
+              aria-labelledby="home-tab-Highlight"
+              hidden={propertyTab !== "Highlight"}
+            >
               <legend>Photograph framing</legend>
               <div
                 className="display-choice"
@@ -351,7 +423,13 @@ function Editor() {
                   </div>
                 ))}
             </fieldset>
-            <fieldset disabled={busy}>
+            <fieldset
+              disabled={busy}
+              role="tabpanel"
+              id="home-properties-Carousel"
+              aria-labelledby="home-tab-Carousel"
+              hidden={propertyTab !== "Carousel"}
+            >
               <legend>Carousel</legend>
               <label>
                 Navigation
@@ -390,6 +468,76 @@ function Editor() {
                 />
               </label>
             </fieldset>
+            <div
+              role="tabpanel"
+              id="home-properties-Highlight-photo"
+              aria-label="Photograph highlights"
+              className="banner-editor__photo-panel"
+              hidden={propertyTab !== "Highlight"}
+            >
+              {editingPhoto ? (
+                <BannerPhotoSettings
+                  key={editingPhoto.getId()}
+                  photo={editingPhoto}
+                  onUpdated={setEditingPhoto}
+                  onDirty={setHighlightDirty}
+                  onSlideChange={(slides) => {
+                    setDraft((previous) => ({ ...previous, slides }));
+                    setNotice("");
+                  }}
+                  display={mobile ? "mobile" : "desktop"}
+                  onDisplayChange={(value) => setMobile(value === "mobile")}
+                  banner={draft}
+                  onClose={() => setEditingPhoto(null)}
+                  onChange={(photoCrops) => {
+                    setDraft((previous) => ({
+                      ...previous,
+                      imageMode: "highlight",
+                      photoCrops,
+                    }));
+                    setNotice("");
+                  }}
+                />
+              ) : (
+                <p className="banner-editor__hint">
+                  Click a photograph in the preview to choose its highlight for
+                  this banner.
+                </p>
+              )}
+            </div>
+            <section
+              role="tabpanel"
+              id="home-properties-Composition"
+              aria-labelledby="home-tab-Composition"
+              className="banner-arrange"
+              hidden={propertyTab !== "Composition"}
+            >
+              <header>
+                <h2>Composition</h2>
+                <p>
+                  Choose a layout, or drag the ⠿ grips of Welcome and
+                  Photographs in the preview: drop on an edge to sit beside the
+                  photographs, or inside to float over them.
+                </p>
+              </header>
+              <BannerLayoutPicker
+                value={draft.layout}
+                disabled={busy}
+                onChange={(value) => change("layout", value)}
+              />
+              {draft.layout === "text-overlay" && (
+                <WelcomePanelControls
+                  welcome={{ ...defaultWelcomePanel, ...draft.welcome }}
+                  opacity={draft.overlayOpacity ?? 45}
+                  disabled={busy}
+                  onChange={(welcome) => {
+                    setDraft((previous) => ({ ...previous, welcome }));
+                    setNotice("");
+                  }}
+                  onOpacityChange={(value) => change("overlayOpacity", value)}
+                />
+              )}
+            </section>
             <div className="banner-editor__actions">
               <button type="submit" disabled={busy || !dirty}>
                 {busy ? "Saving…" : "Save banner"}
@@ -465,8 +613,10 @@ function Editor() {
                       "Discard highlight changes?",
                       "Switching photos will discard your unsaved photo highlight edits.",
                     ))
-                  )
+                  ) {
                     setEditingPhoto(photo);
+                    setPropertyTab("Highlight");
+                  }
                 }}
                 editedPhoto={editingPhoto}
                 onArrange={busy ? undefined : arrange}
@@ -539,62 +689,6 @@ function Editor() {
               }}
             />
           </section>
-          <aside
-            className="banner-editor__inspector"
-            aria-label="Composition and photo"
-          >
-            <section className="banner-arrange" aria-label="Arrange the banner">
-              <header>
-                <h2>Composition</h2>
-                <p>
-                  Choose a layout, or drag the ⠿ grips of Welcome and
-                  Photographs in the preview: drop on an edge to sit beside the
-                  photographs, or inside to float over them.
-                </p>
-              </header>
-              <BannerLayoutPicker
-                value={draft.layout}
-                disabled={busy}
-                onChange={(value) => change("layout", value)}
-              />
-              {draft.layout === "text-overlay" && (
-                <WelcomePanelControls
-                  welcome={{ ...defaultWelcomePanel, ...draft.welcome }}
-                  opacity={draft.overlayOpacity ?? 45}
-                  disabled={busy}
-                  onChange={(welcome) => {
-                    setDraft((previous) => ({ ...previous, welcome }));
-                    setNotice("");
-                  }}
-                  onOpacityChange={(value) => change("overlayOpacity", value)}
-                />
-              )}
-            </section>
-            {editingPhoto && (
-              <BannerPhotoSettings
-                key={editingPhoto.getId()}
-                photo={editingPhoto}
-                onUpdated={setEditingPhoto}
-                onDirty={setHighlightDirty}
-                onSlideChange={(slides) => {
-                  setDraft((previous) => ({ ...previous, slides }));
-                  setNotice("");
-                }}
-                display={mobile ? "mobile" : "desktop"}
-                onDisplayChange={(value) => setMobile(value === "mobile")}
-                banner={draft}
-                onClose={() => setEditingPhoto(null)}
-                onChange={(photoCrops) => {
-                  setDraft((previous) => ({
-                    ...previous,
-                    imageMode: "highlight",
-                    photoCrops,
-                  }));
-                  setNotice("");
-                }}
-              />
-            )}
-          </aside>
         </div>
       )}
     </div>

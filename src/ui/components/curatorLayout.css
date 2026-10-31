@@ -95,6 +95,9 @@
     align-content: start;
     padding-right: 0.35rem;
   }
+  .curator-panel .banner-editor__workspace--home {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
   .curator-panel .banner-editor__preview,
   .curator-panel .gallery-editor .banner-editor__preview.device-preview {
     position: static;
