@@ -67,7 +67,6 @@ export default function Curator() {
       /* Storage may be unavailable; the workspace still works in memory. */
     }
     // Only on the first render: afterwards the choice is the curator's.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const countOf = (name: Section) =>
     name === "Comments"
@@ -105,9 +104,7 @@ export default function Curator() {
                     <button
                       type="button"
                       className="curator-tabs__group-name"
-                      aria-current={
-                        single && active ? "page" : undefined
-                      }
+                      aria-current={single && active ? "page" : undefined}
                       aria-expanded={single ? undefined : false}
                       onClick={() =>
                         show(lastIn[group.name] ?? group.sections[0])

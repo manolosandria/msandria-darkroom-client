@@ -14,6 +14,7 @@ import "./homeBannerEditor.css";
 import { bannerFonts, bannerPalettes } from "../bannerPresets";
 import { BannerPhotoSettings } from "./BannerPhotoSettings";
 import { BannerSlideList } from "./BannerSlideList";
+import { PropertyTabs, propertyPanel } from "./PropertyTabs";
 import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -170,46 +171,16 @@ function Editor() {
               await save();
             }}
           >
-            <div
-              role="tablist"
-              aria-label="Banner properties"
-              className="banner-editor__tabs"
-              onKeyDown={(event) => {
-                const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-                if (!step) return;
-                event.preventDefault();
-                const next =
-                  propertyTabs[
-                    (propertyTabs.indexOf(propertyTab) +
-                      step +
-                      propertyTabs.length) %
-                      propertyTabs.length
-                  ];
-                setPropertyTab(next);
-                document.getElementById(`home-tab-${next}`)?.focus();
-              }}
-            >
-              {propertyTabs.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  role="tab"
-                  id={`home-tab-${name}`}
-                  aria-controls={`home-properties-${name}`}
-                  aria-selected={propertyTab === name}
-                  tabIndex={propertyTab === name ? 0 : -1}
-                  onClick={() => setPropertyTab(name)}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
+            <PropertyTabs
+              label="Banner properties"
+              idPrefix="home"
+              tabs={propertyTabs}
+              value={propertyTab}
+              onChange={setPropertyTab}
+            />
             <fieldset
               disabled={busy}
-              role="tabpanel"
-              id="home-properties-Text"
-              aria-labelledby="home-tab-Text"
-              hidden={propertyTab !== "Text"}
+              {...propertyPanel("home", "Text", propertyTab)}
             >
               <legend>Words</legend>
               {(
@@ -233,10 +204,7 @@ function Editor() {
             </fieldset>
             <fieldset
               disabled={busy}
-              role="tabpanel"
-              id="home-properties-Palette"
-              aria-labelledby="home-tab-Palette"
-              hidden={propertyTab !== "Palette"}
+              {...propertyPanel("home", "Palette", propertyTab)}
             >
               <legend>Palette</legend>
               <div className="banner-editor__palettes">
@@ -298,10 +266,7 @@ function Editor() {
             </fieldset>
             <fieldset
               disabled={busy}
-              role="tabpanel"
-              id="home-properties-Typography"
-              aria-labelledby="home-tab-Typography"
-              hidden={propertyTab !== "Typography"}
+              {...propertyPanel("home", "Typography", propertyTab)}
             >
               <legend>Typography</legend>
               <label>
@@ -354,10 +319,7 @@ function Editor() {
             </fieldset>
             <fieldset
               disabled={busy}
-              role="tabpanel"
-              id="home-properties-Highlight"
-              aria-labelledby="home-tab-Highlight"
-              hidden={propertyTab !== "Highlight"}
+              {...propertyPanel("home", "Highlight", propertyTab)}
             >
               <legend>Photograph framing</legend>
               <div
@@ -425,10 +387,7 @@ function Editor() {
             </fieldset>
             <fieldset
               disabled={busy}
-              role="tabpanel"
-              id="home-properties-Carousel"
-              aria-labelledby="home-tab-Carousel"
-              hidden={propertyTab !== "Carousel"}
+              {...propertyPanel("home", "Carousel", propertyTab)}
             >
               <legend>Carousel</legend>
               <label>
@@ -469,9 +428,6 @@ function Editor() {
               </label>
             </fieldset>
             <div
-              role="tabpanel"
-              id="home-properties-Highlight-photo"
-              aria-label="Photograph highlights"
               className="banner-editor__photo-panel"
               hidden={propertyTab !== "Highlight"}
             >
@@ -506,11 +462,8 @@ function Editor() {
               )}
             </div>
             <section
-              role="tabpanel"
-              id="home-properties-Composition"
-              aria-labelledby="home-tab-Composition"
+              {...propertyPanel("home", "Composition", propertyTab)}
               className="banner-arrange"
-              hidden={propertyTab !== "Composition"}
             >
               <header>
                 <h2>Composition</h2>

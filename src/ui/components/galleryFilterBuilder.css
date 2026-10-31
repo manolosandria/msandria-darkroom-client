@@ -1,0 +1,161 @@
+/* Curator → Gallery → Filters: pieces on the left, the bar's structure as nested
+   boxes on the right, and the chosen group's properties below. */
+.filter-builder {
+  display: grid;
+  gap: 0.75rem;
+}
+.filter-builder__intro {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #4a5443;
+}
+.filter-builder__layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+.filter-builder h4 {
+  margin: 0 0 0.35rem;
+  font:
+    600 0.78rem Arial,
+    sans-serif;
+}
+.filter-builder__palette,
+.filter-builder__tree,
+.filter-builder__children {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.filter-builder__palette {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+.filter-builder__piece {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #c6cfbb;
+  border-radius: 7px;
+  background: white;
+  font-size: 0.75rem;
+  cursor: grab;
+}
+.filter-builder__piece:active {
+  cursor: grabbing;
+}
+.filter-builder__piece.is-over {
+  box-shadow: inset 3px 0 0 #4f6638;
+}
+.filter-builder__grip {
+  color: #7c8774;
+}
+.filter-builder__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filter-builder__group {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border: 1px dashed #b4bfaa;
+  border-radius: 9px;
+  background: #fafbf7;
+}
+.filter-builder__group.is-card {
+  border-style: solid;
+  background: white;
+  box-shadow: 0 2px 6px #29312614;
+}
+.filter-builder__group.is-selected {
+  border-color: #4f6638;
+  box-shadow: 0 0 0 2px #dce7cd;
+}
+.filter-builder__group.is-over {
+  background: #eef4e5;
+}
+.filter-builder__group[data-direction="row"] > .filter-builder__children {
+  display: flex;
+  flex-wrap: wrap;
+}
+.filter-builder__group[data-direction="row"] > .filter-builder__children > li {
+  flex: 1 1 120px;
+}
+.filter-builder__group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.banner-editor form .filter-builder__select {
+  display: grid;
+  flex: 1;
+  justify-items: start;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  background: transparent;
+  font:
+    600 0.75rem Arial,
+    sans-serif;
+  text-align: left;
+}
+.filter-builder__select small {
+  font-weight: 400;
+  color: #5c6853;
+}
+.filter-builder__tools {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+.banner-editor form .filter-builder__tools button,
+.banner-editor form .filter-builder__piece > button {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+}
+.filter-builder__empty {
+  padding: 0.4rem;
+  font-size: 0.72rem;
+  color: #7c8774;
+  text-align: center;
+}
+.filter-builder__properties {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.6rem;
+  border: 1px solid #d2d7ca;
+  border-radius: 9px;
+  background: white;
+}
+.banner-editor .filter-builder__properties label {
+  margin: 0.25rem 0;
+}
+.filter-builder__choice {
+  display: flex;
+  gap: 0.3rem;
+}
+.banner-editor form .filter-builder__choice button[aria-pressed="true"] {
+  background: #293126;
+  color: white;
+}
+.banner-editor .filter-builder__check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-builder__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.filter-builder__properties input:not([type]) {
+  padding: 0.4rem;
+  border: 1px solid #bcc4b4;
+  border-radius: 4px;
+}

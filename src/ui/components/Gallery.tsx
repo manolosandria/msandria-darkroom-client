@@ -248,6 +248,7 @@ export default function Gallery({
         categories={catalog?.categories ?? []}
         settings={settings}
         selected={categoryIds}
+        layout={settings.filterLayout}
         anchor={paired && filtersFirst ? "start" : "end"}
         onChange={(ids) => {
           setCategoryIds(ids);

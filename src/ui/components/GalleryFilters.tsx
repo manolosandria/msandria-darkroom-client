@@ -10,6 +10,11 @@ import {
 } from "react";
 import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import { GallerySettings } from "@/src/domain/entities/GallerySettings";
+import {
+  FilterGroup,
+  FilterNode,
+  placedPieces,
+} from "@/src/domain/galleryFilterLayout";
 import { galleryDepartments } from "./galleryCategoryGroups";
 
 /**
@@ -28,6 +33,7 @@ export function GalleryFilters({
   count,
   display,
   anchor = "end",
+  layout,
 }: {
   categories: CatalogCategory[];
   settings: Pick<GallerySettings, "departments" | "categories">;
@@ -41,12 +47,23 @@ export function GalleryFilters({
   display?: ReactNode;
   /** The edge of the bar the panel lines up with; it grows towards the other. */
   anchor?: "start" | "end";
+  /**
+   * The bar as arranged in Curator. Without it, search, Filters and reset share the
+   * first line and the chosen filters and count the second.
+   */
+  layout?: FilterGroup;
 }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLElement>(null);
   const toggleButton = useRef<HTMLButtonElement>(null);
-  const departments = galleryDepartments(categories, settings);
+  const allDepartments = galleryDepartments(categories, settings);
+  const placed = layout ? placedPieces(layout) : new Set<string>();
+  // A department or View placed in the bar leaves the panel.
+  const departments = allDepartments.filter(
+    (department) => !placed.has(`department:${department.id}`),
+  );
+  const panelDisplay = placed.has("view") ? undefined : display;
   const chosen = departments.flatMap((department) =>
     department.categories
       .filter((category) => selected.includes(category.id))
@@ -105,11 +122,180 @@ export function GalleryFilters({
     else if (event.key === "ArrowLeft") side(-1);
   };
   const panelId = `${id}-panel`;
-  const hasPanel = departments.length > 0 || Boolean(display);
+  const hasPanel = departments.length > 0 || Boolean(panelDisplay);
+  const toggleEl = hasPanel && (
+    <button
+      ref={toggleButton}
+      type="button"
+      className="gallery-browse__toggle"
+      aria-expanded={open}
+      aria-controls={panelId}
+      data-active={selected.length > 0 || undefined}
+      onClick={() => setOpen(!open)}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowDown" || !departments[0]) return;
+        event.preventDefault();
+        setOpen(true);
+        requestAnimationFrame(() => focusOption(departments[0].id, 0));
+      }}
+    >
+      <svg
+        viewBox="0 0 20 20"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden="true"
+      >
+        <path d="M3 5h14M6 10h8M8.5 15h3" />
+      </svg>
+      <span>Filters</span>
+      {selected.length > 0 && (
+        <span className="gallery-department__badge">{selected.length}</span>
+      )}
+      <svg
+        className="gallery-department__caret"
+        viewBox="0 0 12 12"
+        width="10"
+        height="10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden="true"
+      >
+        <path d="M2 4l4 4 4-4" />
+      </svg>
+    </button>
+  );
+  const resetEl = (
+    <button
+      type="button"
+      className="gallery-browse__reset"
+      aria-label="Clear all filters"
+      title="Clear all filters"
+      disabled={selected.length === 0}
+      onClick={() => {
+        onChange([]);
+        setOpen(false);
+      }}
+    >
+      <svg
+        viewBox="0 0 20 20"
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        aria-hidden="true"
+      >
+        <path d="M4 10a6 6 0 1 0 2-4.5" />
+        <path d="M4 3v3.5h3.5" />
+      </svg>
+    </button>
+  );
+  const chipsEl = chosen.length > 0 && (
+    <ul className="gallery-browse__chips" aria-label="Active filters">
+      {chosen.map(({ category, department }) => (
+        <li key={category.id}>
+          <button
+            type="button"
+            aria-label={`Remove filter ${category.name}`}
+            onClick={() => toggle(category.id)}
+          >
+            <small>{department}</small>
+            {category.name}
+            <span aria-hidden="true">×</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+  const departmentEl = (departmentId: string) => {
+    const department = allDepartments.find((item) => item.id === departmentId);
+    if (!department) return null;
+    return (
+      <div
+        className="gallery-browse__inline"
+        role="group"
+        aria-label={department.label}
+      >
+        <span className="gallery-browse__heading">{department.label}</span>
+        {department.categories.map((category) => (
+          <button
+            key={category.id}
+            type="button"
+            className="gallery-browse__inline-option"
+            aria-pressed={selected.includes(category.id)}
+            onClick={() => toggle(category.id)}
+          >
+            {category.name}
+          </button>
+        ))}
+      </div>
+    );
+  };
+  const nodeEl = (node: FilterNode): ReactNode => {
+    const grow = node.grow ? " is-grow" : "";
+    if (node.type === "group")
+      return (
+        <div
+          key={node.id}
+          className={`gallery-browse__group${node.surface === "card" ? " is-card" : ""}${grow}`}
+          data-direction={node.direction}
+          style={{
+            flexDirection: node.direction,
+            gap: node.gap,
+            alignItems:
+              node.align === "start" || node.align === "end"
+                ? `flex-${node.align}`
+                : node.align,
+            justifyContent:
+              node.justify === "between"
+                ? "space-between"
+                : node.justify === "center"
+                  ? "center"
+                  : `flex-${node.justify}`,
+            flexWrap: node.wrap ? "wrap" : "nowrap",
+          }}
+        >
+          {node.label && (
+            <span className="gallery-browse__group-label">{node.label}</span>
+          )}
+          {node.children.map(nodeEl)}
+        </div>
+      );
+    const view = display && (
+      <div
+        className="gallery-browse__view-inline"
+        role="group"
+        aria-label="View"
+      >
+        {display}
+      </div>
+    );
+    const content =
+      node.type === "department"
+        ? departmentEl(node.departmentId)
+        : {
+            search,
+            filters: toggleEl,
+            reset: resetEl,
+            chips: chipsEl,
+            count,
+            view,
+          }[node.type];
+    if (!content) return null;
+    return (
+      <div key={node.id} className={`gallery-browse__piece${grow}`}>
+        {content}
+      </div>
+    );
+  };
   return (
     <section
       ref={root}
-      className="gallery-browse"
+      className={`gallery-browse${layout ? " gallery-browse--arranged" : ""}`}
       aria-label="Gallery filters"
       data-open={open || undefined}
       data-anchor={anchor}
@@ -120,80 +306,15 @@ export function GalleryFilters({
         if (event.key === "Escape" && open) close(true);
       }}
     >
-      <div className="gallery-browse__bar">
-        {search}
-        {hasPanel && (
-          <button
-            ref={toggleButton}
-            type="button"
-            className="gallery-browse__toggle"
-            aria-expanded={open}
-            aria-controls={panelId}
-            data-active={selected.length > 0 || undefined}
-            onClick={() => setOpen(!open)}
-            onKeyDown={(event) => {
-              if (event.key !== "ArrowDown" || !departments[0]) return;
-              event.preventDefault();
-              setOpen(true);
-              requestAnimationFrame(() => focusOption(departments[0].id, 0));
-            }}
-          >
-            <svg
-              viewBox="0 0 20 20"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              aria-hidden="true"
-            >
-              <path d="M3 5h14M6 10h8M8.5 15h3" />
-            </svg>
-            <span>Filters</span>
-            {selected.length > 0 && (
-              <span className="gallery-department__badge">
-                {selected.length}
-              </span>
-            )}
-            <svg
-              className="gallery-department__caret"
-              viewBox="0 0 12 12"
-              width="10"
-              height="10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              aria-hidden="true"
-            >
-              <path d="M2 4l4 4 4-4" />
-            </svg>
-          </button>
-        )}
-        <button
-          type="button"
-          className="gallery-browse__reset"
-          aria-label="Clear all filters"
-          title="Clear all filters"
-          disabled={selected.length === 0}
-          onClick={() => {
-            onChange([]);
-            setOpen(false);
-          }}
-        >
-          <svg
-            viewBox="0 0 20 20"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            aria-hidden="true"
-          >
-            <path d="M4 10a6 6 0 1 0 2-4.5" />
-            <path d="M4 3v3.5h3.5" />
-          </svg>
-        </button>
-      </div>
+      {layout ? (
+        nodeEl(layout)
+      ) : (
+        <div className="gallery-browse__bar">
+          {search}
+          {toggleEl}
+          {resetEl}
+        </div>
+      )}
       {hasPanel && (
         <div
           id={panelId}
@@ -247,10 +368,14 @@ export function GalleryFilters({
               })}
             </div>
           )}
-          {display && (
-            <div className="gallery-browse__view" role="group" aria-label="View">
+          {panelDisplay && (
+            <div
+              className="gallery-browse__view"
+              role="group"
+              aria-label="View"
+            >
               <p className="gallery-browse__heading">View</p>
-              {display}
+              {panelDisplay}
             </div>
           )}
           <div className="gallery-browse__footer">
@@ -270,25 +395,9 @@ export function GalleryFilters({
           </div>
         </div>
       )}
-      {(chosen.length > 0 || count) && (
+      {!layout && (chosen.length > 0 || count) && (
         <div className="gallery-browse__meta">
-          {chosen.length > 0 && (
-            <ul className="gallery-browse__chips" aria-label="Active filters">
-              {chosen.map(({ category, department }) => (
-                <li key={category.id}>
-                  <button
-                    type="button"
-                    aria-label={`Remove filter ${category.name}`}
-                    onClick={() => toggle(category.id)}
-                  >
-                    <small>{department}</small>
-                    {category.name}
-                    <span aria-hidden="true">×</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {chipsEl}
           {count}
         </div>
       )}
