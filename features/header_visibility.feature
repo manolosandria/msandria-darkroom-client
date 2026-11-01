@@ -10,6 +10,12 @@ Feature: Fold the site header away
     And only the logo stays, floating translucent in the top-left corner
     And focus moves to the "Show header" chevron beside it
 
+  Scenario: The floating logo never covers a page's title
+    Given the header is hidden
+    When I open a text page such as Gallery, Collections or Contact
+    Then the page starts below the floating logo, on its own background
+    And the logo stays legible over a dark page or a photograph
+
   Scenario: The menu from the floating logo
     Given the header is hidden
     When I point at the floating logo or tab into it

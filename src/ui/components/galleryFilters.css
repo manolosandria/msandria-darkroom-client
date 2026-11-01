@@ -444,6 +444,20 @@
     display: none;
   }
 }
+/* Phones: search takes the whole first line, so its words are not cut, and the
+   Filters button widens beside reset on the line under it. */
+@container (max-width: 520px) {
+  .gallery-browse__bar {
+    flex-wrap: wrap;
+  }
+  .gallery-browse__bar .gallery-search {
+    flex-basis: 100%;
+  }
+  .gallery-browse__bar .gallery-browse__toggle {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .gallery-browse,
   .gallery-browse *,

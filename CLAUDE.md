@@ -317,7 +317,10 @@ remains, the folded header is `inert`, and reduced motion drops the animation. T
 choice is kept in `localStorage` under `headerHidden` (`headerPreference`, guarded like
 the photo quality and falling back to memory); a remembered choice applies without
 animating. For the administrator, the chevron carries a dot and announces pending
-notifications. On `/curator` the menu's row leaves room for the floating logo.
+notifications. On `/curator` the menu's row leaves room for the floating logo, and
+text pages (Gallery, Collections, Contact, Account, sign-in) move down under it, with
+their own background, so it never sits on their title. The pill keeps a frosted light
+ground so the logo stays legible over dark pages and photographs.
 
 ## Account deletion
 
@@ -563,7 +566,7 @@ the crop source uses normalized highlight coordinates, then covers the banner.
 Container queries keep the real page and embedded mobile preview consistent.
 Horizontal swipes suppress link activation; vertical gestures keep scrolling.
 
-Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the ⠿ grips of Welcome and Photographs to rearrange them; the layout drawings above the preview do the same. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the downloaded rendition and effective crop pixels, warning when display density requires upscaling. Home has no exterior banner padding.
+Home preview photos open per-photo banner settings with named custom crops, ratio filtering and independent desktop/mobile selection. Drag the ⠿ grips of Welcome and Photographs to rearrange them; the layout drawings above the preview do the same. The active slide loads public photo detail (renditions up to 2560 px). Highlight previews show the effective crop pixels as a small chip in the bottom-left corner (green dot, amber when display density requires upscaling); the full report, with the downloaded rendition and the reference sizes, opens above it on hover or focus. **Unsaved preview** shows only while Home or Gallery has changes. Home has no exterior banner padding.
 
 Home studio uses icon controls with accessible names and selected-state labels, a shared target display for photo settings and preview, mouse-drag/key carousel navigation and valid native composition drop targets. Photo highlights can be edited and saved directly in Home with version protection and unsaved-change handling. ResolutionBadge is shared by Home, Upload and Photos highlight editing; it reports reference uses at 1× pixel sizes (thumbnail, phone, HD monitor/Home, 4K screen), not a guarantee of optical sharpness.
 
@@ -667,7 +670,9 @@ search, a **Filters ▾** button that counts the chosen categories, and the roun
 icon on its first line; the chosen filters as chips (each with its department) and the
 photograph count on its second. **Filters** (click or the down arrow) opens one panel
 under the bar with every department as a column, those with a choice marked, and the
-display icons under **View**; on phones the departments stack. Arrow keys move between
+display icons under **View**; on phones the departments stack, and the search takes
+the bar's first line with Filters and reset under it. A tile still loading shows a soft
+sweep in the page's text color instead of an empty gap. Arrow keys move between
 categories and columns, up from the first returns to the button; Escape, a press outside
 or **Done** closes it. Any category of a department matches, and each department chosen
 narrows the others, so the departments are the query's groups.

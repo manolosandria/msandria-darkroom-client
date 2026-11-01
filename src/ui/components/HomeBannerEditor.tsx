@@ -544,7 +544,7 @@ function Editor() {
                   onClick={() => setMobile(true)}
                 />
               </div>
-              <span>Unsaved preview</span>
+              {dirty && <span>Unsaved preview</span>}
             </div>
             <div
               className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}

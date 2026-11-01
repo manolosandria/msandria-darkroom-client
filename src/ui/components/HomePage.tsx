@@ -604,9 +604,20 @@ export function CroppedSlide({
       style={{ "--crop-aspect": aspect } as CSSProperties}
     >
       {quality && (
-        <span className="banner-quality">
-          {report}
-          <ResolutionBadge width={pixels.width} height={pixels.height} />
+        // A small chip in the corner, so the composition stays in view; the
+        // full report opens under the pointer or keyboard focus.
+        <span
+          className="banner-quality"
+          tabIndex={0}
+          data-warning={report.includes("Upscaling") || undefined}
+        >
+          <span className="banner-quality__chip" aria-hidden="true">
+            {Math.round(pixels.width)} × {Math.round(pixels.height)}
+          </span>
+          <span className="banner-quality__detail">
+            {report}
+            <ResolutionBadge width={pixels.width} height={pixels.height} />
+          </span>
         </span>
       )}
       <div className="home-carousel__crop-window">

@@ -529,7 +529,7 @@ function Editor() {
                   </button>
                 ))}
               </div>
-              <span>Unsaved preview</span>
+              {dirty && <span>Unsaved preview</span>}
             </div>
             <div
               className={`device-frame device-frame--${mobile ? "mobile" : "desktop"}`}

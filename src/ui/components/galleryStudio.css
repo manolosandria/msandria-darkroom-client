@@ -84,6 +84,32 @@
   display: block;
   position: absolute;
   inset: 0;
+  /* A tile still loading shows a soft sweep in the page's text color, so it
+     reads as a photograph on its way rather than a hole in the mosaic. The
+     photo covers it once loaded; the sweep stops on its own after a few runs. */
+  background:
+    linear-gradient(
+        100deg,
+        transparent 35%,
+        color-mix(in srgb, currentColor 9%, transparent) 50%,
+        transparent 65%
+      )
+      0 0 / 250% 100%,
+    color-mix(in srgb, currentColor 6%, transparent);
+  animation: gallery-tile-loading 1.6s ease-in-out 6;
+}
+@keyframes gallery-tile-loading {
+  from {
+    background-position: 100% 0, 0 0;
+  }
+  to {
+    background-position: -150% 0, 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gallery-tile__image {
+    animation: none;
+  }
 }
 .gallery-tile__variants {
   position: absolute;
