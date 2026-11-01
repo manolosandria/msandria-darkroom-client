@@ -75,6 +75,9 @@ describe("Gallery server pagination", () => {
     await screen.findByText("Page 1 of 3");
     expect(screen.getAllByRole("img")).toHaveLength(12);
     const seed = execute.mock.calls[0][0].seed;
+    // The clock stands still, so the 500 ms guard between page changes is still on
+    // at the last click however slowly the test runs.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now());
     await user.dblClick(screen.getByRole("button", { name: /next/i }));
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
     expect(execute.mock.calls[1][0]).toMatchObject({
@@ -87,6 +90,7 @@ describe("Gallery server pagination", () => {
     expect(screen.getByRole("img", { name: "Photo 12" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(execute).toHaveBeenCalledTimes(2);
+    clock.mockRestore();
   });
   it("debounces search and sends category and presentation filters to the API", async () => {
     const user = userEvent.setup();

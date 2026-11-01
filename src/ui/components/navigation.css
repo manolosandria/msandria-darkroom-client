@@ -42,9 +42,18 @@
 .site-header[data-hidden="true"] .site-header__dock { display:block; }
 .site-header[data-animated][data-hidden="true"] .site-header__dock { animation:dock-in .35s var(--fold-ease) .15s both; }
 @keyframes dock-in { from { opacity:0; transform:translateY(-8px) scale(.96); } }
-.site-header__dock-pill { display:flex; align-items:center; gap:.15rem; padding:.3rem .3rem .3rem .7rem; border:1px solid #ffffff80; border-radius:999px; background:#f6f5f170; box-shadow:0 4px 18px #1a201814; backdrop-filter:blur(10px) saturate(1.2); opacity:.62; transition:opacity .2s,background .2s,box-shadow .2s; }
+/* Translucent but always legible: over a dark page or photograph the frosted pill
+   keeps enough of its light ground for the black logo. */
+.site-header__dock-pill { display:flex; align-items:center; gap:.15rem; padding:.3rem .3rem .3rem .7rem; border:1px solid #ffffff80; border-radius:999px; background:#f6f5f1c4; box-shadow:0 4px 18px #1a201826,0 0 0 1px #1a20180d; backdrop-filter:blur(12px) saturate(1.3); opacity:.9; transition:opacity .2s,background .2s,box-shadow .2s; }
 .site-header__dock:hover .site-header__dock-pill,.site-header__dock:has(:focus-visible) .site-header__dock-pill { opacity:1; background:#f6f5f1e8; box-shadow:0 8px 26px #1a201826; }
 .site-header__dock-logo { display:block; width:118px; }
+/* A text page moves down under the floating logo instead of running into it; Home's
+   photograph and Curator's menu already leave it room. The room is a transparent
+   border, so it shows the page's own background (Gallery's may be dark) and adds to
+   whatever padding the page has. */
+.site-header + main { border-top:0 solid transparent; }
+.site-header[data-animated] + main { transition:border-top-width .38s cubic-bezier(.22,.8,.24,1); }
+.site-header[data-hidden="true"] + main { border-top-width:2.75rem; }
 .site-header__dock-logo img { display:block; width:100%; height:auto; }
 .site-header__reveal { position:relative; display:grid; place-items:center; width:30px; height:30px; border-radius:50%; color:#4b5745; cursor:pointer; transition:background .2s,color .2s; }
 .site-header__reveal:hover,.site-header__reveal:focus-visible { background:#e8ebdf; color:#253d22; }
