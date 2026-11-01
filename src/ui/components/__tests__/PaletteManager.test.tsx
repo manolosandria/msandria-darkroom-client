@@ -108,16 +108,16 @@ describe("Palette manager", () => {
     render(<PaletteManager />);
     const preview = await screen.findByLabelText("Preview");
     fireEvent.click(screen.getByRole("button", { name: "Night" }));
-    expect(
-      (preview as HTMLSelectElement).selectedOptions[0],
-    ).toHaveTextContent("Night");
-    const other = within(preview).getAllByRole("option")[0];
-    fireEvent.change(preview, {
-      target: { value: (other as HTMLOptionElement).value },
-    });
-    expect(
-      screen.getByRole("button", { name: other.textContent! }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(preview).toHaveTextContent("Night");
+    fireEvent.click(preview);
+    const other = screen.getAllByRole("option")[0];
+    const name = other.getAttribute("aria-labelledby")!;
+    const label = document.getElementById(name)!.textContent!;
+    fireEvent.click(other);
+    expect(screen.getByRole("button", { name: label })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("does not load administrative settings for visitors", () => {

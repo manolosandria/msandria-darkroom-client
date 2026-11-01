@@ -237,3 +237,19 @@
 .catalog-editor .text-align-choice button { display: grid; place-items: center; width: 2.4rem; height: 2.2rem; padding: 0; border: 1px solid #dfe3d7; border-radius: .5rem; background: #fff; color: #5d6455; }
 .catalog-editor .text-align-choice button:hover { border-color: #9fb685; color: #22301b; }
 .catalog-editor .text-align-choice button[aria-pressed=true] { border-color: #4d6b3a; background: #eef3e6; color: #22301b; }
+
+/* Cell sizes as a bar of cells, filled up to the size. */
+.cell-size { display: grid; gap: .3rem; font-size: .75rem; color: #5d6455; }
+.cell-size__label b { color: #2f4a27; font-variant-numeric: tabular-nums; }
+.cell-size__bar { display: flex; gap: 3px; padding: 3px; border: 1px solid #dfe4d8; border-radius: .55rem; background: #f3f5ef; width: max-content; }
+.cell-size__bar button { width: 14px; height: 20px; padding: 0; border: 1px solid #cdd6c2; border-radius: 4px; background: #fff; cursor: pointer; transition: background .12s, border-color .12s, transform .12s; }
+.cell-size__bar button[data-filled] { border-color: #5f8a4c; background: linear-gradient(#7aa564, #5f8a4c); }
+.cell-size__bar button:hover:not(:disabled) { transform: translateY(-2px); border-color: #4f7d3f; }
+.cell-size__bar button:focus-visible { outline: 2px solid #4f7d3f; outline-offset: 1px; }
+.cell-size__bar button:disabled { cursor: not-allowed; opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .cell-size__bar button { transition: none; } }
+
+/* Category cards lift under the pointer; the one being edited stays lit. */
+.category-browser button { cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s, background .15s; }
+.category-browser button:hover { transform: translateY(-2px); border-color: #9fb38c; background: #fbfcf8; box-shadow: 0 8px 18px -12px #2b332266; }
+.category-browser button:active { transform: none; }

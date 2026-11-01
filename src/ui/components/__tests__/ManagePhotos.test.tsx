@@ -31,6 +31,7 @@ vi.mock("@/src/infrastructure/catalogServices", () => ({
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { SessionProvider } from "../SessionProvider";
 import ManagePhotos from "../ManagePhotos";
+import { choose, chooseWhenReady } from "./chooseOption";
 
 vi.mock("@/src/infrastructure/photoServices", () => ({
   getManagedPhotos: { execute: vi.fn() },
@@ -108,12 +109,12 @@ describe("ManagePhotos", () => {
     expect(screen.getAllByRole("button", { pressed: false })).toHaveLength(1);
     expect(screen.getByText("1 of 3 photos")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear" }));
-    await user.selectOptions(screen.getByLabelText("Camera"), "Canon EOS R6");
-    await user.selectOptions(await screen.findByLabelText("Category"), "sea");
+    choose(screen.getByLabelText("Camera"), "Canon EOS R6");
+    await chooseWhenReady(await screen.findByLabelText("Category"), "Sea");
     await user.type(screen.getByRole("searchbox"), "dawn");
     expect(screen.getByRole("button", { name: "Dawn harbour" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Harbour" })).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("Camera"), "FUJIFILM X-T4");
+    choose(screen.getByLabelText("Camera"), "FUJIFILM X-T4");
     expect(screen.getByText("No photos match these filters.")).toBeInTheDocument();
     vi.mocked(manageCatalog.load).mockResolvedValue(empty);
   });

@@ -11,6 +11,7 @@ import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServi
 import { useSessionValue } from "./SessionProvider";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { EditorActions } from "./EditorActions";
+import { ChoiceMenu } from "./ChoiceMenu";
 import {
   GalleryPaletteLibrary,
   PALETTE_KEYS,
@@ -193,16 +194,20 @@ function Manager() {
             <h2>Where each color goes</h2>
             <label className="palette-guide__pick">
               Preview
-              <select
-                value={shown?.id}
-                onChange={(event) => setPreview(event.target.value)}
-              >
-                {palettes.map((palette) => (
-                  <option key={palette.id} value={palette.id}>
-                    {palette.name}
-                  </option>
-                ))}
-              </select>
+              <ChoiceMenu
+                value={shown?.id ?? ""}
+                onChange={setPreview}
+                options={palettes.map((palette) => ({
+                  value: palette.id,
+                  label: palette.name,
+                  swatch: [
+                    palette.background,
+                    palette.text,
+                    palette.accent,
+                    palette.surface,
+                  ],
+                }))}
+              />
             </label>
             {shown && (
               <PaletteDiagram

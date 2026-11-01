@@ -2,6 +2,7 @@
 import { useId, useState } from "react";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { Photo } from "@/src/domain/entities/Photo";
+import { ChoiceMenu } from "./ChoiceMenu";
 
 export type PhotoFilter = { query: string; categoryId: string; camera: string };
 
@@ -83,39 +84,30 @@ export function PhotoFilters({
           }
         />
       </label>
-      <label>
-        <span className="sr-only">Category</span>
-        <select
-          aria-label="Category"
-          value={filter.categoryId}
-          onChange={(event) =>
-            onChange({ ...filter, categoryId: event.target.value })
-          }
-        >
-          <option value="">All categories</option>
-          {catalog?.categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ChoiceMenu
+        ariaLabel="Category"
+        className="photo-filters__menu"
+        value={filter.categoryId}
+        onChange={(categoryId) => onChange({ ...filter, categoryId })}
+        options={[
+          { value: "", label: "All categories", icon: filterIcons.category },
+          ...(catalog?.categories ?? []).map((category) => ({
+            value: category.id,
+            label: category.name,
+          })),
+        ]}
+      />
       {withCamera && (
-        <label>
-          <span className="sr-only">Camera</span>
-          <select
-            aria-label="Camera"
-            value={filter.camera}
-            onChange={(event) =>
-              onChange({ ...filter, camera: event.target.value })
-            }
-          >
-            <option value="">All cameras</option>
-            {cameras.map((camera) => (
-              <option key={camera}>{camera}</option>
-            ))}
-          </select>
-        </label>
+        <ChoiceMenu
+          ariaLabel="Camera"
+          className="photo-filters__menu"
+          value={filter.camera}
+          onChange={(camera) => onChange({ ...filter, camera })}
+          options={[
+            { value: "", label: "All cameras", icon: filterIcons.camera },
+            ...cameras.map((camera) => ({ value: camera, label: camera })),
+          ]}
+        />
       )}
       {active && (
         <button
@@ -129,3 +121,29 @@ export function PhotoFilters({
     </div>
   );
 }
+
+const filterIcons = {
+  category: (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    >
+      <path d="M3 10V3h7l7 7-7 7zM7 7h.01" />
+    </svg>
+  ),
+  camera: (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    >
+      <path d="M3 7h3l1.5-2h5L14 7h3v9H3z" />
+      <circle cx="10" cy="11.5" r="2.8" />
+    </svg>
+  ),
+};

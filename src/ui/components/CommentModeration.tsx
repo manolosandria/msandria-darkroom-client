@@ -15,6 +15,7 @@ import {
 } from "@/src/ui/commentMessages";
 import { ErrorMessage } from "./ErrorMessage";
 import { useSessionValue } from "./SessionProvider";
+import { EmptyState } from "./EmptyState";
 
 export default function CommentModeration() {
   const session = useSessionValue();
@@ -70,7 +71,11 @@ function ModerationQueue() {
   if (state.status === "failed")
     return <ErrorMessage message="Could not load the pending comments." onRetry={load} />;
   if (state.comments.length === 0)
-    return <p className="my-6">No comments are waiting for review.</p>;
+    return (
+      <EmptyState picture="done" title="No comments are waiting for review.">
+        New comments from visitors appear here before anyone else sees them.
+      </EmptyState>
+    );
 
   const settle = (id: string) =>
     setState({

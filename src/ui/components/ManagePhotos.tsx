@@ -58,6 +58,7 @@ import {
   PhotoCollectionField,
   PhotoVisibilityField,
 } from "./PhotoClassificationFields";
+import { EmptyState } from "./EmptyState";
 import {
   EditingBoundary,
   useEditingWorkspace,
@@ -289,13 +290,17 @@ function PhotoLibrary({
           {loading && <p role="status">Loading photographs…</p>}
           {error && <ErrorMessage message={error} onRetry={retry} />}
           {!loading && entries.length === 0 && (
-            <p className="photo-browser__empty">
-              {listed.length
-                ? "No photos match these filters."
-                : pendingOnly
-                  ? "No photos need optimization."
-                  : "No photos published yet."}
-            </p>
+            <div className="photo-browser__empty">
+              {listed.length ? (
+                <EmptyState picture="search" title="No photos match these filters." quiet />
+              ) : pendingOnly ? (
+                <EmptyState picture="done" title="No photos need optimization." quiet />
+              ) : (
+                <EmptyState picture="photos" title="No photos published yet." quiet>
+                  Upload brings your first photographs here.
+                </EmptyState>
+              )}
+            </div>
           )}
           {mode === "list" && entries.length > 0 && (
             <div className="photo-browser__head" aria-hidden="true">

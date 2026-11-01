@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import {
   defaultGallerySettings,
   defaultGalleryPalettes,
   GalleryAppearance,
+  galleryFonts,
   GallerySettings,
 } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
@@ -22,6 +23,10 @@ import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
 import { GALLERY_SETTINGS_SAVED } from "./PaletteManager";
 import { DisplayIcon } from "./DisplayIcon";
+import { ChoiceMenu } from "./ChoiceMenu";
+import { SegmentedChoice } from "./SegmentedChoice";
+import { choiceIcons } from "./choiceIcons";
+import { galleryOptionIcons } from "./GalleryVisitorControls";
 import "./homeBannerEditor.css";
 import "./galleryStudio.css";
 
@@ -262,17 +267,22 @@ function Editor() {
               <legend>Type & color</legend>
               <label>
                 Edit style for
-                <select
+                <ChoiceMenu
                   value={target}
-                  onChange={(event) => setTarget(event.target.value)}
-                >
-                  <option value="">All photographs · general style</option>
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setTarget}
+                  options={[
+                    {
+                      value: "",
+                      label: "All photographs",
+                      description: "The general style",
+                      icon: choiceIcons.general,
+                    },
+                    ...categories.map((item) => ({
+                      value: item.id,
+                      label: item.name,
+                    })),
+                  ]}
+                />
               </label>
               {target && (
                 <>
@@ -414,44 +424,42 @@ function Editor() {
                     <div className="gallery-editor-block__row">
                       <label>
                         Role {index + 1}
-                        <select
+                        <ChoiceMenu
                           value={block.kind}
-                          onChange={(event) =>
+                          onChange={(kind) =>
                             setDraft({
                               ...draft,
                               blocks: draft.blocks.map((item, i) =>
-                                i === index
-                                  ? { ...item, kind: event.target.value }
-                                  : item,
+                                i === index ? { ...item, kind } : item,
                               ),
                             })
                           }
-                        >
-                          {Object.entries(BLOCK_KINDS).map(([kind, label]) => (
-                            <option key={kind} value={kind}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
+                          options={Object.entries(BLOCK_KINDS).map(
+                            ([kind, label]) => ({
+                              value: kind,
+                              label,
+                              icon: BLOCK_ICONS[kind],
+                            }),
+                          )}
+                        />
                       </label>
                       <label>
                         Text font {index + 1}
-                        <select
+                        <ChoiceMenu
                           value={block.font}
-                          onChange={(event) =>
+                          onChange={(font) =>
                             setDraft({
                               ...draft,
                               blocks: draft.blocks.map((item, i) =>
-                                i === index
-                                  ? { ...item, font: event.target.value }
-                                  : item,
+                                i === index ? { ...item, font } : item,
                               ),
                             })
                           }
-                        >
-                          <option value="inherit">Use gallery font</option>
-                          <FontOptions />
-                        </select>
+                          options={[
+                            { value: "inherit", label: "Use gallery font" },
+                            ...FONT_CHOICES,
+                          ]}
+                        />
                       </label>
                     </div>
                     <label>
@@ -546,15 +554,28 @@ function Editor() {
     </div>
   );
 }
-function FontOptions() {
-  return (
-    <>
-      <option value="serif">Editorial · Georgia</option>
-      <option value="sans">Clean · Arial</option>
-      <option value="mono">Monospace · Courier</option>
-    </>
-  );
-}
+// Each typeface is named in itself, so the menu shows how it looks.
+const FONT_CHOICES = [
+  { value: "serif", label: "Editorial · Georgia", font: galleryFonts.serif },
+  { value: "sans", label: "Clean · Arial", font: galleryFonts.sans },
+  { value: "mono", label: "Monospace · Courier", font: galleryFonts.mono },
+];
+const BLOCK_ICONS: Record<string, ReactNode> = {
+  eyebrow: choiceIcons.blockEyebrow,
+  title: choiceIcons.blockTitle,
+  body: choiceIcons.blockBody,
+};
+const arrangement = (name: string) => (
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    aria-hidden="true"
+  >
+    {galleryOptionIcons[name]}
+  </svg>
+);
 const BLOCK_KINDS: Record<string, string> = {
   eyebrow: "Eyebrow",
   title: "Title",
@@ -577,12 +598,11 @@ function TypeColorFields({ value, disabled, onChange }: AppearanceProps) {
       <legend className="sr-only">Type and colors</legend>
       <label>
         Gallery font
-        <select
+        <ChoiceMenu
           value={value.font}
-          onChange={(event) => onChange({ ...value, font: event.target.value })}
-        >
-          <FontOptions />
-        </select>
+          onChange={(font) => onChange({ ...value, font })}
+          options={FONT_CHOICES}
+        />
       </label>
       <div className="gallery-editor-colors">
         {(["background", "text", "accent", "surface"] as const).map((key) => (
@@ -607,23 +627,28 @@ function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
   return (
     <fieldset disabled={disabled}>
       <legend>Photographs</legend>
-      <label>
-        Photo arrangement
-        <select
-          value={value.layout}
-          onChange={(event) =>
-            onChange({ ...value, layout: event.target.value })
-          }
-        >
-          <option value="justified">
-            Natural proportions · justified rows
-          </option>
-          <option value="uniform">Even grid</option>
-          <option value="random">
-            Random emphasis · up to two large photographs
-          </option>
-        </select>
-      </label>
+      <SegmentedChoice
+        label="Photo arrangement"
+        value={value.layout}
+        onChange={(layout) => onChange({ ...value, layout })}
+        options={[
+          {
+            value: "justified",
+            label: "Natural proportions · justified rows",
+            icon: arrangement("justified"),
+          },
+          {
+            value: "uniform",
+            label: "Even grid",
+            icon: arrangement("uniform"),
+          },
+          {
+            value: "random",
+            label: "Random emphasis · up to two large photographs",
+            icon: arrangement("random"),
+          },
+        ]}
+      />
       <label>
         Photo size · {value.tileSize}px
         <input

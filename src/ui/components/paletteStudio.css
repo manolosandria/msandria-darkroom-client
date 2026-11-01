@@ -548,3 +548,23 @@
   background: #fff;
   box-shadow: inset 0 0 0 1px #65724a;
 }
+
+/* The palette buttons answer the pointer like the rest of Curator. */
+.palette-manager button:not(.curator-icon-button, .palette-card) {
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.palette-manager button:not(.curator-icon-button, .palette-card):hover:not(:disabled) {
+  border-color: #9fb38c;
+  background: #f6f8f1;
+  box-shadow: 0 4px 12px -6px #2b332255;
+  transform: translateY(-1px);
+}
+.palette-manager .palette-library__delete:hover:not(:disabled) {
+  border-color: #d9a59a;
+  background: #fbefec;
+  color: #8f2d1d;
+}
