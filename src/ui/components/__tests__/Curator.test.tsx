@@ -73,6 +73,14 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("Curator", () => {
+  // A group's pill and one of its tabs can share a name ("Photos"): the pill is the
+  // one that opens a menu.
+  const buttons = (name: string) => screen.getAllByRole("button", { name });
+  const tab = (name: string) =>
+    buttons(name).find((button) => !button.hasAttribute("aria-haspopup"))!;
+  const group = (name: string) =>
+    buttons(name).find((button) => button.hasAttribute("aria-haspopup"))!;
+
   it("restores the last tab after a remount", async () => {
     sessionStorage.setItem("curatorSection", "Collections");
     show(admin);
@@ -81,7 +89,7 @@ describe("Curator", () => {
         screen.getByRole("button", { name: "Collections" }),
       ).toHaveAttribute("aria-current", "page"),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Photos" }));
+    await userEvent.click(tab("Photos"));
     expect(sessionStorage.getItem("curatorSection")).toBe("Photos");
   });
 
@@ -107,7 +115,7 @@ describe("Curator", () => {
         screen.getByRole("button", { name }),
       ),
     ).toHaveLength(4);
-    expect(screen.queryByRole("button", { name: "Home" })).toBeNull();
+    expect(group("Sections")).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(screen.getByRole("button", { name: "Photos" }));
     expect(screen.getByText("Photo library")).toBeVisible();
@@ -122,7 +130,7 @@ describe("Curator", () => {
     // A visited section keeps its state while hidden.
     expect(screen.getByText("Photo library")).not.toBeVisible();
     // A group opens on the tab last open in it.
-    await userEvent.click(screen.getByRole("button", { name: "Photos" }));
+    await userEvent.click(group("Photos"));
     expect(screen.getByText("Categories editor")).toBeVisible();
   });
 

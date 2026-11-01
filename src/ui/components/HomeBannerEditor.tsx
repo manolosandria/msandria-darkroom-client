@@ -15,6 +15,7 @@ import { bannerFonts, bannerPalettes } from "../bannerPresets";
 import { BannerPhotoSettings } from "./BannerPhotoSettings";
 import { BannerSlideList } from "./BannerSlideList";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
+import { EditorActions } from "./EditorActions";
 import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -137,6 +138,32 @@ function Editor() {
           Shape the welcome to your gallery. Preview your changes, then save to
           update Home for everyone.
         </p>
+        {saved && (
+          <EditorActions
+            form="home-banner-form"
+            busy={busy}
+            dirty={dirty}
+            saveLabel="Save banner"
+            onCancel={async () => {
+              if (
+                await confirm(
+                  "Discard changes?",
+                  "Return to the last saved banner?",
+                )
+              )
+                setDraft(saved);
+            }}
+            onRestore={async () => {
+              if (
+                await confirm(
+                  "Restore original design?",
+                  "Load the original design into your preview. Save to apply it.",
+                )
+              )
+                setDraft({ ...defaultHomeBanner, version: saved.version });
+            }}
+          />
+        )}
       </header>
       {error && (
         <p role="alert">
@@ -164,6 +191,7 @@ function Editor() {
       ) : (
         <div className="banner-editor__workspace banner-editor__workspace--home">
           <form
+            id="home-banner-form"
             className="banner-editor__properties"
             aria-label="Banner properties"
             onSubmit={async (event) => {
@@ -491,41 +519,6 @@ function Editor() {
                 />
               )}
             </section>
-            <div className="banner-editor__actions">
-              <button type="submit" disabled={busy || !dirty}>
-                {busy ? "Saving…" : "Save banner"}
-              </button>
-              <button
-                type="button"
-                disabled={busy || !dirty}
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "Discard changes?",
-                      "Return to the last saved banner?",
-                    )
-                  )
-                    setDraft(saved);
-                }}
-              >
-                Cancel changes
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "Restore original design?",
-                      "Load the original design into your preview. Save to apply it.",
-                    )
-                  )
-                    setDraft({ ...defaultHomeBanner, version: saved.version });
-                }}
-              >
-                Restore original
-              </button>
-            </div>
           </form>
           <section
             className="banner-editor__preview"

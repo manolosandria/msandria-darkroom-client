@@ -1,17 +1,23 @@
 Feature: Fold the site header away
-  A visitor can put the header away to give the photographs the whole page, and bring
-  it back from a slim tab that never covers the content.
+  A visitor can put the header away to give the photographs the whole page. Folded, it
+  takes no row at all: only the logo floats, translucent, in the top corner, and the
+  menu opens under it.
 
   Scenario: Hide the header
     Given I am on any page with the site header
     When I press the hide control beside the account icon
     Then the header folds up and the page moves up into its place
-    And a slim "Menu" tab hangs from the top edge of the page
-    And focus moves to that tab
+    And only the logo stays, floating translucent in the top-left corner
+    And focus moves to the "Show header" chevron beside it
+
+  Scenario: The menu from the floating logo
+    Given the header is hidden
+    When I point at the floating logo or tab into it
+    Then the site's navigation opens under it, the current page marked
 
   Scenario: Show it again
     Given the header is hidden
-    When I press the "Menu" tab
+    When I press the "Show header" chevron
     Then the header unfolds in its place, pushing the page down rather than covering it
     And focus returns to the hide control
 
@@ -28,7 +34,7 @@ Feature: Fold the site header away
   Scenario: The administrator does not miss pending work
     Given I am the administrator with pending comments or messages
     When the header is hidden
-    Then the "Menu" tab shows a dot and announces how many are pending
+    Then the "Show header" chevron shows a dot and announces how many are pending
 
   Scenario: Keyboard, screen readers and reduced motion
     Given I use the keyboard or a screen reader

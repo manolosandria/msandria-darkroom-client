@@ -287,13 +287,15 @@ pending list when no issues remain. Normal metadata edits still use `PATCH`.
 The header stacks below the desktop breakpoint and allows wrapping between the
 logo, navigation and session controls, including the Google sign-in button.
 
-A chevron beside the account icon folds the header away (`MainHeader`); a slim bar of
-the header's colour stays in its place with a centred **Menu** tab that brings it back,
-so the page moves rather than being covered. Focus follows to whichever control remains,
-the folded header is `inert`, and reduced motion drops the animation. The choice is kept
-in `localStorage` under `headerHidden` (`headerPreference`, guarded like the photo
-quality and falling back to memory); a remembered choice applies without animating.
-For the administrator, the Menu tab carries a dot and announces pending notifications.
+A chevron beside the account icon folds the header away (`MainHeader`). Folded, it takes
+no row of the page: only its logo floats, translucent, in the top-left corner, and
+pointing at it or tabbing into it opens the navigation under it; the chevron beside the
+logo (**Show header**) brings the header back. Focus follows to whichever control
+remains, the folded header is `inert`, and reduced motion drops the animation. The
+choice is kept in `localStorage` under `headerHidden` (`headerPreference`, guarded like
+the photo quality and falling back to memory); a remembered choice applies without
+animating. For the administrator, the chevron carries a dot and announces pending
+notifications. On `/curator` the menu's row leaves room for the floating logo.
 
 ## Account deletion
 
@@ -363,21 +365,38 @@ a `curator:refresh` event.
 Its menu is grouped by purpose (`curatorGroups`): **Sections** (Home, Gallery,
 Collections), **Palettes**, **Photos** (Photos, Upload, Categories, Variants) and
 **Admin** (Dashboard, Comments, Inbox): the screens of `/upload`, `/manage`, the
-collection editor and `/moderate`, plus the contact inbox. **Dashboard**
+collection editor and `/moderate`, plus the contact inbox. Each group is a pill that
+opens its tabs in a menu under it on hover, keyboard focus or a press (touch), the
+current tab marked; the group in use wears the moving plasma of the **New collection**
+card and names its open tab. The menu is not sticky: once it scrolls out of view, a
+bubble in the top-right corner names the open tab and lists every group on hover.
+The swatches at the end of the menu choose Curator's backdrop (`CuratorBackdrop`):
+still paper or a slow drifting gradient with fine grain (Meadow, Dusk, Tide,
+Darkroom), kept per visitor in `localStorage` under `curatorBackdrop` (guarded), and
+still under reduced motion. **Dashboard**
 (`CuratorDashboard`) counts what waits, from admin-only `GET /curator/dashboard`
 (comments, unread messages, photos to re-export, storage tasks, photos, accounts),
 and each count opens its tab. Older remembered tab names still open their new place.
 
-`CuratorSaveBar` sits at the top and at the bottom of Curator, beside each editor's own
-buttons: it names how many editors have unsaved changes and offers **Save** (**Save all** for several) and
-**Cancel** through `EditingWorkspace` (`usePendingEdits`). Its arrow button hides both, leaving a
-small tab that brings them back; the choice is kept in `localStorage` under
-`curatorSaveBarHidden` (guarded, falling back to memory).
+`CuratorSaveBar` is a small card floating in the bottom-right corner while any editor
+has unsaved changes: it names them and offers **Save** (**Save all** for several) and
+**Cancel** through `EditingWorkspace` (`usePendingEdits`) as colored icons (green saves,
+neutral cancels). Folded, it is one round green button with the count that brings it
+back; the choice is kept in `localStorage` under `curatorSaveBarHidden` (guarded,
+falling back to memory). An editor registers with `useUnsavedEditor` once while dirty
+and its latest callbacks are read when used, so its renders never churn the bar.
+Home, Gallery and Palettes keep their own **Save**, **Cancel changes** and **Restore
+original** (`EditorActions`) as icons on the line of their heading instead of a block
+under the controls: green, neutral and amber.
 
 Home and Gallery group their properties in tabs beside the preview (`PropertyTabs`,
-arrow keys, Home and End between tabs): Home has Text, Palette, Typography, Highlight,
-Carousel and Composition; Gallery has Style, Page, Filters, Photos, Introduction and
-Visitors. Upload, Photos and Collections stay mounted once visited, so switching tabs
+arrow keys, Home and End between tabs), one segmented row of drawings over short names
+(`propertyTabIcons`) that light under the pointer, the chosen one raised: Home has Text,
+Palette, Typography, Highlight, Carousel and Composition; Gallery has Style, Page,
+Filters, Photos, Introduction and Visitors. The controls column is a size container, so
+Composition's drawings and Welcome controls rearrange to its width. Home's preview bar
+is see-through, with Desktop and Mobile as glass pills, the chosen one dark. Gallery's
+Filters tab widens the controls column so the bar is built near its real width. Upload, Photos and Collections stay mounted once visited, so switching tabs
 does not lose unsaved edits. The older routes still work on their own.
 
 - **Upload**: every card has its own **Upload** button at its bottom right, and the
@@ -769,7 +788,9 @@ uploaded through `UploadPhoto` with the visibility of the work's first photo and
 to the draft. The work is saved only with **Save variants**.
 
 Gallery's visitor controls are segmented icon buttons (native radios), and the Gallery
-studio previews inside a monitor or a phone chosen with two device buttons.
+studio previews inside a monitor or a phone chosen with two device buttons. In Curator →
+Gallery → Visitors, the distributions and view shapes offered are tiles with the same
+drawings (`galleryOptionIcons`), lit when offered.
 
 ## Highlights, palettes and filters
 
@@ -847,9 +868,13 @@ of sections (Selected photo, Details, Categories, Display).
 `filterLayout` in `PUT /gallery/settings`): groups are rows or columns, plain or as a
 card, with gap, alignment, spread, wrap, a label and grow; pieces are search, the
 Filters button, reset, chosen filters, count, the view options and single
-departments, each at most once. Pieces and groups are dragged from the palette into a
-group or between groups, or moved with buttons (earlier, later, out of the group,
-remove) from the keyboard. A department or View placed in the bar leaves the Filters
+departments, each at most once. The bar is edited as it will look: groups are laid out
+with their own direction, gap and card on the gallery's surface and text colors, and
+every piece is drawn as the gallery's own control (inert), with its name on a small tab.
+Spare pieces wait in a tray above it. Pieces and groups are dragged onto the bar, a line
+showing whether they land before or after the piece under the pointer, or moved with the
+tools that float over a piece or a group under the pointer (earlier, later, out of the
+group, remove), from the keyboard too. A department or View placed in the bar leaves the Filters
 panel and shows its choices inline. The API validates the same limits (depth 4, 40
 nodes, 12 children per group). **Use the usual bar** removes the tree, and the gallery
 keeps the bar it always had.
