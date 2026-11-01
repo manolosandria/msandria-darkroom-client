@@ -85,7 +85,7 @@ export default function ManagePhotos() {
     <main className="upload-workspace">
       <div className="upload-container photo-studio-container">
         <div className="upload-heading">
-          <span className="upload-eyebrow">THE DARKROOM / MANAGE</span>
+          <span className="upload-eyebrow">CURATOR / PHOTOS</span>
           <h1>Refine your photographs.</h1>
           <p>Edit titles, stories, and the details that fill each thumbnail.</p>
         </div>

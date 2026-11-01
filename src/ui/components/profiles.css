@@ -144,3 +144,65 @@
     transition: none;
   }
 }
+
+/* Like and Save as proper buttons: larger, lighting up under the pointer, and a heart
+   or star that pops when switched on. */
+.photo-reactions {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.photo-reactions button {
+  gap: 0.45rem;
+  padding: 0.5rem 1rem;
+  border-color: #d6dccd;
+  font:
+    600 0.85rem Arial,
+    sans-serif;
+  color: #3d4934;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.photo-reactions button > span:first-child {
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.6, 1);
+}
+.photo-reactions button:hover:not(:disabled) {
+  border-color: #aebd9f;
+  background: #f6f8f2;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -8px #2b332266;
+}
+.photo-reactions button[aria-pressed="true"] {
+  border-color: #c9837a;
+  background: #fbefec;
+  color: #8f2d1d;
+}
+.photo-reactions button[aria-pressed="true"] > span:first-child {
+  transform: scale(1.2);
+}
+.photo-reactions button + button[aria-pressed="true"] {
+  border-color: #d9b874;
+  background: #fff8e8;
+  color: #8a5b12;
+}
+.photo-reactions button > span:last-child:not(:first-child) {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #0000000d;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.photo-reactions button:disabled {
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-reactions button,
+  .photo-reactions button > span:first-child {
+    transition: none;
+  }
+}

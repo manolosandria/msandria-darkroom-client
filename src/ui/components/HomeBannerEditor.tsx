@@ -224,12 +224,20 @@ function Editor() {
               ).map(([key, label, max]) => (
                 <label key={key}>
                   {label}
-                  <textarea
-                    rows={key === "eyebrow" || key === "linkText" ? 1 : 2}
-                    maxLength={max}
-                    value={draft[key]}
-                    onChange={(event) => change(key, event.target.value)}
-                  />
+                  {key === "eyebrow" || key === "linkText" ? (
+                    <input
+                      maxLength={max}
+                      value={draft[key]}
+                      onChange={(event) => change(key, event.target.value)}
+                    />
+                  ) : (
+                    <textarea
+                      rows={2}
+                      maxLength={max}
+                      value={draft[key]}
+                      onChange={(event) => change(key, event.target.value)}
+                    />
+                  )}
                 </label>
               ))}
             </fieldset>

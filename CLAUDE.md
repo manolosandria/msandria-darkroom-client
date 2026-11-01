@@ -815,6 +815,15 @@ message beside the form card; **Sign in by email** is one centered card; **Inbox
 quote, and colored Approve/Mark as read and Delete buttons, with an accent bar while
 waiting).
 
+Finishing touches across the site: Curator's screens all head with **CURATOR / …**;
+Dashboard tiles carry a drawing, lift when they open a tab and show **Open →** on the
+ones waiting; Upload's three steps are a stepper; Variants follows Curator's green;
+Home's one-line words are inputs and every Home field lights on hover and focus; a
+slide shows a slow light sweep until its photograph arrives; a filters-only Gallery card
+centers its bar; collection pieces leave a faint tint of the page around a contained
+photograph instead of black bars; Like and Save are larger, with a heart or star that
+pops when on; and on a phone the header is tighter and Google's sign-in is its round icon.
+
 ## Profiles, reactions and email sign-in
 
 **Filter bar builder.** Curator → Gallery → Filters → **Arrange the filter bar**

@@ -13,7 +13,9 @@ type CredentialResponse = { credential?: string };
 type ButtonOptions = {
   theme: "outline" | "filled_blue" | "filled_black";
   size: "small" | "medium" | "large";
-  text: "signin_with" | "signup_with" | "continue_with";
+  text?: "signin_with" | "signup_with" | "continue_with";
+  type?: "standard" | "icon";
+  shape?: "rectangular" | "pill" | "circle" | "square";
 };
 
 type GoogleIdentity = {
@@ -58,11 +60,15 @@ export const renderGoogleButton: RenderGoogleButton = ({
       if (credential) onCredential(credential);
     },
   });
-  google.accounts.id.renderButton(target, {
-    theme: "outline",
-    size: "large",
-    text: "signin_with",
-  });
+  // On a phone the header has no room for the wide button: Google's round icon says
+  // the same in the space of a glyph.
+  const narrow = globalThis.matchMedia?.("(max-width: 640px)").matches ?? false;
+  google.accounts.id.renderButton(
+    target,
+    narrow
+      ? { theme: "outline", size: "large", type: "icon", shape: "circle" }
+      : { theme: "outline", size: "large", text: "signin_with" },
+  );
 };
 
 // After signing out, stop Google from signing the visitor straight back in on the

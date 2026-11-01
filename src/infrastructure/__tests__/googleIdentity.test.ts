@@ -49,6 +49,27 @@ describe("renderGoogleButton", () => {
     expect(renderButton).toHaveBeenCalledWith(target, expect.any(Object));
   });
 
+  it("draws the wide button, or the round icon on a phone-sized window", () => {
+    const { renderButton } = installGoogleStub();
+    const target = document.createElement("div");
+    renderGoogleButton({ target, clientId: "id", onCredential: vi.fn() });
+    expect(renderButton).toHaveBeenLastCalledWith(
+      target,
+      expect.objectContaining({ text: "signin_with" }),
+    );
+
+    const original = globalThis.matchMedia;
+    globalThis.matchMedia = vi
+      .fn()
+      .mockReturnValue({ matches: true }) as unknown as typeof matchMedia;
+    renderGoogleButton({ target, clientId: "id", onCredential: vi.fn() });
+    expect(renderButton).toHaveBeenLastCalledWith(
+      target,
+      expect.objectContaining({ type: "icon", shape: "circle" }),
+    );
+    globalThis.matchMedia = original;
+  });
+
   it("forwards the ID token Google hands back", () => {
     const { initialize } = installGoogleStub();
     const onCredential = vi.fn();
