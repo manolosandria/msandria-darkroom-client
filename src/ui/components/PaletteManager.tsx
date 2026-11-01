@@ -10,6 +10,7 @@ import {
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
 import { useSessionValue } from "./SessionProvider";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
+import { EditorActions } from "./EditorActions";
 import {
   GalleryPaletteLibrary,
   PALETTE_KEYS,
@@ -122,6 +123,23 @@ function Manager() {
           is copied when applied, so changing or deleting it here never alters a
           design already saved.
         </p>
+        {saved && (
+          <EditorActions
+            form="palette-manager-form"
+            busy={busy}
+            dirty={dirty}
+            saveLabel="Save palettes"
+            onCancel={async () => {
+              if (
+                await confirm(
+                  "Cancel changes?",
+                  "Return to the saved palettes?",
+                )
+              )
+                setPalettes(savedPalettes);
+            }}
+          />
+        )}
       </header>
       {error && (
         <p role="alert">
@@ -150,6 +168,7 @@ function Manager() {
       ) : (
         <div className="palette-manager__layout">
           <form
+            id="palette-manager-form"
             ref={form}
             onSubmit={async (event) => {
               event.preventDefault();
@@ -169,26 +188,6 @@ function Manager() {
               highlighted={highlighted}
               onHighlight={setHighlighted}
             />
-            <div className="palette-manager__actions">
-              <button type="submit" disabled={busy || !dirty}>
-                {busy ? "Saving…" : "Save palettes"}
-              </button>
-              <button
-                type="button"
-                disabled={busy || !dirty}
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "Cancel changes?",
-                      "Return to the saved palettes?",
-                    )
-                  )
-                    setPalettes(savedPalettes);
-                }}
-              >
-                Cancel changes
-              </button>
-            </div>
           </form>
           <aside className="palette-guide" aria-label="Where each color goes">
             <h2>Where each color goes</h2>

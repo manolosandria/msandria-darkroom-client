@@ -1,144 +1,340 @@
-/* Curator → Gallery → Filters: pieces on the left, the bar's structure as nested
-   boxes on the right, and the chosen group's properties below. */
+/* Curator → Gallery → Filters: a tray of spare pieces, then the bar itself drawn as the
+   gallery draws it, with names, grips and tools over it while it is edited, and the
+   chosen group's properties below. */
 .filter-builder {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.9rem;
+  min-width: 0;
 }
 .filter-builder__intro {
   margin: 0;
   font-size: 0.78rem;
+  line-height: 1.4;
   color: #4a5443;
 }
-.filter-builder__layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-}
 .filter-builder h4 {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.5rem;
   font:
-    600 0.78rem Arial,
+    600 0.72rem Arial,
     sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5c6853;
+}
+.filter-builder__tray {
+  display: grid;
+  gap: 0.6rem;
 }
 .filter-builder__palette,
-.filter-builder__tree,
-.filter-builder__children {
-  display: grid;
-  gap: 0.35rem;
+.filter-canvas,
+.filter-canvas__children {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .filter-builder__palette {
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-}
-.filter-builder__piece {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid #c6cfbb;
-  border-radius: 7px;
-  background: white;
-  font-size: 0.75rem;
-  cursor: grab;
-}
-.filter-builder__piece:active {
-  cursor: grabbing;
-}
-.filter-builder__piece.is-over {
-  box-shadow: inset 3px 0 0 #4f6638;
-}
-.filter-builder__grip {
-  color: #7c8774;
-}
-.filter-builder__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.filter-builder__group {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.4rem;
-  border: 1px dashed #b4bfaa;
-  border-radius: 9px;
-  background: #fafbf7;
-}
-.filter-builder__group.is-card {
-  border-style: solid;
-  background: white;
-  box-shadow: 0 2px 6px #29312614;
-}
-.filter-builder__group.is-selected {
-  border-color: #4f6638;
-  box-shadow: 0 0 0 2px #dce7cd;
-}
-.filter-builder__group.is-over {
-  background: #eef4e5;
-}
-.filter-builder__group[data-direction="row"] > .filter-builder__children {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.5rem;
 }
-.filter-builder__group[data-direction="row"] > .filter-builder__children > li {
-  flex: 1 1 120px;
+.banner-editor form .filter-builder__new-group {
+  justify-self: start;
+  margin-top: 0.15rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
 }
-.filter-builder__group-head {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.banner-editor form .filter-builder__select {
-  display: grid;
-  flex: 1;
-  justify-items: start;
-  padding: 0.2rem 0.4rem;
-  border: 0;
-  background: transparent;
-  font:
-    600 0.75rem Arial,
-    sans-serif;
-  text-align: left;
-}
-.filter-builder__select small {
-  font-weight: 400;
-  color: #5c6853;
-}
-.filter-builder__tools {
-  display: inline-flex;
-  gap: 0.15rem;
-}
-.banner-editor form .filter-builder__tools button,
-.banner-editor form .filter-builder__piece > button {
-  min-width: 24px;
-  height: 24px;
-  padding: 0 0.3rem;
-  font-size: 0.72rem;
-}
-.filter-builder__empty {
-  padding: 0.4rem;
-  font-size: 0.72rem;
-  color: #7c8774;
-  text-align: center;
-}
-.filter-builder__properties {
+
+/* A piece: its name on a small tab, then the gallery's control as it will show. */
+.filter-canvas__piece {
+  position: relative;
   display: grid;
   gap: 0.25rem;
+  min-width: 0;
+  padding: 0.35rem 0.45rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: grab;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.filter-canvas__piece:hover {
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  box-shadow: 0 4px 12px #2931261a;
+}
+.filter-canvas__piece:active {
+  cursor: grabbing;
+}
+.filter-canvas__piece.is-spare {
+  border: 1px dashed #b4bfaa;
+  background: #ffffff80;
+}
+.filter-canvas__piece.is-grow {
+  flex: 1 1 auto;
+}
+.filter-canvas__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font:
+    600 0.62rem Arial,
+    sans-serif;
+  letter-spacing: 0.04em;
+  color: inherit;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+.filter-canvas__grip {
+  color: #8c977f;
+  cursor: grab;
+}
+.filter-canvas__replica {
+  display: flex;
+  min-width: 0;
+  pointer-events: none;
+}
+.filter-canvas__replica > * {
+  flex: 1 1 auto;
+}
+.filter-canvas__replica .gallery-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.filter-canvas__replica .gallery-search__field svg {
+  position: absolute;
+  left: 0.75rem;
+}
+.banner-editor form .filter-canvas__replica .gallery-search__field input {
+  width: 100%;
+  min-width: 7rem;
+  padding-left: 2.3rem;
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 999px;
+}
+.filter-canvas__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+.filter-canvas__chip small {
+  opacity: 0.6;
+}
+.filter-canvas__view {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  opacity: 0.6;
+}
+.filter-canvas__view.is-on {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.filter-canvas__more {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+/* The tools float on the piece or group under the pointer or keyboard focus. */
+.filter-canvas__tools {
+  position: absolute;
+  top: -0.7rem;
+  right: 0.35rem;
+  z-index: 3;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #d2d9c7;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 4px 12px #29312626;
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.filter-canvas__piece:hover > .filter-canvas__tools,
+.filter-canvas__piece:focus-within > .filter-canvas__tools,
+.filter-canvas__head:hover > .filter-canvas__tools,
+.filter-canvas__group:focus-within
+  > .filter-canvas__head
+  > .filter-canvas__tools,
+.filter-canvas__group.is-selected
+  > .filter-canvas__head
+  > .filter-canvas__tools {
+  opacity: 1;
+  transform: none;
+}
+.banner-editor form .filter-canvas__tools button,
+.banner-editor form .filter-canvas__add {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #3d4934;
+  font-size: 0.75rem;
+}
+.banner-editor form .filter-canvas__tools button:hover:not(:disabled) {
+  background: #e8ebdf;
+}
+.banner-editor form .filter-canvas__tools .filter-canvas__remove:hover {
+  background: #f6e1dc;
+  color: #7a2a20;
+}
+.banner-editor form .filter-canvas__add {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  border: 1px solid #4f6638;
+  background: #4f7d3f;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+/* The bar: groups take their own direction and gap; a dashed outline and a name tab
+   show where each group is. */
+.filter-canvas {
+  padding: 1rem 0.75rem 0.75rem;
+  border: 1px solid #d2d9c7;
+  border-radius: 16px;
+  background: #fffffff0;
+  color: #262c22;
+  box-shadow: 0 6px 20px #2931260f;
+}
+.filter-canvas__group {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 14px;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.filter-canvas > .filter-canvas__group {
+  border-color: transparent;
+  padding: 0.25rem;
+}
+.filter-canvas__group.is-card {
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+.filter-canvas__group.is-grow {
+  flex: 1 1 auto;
+}
+.filter-canvas__group.is-selected {
+  border-color: #4f6638;
+  box-shadow: 0 0 0 3px #dce7cd;
+}
+.filter-canvas__group.is-over {
+  background: color-mix(in srgb, #8fbf6a 18%, transparent);
+  border-color: #8fbf6a;
+}
+.filter-canvas__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 24px;
+}
+.banner-editor form .filter-canvas__select {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #eef1e8;
+  color: #3d4934;
+  font:
+    600 0.66rem Arial,
+    sans-serif;
+}
+.banner-editor form .filter-canvas__select:hover {
+  background: #e1e8d6;
+}
+.banner-editor form .filter-canvas__select[aria-pressed="true"] {
+  background: #4f6638;
+  color: #fff;
+}
+.filter-canvas__select small {
+  font-weight: 400;
+  opacity: 0.75;
+}
+.filter-canvas__children {
+  display: flex;
+  min-width: 0;
+}
+.filter-canvas__empty {
+  flex: 1;
   padding: 0.6rem;
+  border-radius: 10px;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, currentColor 6%, transparent) 0 8px,
+    transparent 8px 16px
+  );
+  font-size: 0.72rem;
+  opacity: 0.7;
+  text-align: center;
+}
+/* Where a dragged piece would land. */
+.is-drop-before[data-direction="row"] {
+  box-shadow: inset 3px 0 0 #4f6638;
+}
+.is-drop-after[data-direction="row"] {
+  box-shadow: inset -3px 0 0 #4f6638;
+}
+.is-drop-before[data-direction="column"] {
+  box-shadow: inset 0 3px 0 #4f6638;
+}
+.is-drop-after[data-direction="column"] {
+  box-shadow: inset 0 -3px 0 #4f6638;
+}
+
+/* The chosen group's properties. */
+.filter-builder__properties {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
   border: 1px solid #d2d7ca;
-  border-radius: 9px;
+  border-radius: 12px;
   background: white;
 }
 .banner-editor .filter-builder__properties label {
   margin: 0.25rem 0;
 }
 .filter-builder__choice {
-  display: flex;
-  gap: 0.3rem;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #eef1e8;
+}
+.banner-editor form .filter-builder__choice button {
+  padding: 0.3rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
 }
 .banner-editor form .filter-builder__choice button[aria-pressed="true"] {
   background: #293126;
@@ -152,10 +348,20 @@
 .filter-builder__footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 .filter-builder__properties input:not([type]) {
   padding: 0.4rem;
   border: 1px solid #bcc4b4;
   border-radius: 4px;
+}
+.filter-builder__start {
+  justify-self: start;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-canvas__piece,
+  .filter-canvas__group,
+  .filter-canvas__tools {
+    transition: none;
+  }
 }

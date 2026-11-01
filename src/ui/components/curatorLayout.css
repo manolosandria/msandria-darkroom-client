@@ -2,16 +2,6 @@
    stay on top and every tab is a panel with its own scroll, so a long editor never
    pushes its preview or its buttons out of reach. Phones keep the flowing page. */
 
-.curator-workspace .curator-tabs {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-block: 0.5rem;
-}
-.curator-workspace .curator-tabs button {
-  flex: none;
-  padding: 0.5rem 1rem;
-}
 
 @media (min-width: 900px) {
   .curator-page {
@@ -103,20 +93,6 @@
     position: static;
     max-height: none;
     align-self: stretch;
-  }
-  /* Save and cancel stay at the foot of the controls column. */
-  .curator-panel .banner-editor__workspace > form > .banner-editor__actions {
-    position: sticky;
-    bottom: -1rem;
-    z-index: 2;
-    margin: 0 -0.35rem -1rem 0;
-    padding: 0.75rem 0.35rem 1rem 0;
-    background: linear-gradient(#f7f7f200, #f7f7f2 0.75rem);
-    gap: 0.35rem;
-  }
-  .curator-panel .banner-editor__workspace > form > .banner-editor__actions button {
-    padding: 0.45rem 0.7rem;
-    font-size: 0.8rem;
   }
   /* Gallery's monitor or phone takes the column's height; the page scrolls inside it. */
   .curator-panel .gallery-editor .banner-editor__preview.device-preview {
@@ -213,106 +189,6 @@
   }
 }
 
-/* The menu in groups: a closed group is its name; the open one shows its tabs after
-   a small label, so the whole menu stays on one line. */
-.curator-workspace .curator-tabs {
-  align-items: center;
-  gap: 0.35rem;
-}
-.curator-tabs__group {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.15rem;
-  border-radius: 10px;
-}
-.curator-tabs__group.is-open:not(:has(> .curator-tabs__group-name)) {
-  background: #eef1e8;
-  box-shadow: inset 0 0 0 1px #d2d7ca;
-}
-.curator-tabs__group-label {
-  padding: 0 0.5rem 0 0.4rem;
-  font: 600 0.62rem Arial, sans-serif;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #5c6853;
-}
-.curator-workspace .curator-tabs .curator-tabs__group-name {
-  color: #4a5443;
-}
-
-/* Save and Cancel for every unsaved editor, above and below the panels. */
-.curator-savebar {
-  position: sticky;
-  z-index: 40;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem 0.75rem;
-  margin: 0 auto;
-  width: min(100% - 1rem, 760px);
-  box-sizing: border-box;
-  padding: 0.4rem 0.45rem 0.4rem 0.85rem;
-  border: 1px solid #c9d3bd;
-  border-radius: 12px;
-  background: #fbfbf8f2;
-  box-shadow: 0 6px 18px #2931261f;
-  backdrop-filter: blur(6px);
-  font-size: 0.8rem;
-}
-.curator-savebar--top { top: 0.4rem; margin-block: 0.25rem 0.4rem; }
-.curator-savebar--bottom { bottom: 0.4rem; margin-block: 0.4rem 0.25rem; }
-.curator-savebar__summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-.curator-savebar__dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #d39b2a;
-}
-.curator-savebar__error { color: #7a2a20; }
-.curator-savebar__actions { display: flex; gap: 0.35rem; }
-.curator-savebar__actions button,
-.curator-savebar__tab {
-  padding: 0.35rem 0.8rem;
-  border: 1px solid #c6cfbb;
-  border-radius: 8px;
-  background: white;
-  font: inherit;
-  cursor: pointer;
-}
-.curator-savebar__actions .upload-primary { margin: 0; }
-.curator-savebar .curator-savebar__hide { padding: 0.35rem 0.55rem; }
-.curator-savebar.is-folded {
-  width: auto;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-.curator-savebar__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  box-shadow: 0 3px 10px #2931261f;
-}
-@media (min-width: 900px) {
-  .curator-workspace > .curator-savebar { flex: none; }
-}
-
 /* Dashboard tiles: what waits, and where it is dealt with. */
 .curator-dashboard__tiles {
   display: grid;
@@ -341,6 +217,4 @@
 .curator-dashboard__value { font: 2rem Georgia, serif; }
 .curator-dashboard__label { font-weight: 600; }
 .curator-dashboard__hint { font-size: 0.75rem; color: #5c6853; }
-@media (prefers-reduced-motion: reduce) {
-  .curator-savebar { backdrop-filter: none; }
-}
+

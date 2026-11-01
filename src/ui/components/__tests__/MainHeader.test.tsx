@@ -104,7 +104,7 @@ describe("MainHeader", () => {
 
   describe("folding away", () => {
     function fold() {
-      return screen.getByRole("link", { name: "Gallery" }).closest(".site-header__fold");
+      return document.querySelector(".site-header__fold");
     }
 
     it("hides the header and hands focus to the Menu tab", async () => {

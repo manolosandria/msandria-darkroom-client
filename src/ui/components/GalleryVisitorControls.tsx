@@ -7,7 +7,7 @@ import {
 } from "@/src/domain/entities/GallerySettings";
 
 // Small pictures of each choice, drawn in the gallery's own text colour.
-const ICONS: Record<string, React.ReactNode> = {
+export const galleryOptionIcons: Record<string, React.ReactNode> = {
   uniform: (
     <>
       <rect x="2" y="2" width="7" height="7" />
@@ -106,7 +106,7 @@ export function GalleryVisitorControls({
                   strokeWidth="1.5"
                   aria-hidden="true"
                 >
-                  {ICONS[option]}
+                  {galleryOptionIcons[option]}
                 </svg>
                 <span className="gallery-sr-only">{labels[option]}</span>
               </label>

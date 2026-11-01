@@ -23,10 +23,10 @@ function writeHidden(hidden: boolean) {
 }
 
 /**
- * Save and Cancel for every editor with unsaved changes, at the top and at the bottom of
- * Curator, so they are never at the far end of a long panel. They sit beside each
- * editor's own buttons, and can be folded away to a small tab and brought back; that
- * choice is remembered per visitor. Both bars share one state.
+ * Save and Cancel for every editor with unsaved changes: a small card floating in the
+ * bottom corner of Curator, so it is always in reach and never takes a row of a panel.
+ * Folded, it is a single round button in that corner with the count; the choice is
+ * remembered per visitor.
  */
 export function useCuratorSaveBar() {
   const pending = usePendingEdits();
@@ -41,11 +41,55 @@ export function useCuratorSaveBar() {
   return { pending, hidden, toggle };
 }
 
+export function SaveIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4.5 10.5 8.2 14 15.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function CancelIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M7.5 5.5 4 9l3.5 3.5M4.5 9h7a4 4 0 0 1 0 8h-2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function RestoreIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4 10a6 6 0 1 0 1.8-4.3M4 4v3.5h3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function CuratorSaveBar({
-  edge,
   state,
 }: {
-  edge: "top" | "bottom";
   state: ReturnType<typeof useCuratorSaveBar>;
 }) {
   const { pending, hidden, toggle } = state;
@@ -57,7 +101,7 @@ export function CuratorSaveBar({
       : `${labels.length} editors unsaved: ${labels.join(", ")}`;
   if (hidden)
     return (
-      <div className={`curator-savebar curator-savebar--${edge} is-folded`}>
+      <div className="curator-savebar is-folded">
         <button
           type="button"
           className="curator-savebar__tab"
@@ -65,20 +109,18 @@ export function CuratorSaveBar({
           title={summary}
           onClick={() => toggle(false)}
         >
-          <span className="curator-savebar__dot" aria-hidden="true" />
-          Save {edge === "top" ? "▾" : "▴"}
+          <SaveIcon />
+          <span className="curator-savebar__count" aria-hidden="true">
+            {labels.length}
+          </span>
         </button>
       </div>
     );
   return (
-    <div
-      className={`curator-savebar curator-savebar--${edge}`}
-      role="region"
-      aria-label={`Save changes (${edge})`}
-    >
+    <div className="curator-savebar" role="region" aria-label="Save changes">
       <span className="curator-savebar__summary" title={summary}>
         <span className="curator-savebar__dot" aria-hidden="true" />
-        {summary}
+        <span className="curator-savebar__text">{summary}</span>
       </span>
       {pending.error && (
         <span className="curator-savebar__error" role="alert">
@@ -88,31 +130,42 @@ export function CuratorSaveBar({
       <span className="curator-savebar__actions">
         <button
           type="button"
-          className="upload-primary"
+          className="curator-icon-button curator-icon-button--save"
+          aria-label={labels.length === 1 ? "Save" : "Save all"}
+          title={labels.length === 1 ? "Save" : "Save all"}
+          aria-busy={pending.saving || undefined}
           disabled={pending.saving}
           onClick={() => void pending.saveAll()}
         >
-          {pending.saving
-            ? "Saving…"
-            : labels.length === 1
-              ? "Save"
-              : "Save all"}
+          <SaveIcon />
         </button>
         <button
           type="button"
+          className="curator-icon-button curator-icon-button--cancel"
+          aria-label="Cancel"
+          title="Cancel the changes"
           disabled={pending.saving}
           onClick={() => void pending.discardAll()}
         >
-          Cancel
+          <CancelIcon />
         </button>
         <button
           type="button"
-          className="curator-savebar__hide"
+          className="curator-icon-button curator-savebar__hide"
           aria-label="Hide the save buttons"
-          title="Hide the save buttons"
+          title="Fold into the corner"
           onClick={() => toggle(true)}
         >
-          <span aria-hidden="true">{edge === "top" ? "▴" : "▾"}</span>
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+            <path
+              d="M6 6l8 8M14 9v5H9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </span>
     </div>

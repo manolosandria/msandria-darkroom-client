@@ -57,6 +57,31 @@ export default function MainHeader() {
     setHidden(next);
   }
 
+  const links: [string, string][] = [
+    ["/", "Home"],
+    ["/gallery", "Gallery"],
+    ["/collections", "Collections"],
+    ...(canPublish ? ([["/curator", "Curator"]] as [string, string][]) : []),
+    ["/contact", "Contact"],
+  ];
+  const navLinks = links.map(([href, label]) => (
+    <Link
+      key={href}
+      href={href}
+      aria-current={pathname === href ? "page" : undefined}
+    >
+      {label}
+      {href === "/curator" && pending > 0 && (
+        <span
+          className="curator-badge"
+          aria-label={`${pending} pending notifications`}
+        >
+          {pending}
+        </span>
+      )}
+    </Link>
+  ));
+
   return (
     <div
       className="site-header"
@@ -81,29 +106,7 @@ export default function MainHeader() {
             </Link>
             <div className="main-header__actions">
               <nav aria-label="Main navigation" className="main-header__nav">
-                {[
-                  ["/", "Home"],
-                  ["/gallery", "Gallery"],
-                  ["/collections", "Collections"],
-                  ...(canPublish ? [["/curator", "Curator"]] : []),
-                  ["/contact", "Contact"],
-                ].map(([href, label]) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={pathname === href ? "page" : undefined}
-                  >
-                    {label}
-                    {href === "/curator" && pending > 0 && (
-                      <span
-                        className="curator-badge"
-                        aria-label={`${pending} pending notifications`}
-                      >
-                        {pending}
-                      </span>
-                    )}
-                  </Link>
-                ))}
+                {navLinks}
               </nav>
               <div className="main-header__tools">
                 <SessionMenu />
@@ -124,28 +127,56 @@ export default function MainHeader() {
           </header>
         </div>
       </div>
-      <div className="site-header__reveal-row" inert={!hidden}>
-        <div className="site-header__reveal-inner">
-          <button
-            ref={revealButton}
-            type="button"
-            className="site-header__reveal"
-            aria-label={
-              canPublish && pending > 0
-                ? `Show header, ${pending} pending notifications`
-                : "Show header"
-            }
-            aria-controls={panelId}
-            aria-expanded={!hidden}
-            onClick={() => toggle(false)}
-          >
-            <Chevron direction="down" />
-            <span>Menu</span>
-            {canPublish && pending > 0 && (
-              <span className="site-header__reveal-dot" aria-hidden="true" />
-            )}
-          </button>
-        </div>
+      {/* Folded, the header is only its logo, floating translucent in the corner; the
+          menu opens under it on hover or keyboard focus, and the chevron pins the
+          header back. Nothing of it takes a row of the page. */}
+      <div className="site-header__dock" inert={!hidden}>
+        {hidden && (
+          <>
+            <div className="site-header__dock-pill">
+              <Link
+                href="/"
+                aria-label="Manolo Sandria — home"
+                className="site-header__dock-logo"
+              >
+                <Image
+                  src="/images/branding/manolo-logo-black.svg"
+                  alt=""
+                  width={384}
+                  height={96}
+                />
+              </Link>
+              <button
+                ref={revealButton}
+                type="button"
+                className="site-header__reveal"
+                aria-label={
+                  canPublish && pending > 0
+                    ? `Show header, ${pending} pending notifications`
+                    : "Show header"
+                }
+                aria-controls={panelId}
+                aria-expanded={!hidden}
+                title="Show the header"
+                onClick={() => toggle(false)}
+              >
+                <Chevron direction="down" />
+                {canPublish && pending > 0 && (
+                  <span
+                    className="site-header__reveal-dot"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            </div>
+            <nav
+              aria-label="Main navigation"
+              className="site-header__dock-menu"
+            >
+              {navLinks}
+            </nav>
+          </>
+        )}
       </div>
     </div>
   );

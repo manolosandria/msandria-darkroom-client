@@ -16,6 +16,7 @@ import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
 import { GalleryPageLayoutEditor } from "./GalleryPageLayoutEditor";
 import { GalleryFilterBuilder } from "./GalleryFilterBuilder";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
+import { EditorActions } from "./EditorActions";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
@@ -168,6 +169,34 @@ function Editor() {
           Edit the introduction, category styles and photo arrangement. Save to
           apply your preview for everyone.
         </p>
+        {saved && (
+          <EditorActions
+            form="gallery-settings-form"
+            busy={busy}
+            dirty={dirty}
+            saveLabel="Save gallery"
+            onCancel={async () => {
+              if (
+                await confirm("Cancel changes?", "Return to the saved design?")
+              ) {
+                setDraft(saved);
+                setNotice("");
+              }
+            }}
+            onRestore={async () => {
+              if (
+                await confirm(
+                  "Restore original design?",
+                  "Load the original gallery design into your draft?",
+                )
+              )
+                setDraft({
+                  ...defaultGallerySettings,
+                  version: saved.version,
+                });
+            }}
+          />
+        )}
       </header>
       {error && (
         <p role="alert">
@@ -197,8 +226,11 @@ function Editor() {
             : "Gallery settings are unavailable."}
         </p>
       ) : (
-        <div className="banner-editor__workspace">
+        <div
+          className={`banner-editor__workspace${tab === "Filters" ? " is-wide" : ""}`}
+        >
           <form
+            id="gallery-settings-form"
             className="banner-editor__properties"
             onSubmit={async (event) => {
               event.preventDefault();
@@ -470,46 +502,6 @@ function Editor() {
                   setNotice("");
                 }}
               />
-            </div>
-            <div className="banner-editor__actions">
-              <button disabled={busy || !dirty} type="submit">
-                {busy ? "Saving…" : "Save gallery"}
-              </button>
-              <button
-                type="button"
-                disabled={busy || !dirty}
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "Cancel changes?",
-                      "Return to the saved design?",
-                    )
-                  ) {
-                    setDraft(saved);
-                    setNotice("");
-                  }
-                }}
-              >
-                Cancel changes
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  if (
-                    await confirm(
-                      "Restore original design?",
-                      "Load the original gallery design into your draft?",
-                    )
-                  )
-                    setDraft({
-                      ...defaultGallerySettings,
-                      version: saved.version,
-                    });
-                }}
-              >
-                Restore original
-              </button>
             </div>
           </form>
           <section

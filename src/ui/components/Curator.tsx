@@ -15,7 +15,9 @@ import { useCuratorNotifications } from "./CuratorNotifications";
 import { EditingBoundary } from "./EditingWorkspace";
 import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
 import { useSessionValue } from "./SessionProvider";
+import { CuratorBackdropPicker, useCuratorBackdrop } from "./CuratorBackdrop";
 import "./curatorLayout.css";
+import "./curatorTheme.css";
 
 // The menu, by what each part is for: the public sections of the site, the palette
 // library, the photographs and what is done with them, and the administration.
@@ -81,71 +83,150 @@ export default function Curator() {
       </div>
     );
   const current = groupOf(section);
+  const backdrop = useCuratorBackdrop();
+  // The group whose menu was opened by a press (touch has no hover); pointing at a
+  // group or tabbing into it opens its menu too.
+  const [open, setOpen] = useState<string | null>(null);
+  // Scrolled away from the menu, a bubble in the corner stands in for it. The menu is
+  // mounted again when the account changes, so it is watched through its ref.
+  const [nav, setNav] = useState<HTMLElement | null>(null);
+  const [away, setAway] = useState(false);
+  useEffect(() => {
+    if (!nav || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setAway(!entry.isIntersecting),
+    );
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [nav]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!(event.target as Element).closest?.(".curator-tabs__group"))
+        setOpen(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  const pendingIn = (group: (typeof curatorGroups)[number]) =>
+    group.sections.reduce((total, name) => total + countOf(name), 0);
+  const item = (name: Section) => (
+    <button
+      key={name}
+      type="button"
+      aria-current={section === name ? "page" : undefined}
+      onClick={() => {
+        show(name);
+        setOpen(null);
+      }}
+    >
+      {name}
+      {!!countOf(name) && (
+        <span className="curator-badge">{countOf(name)}</span>
+      )}
+    </button>
+  );
   return (
     <EditingBoundary>
       <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>
-        <div className="curator-workspace">
-          <nav aria-label="Curator sections" className="curator-tabs">
+        <div className="curator-workspace" data-backdrop={backdrop.value}>
+          <nav
+            ref={setNav}
+            aria-label="Curator sections"
+            className="curator-tabs"
+          >
             {curatorGroups.map((group) => {
               const active = group === current;
-              const pendingCount = group.sections.reduce(
-                (total, name) => total + countOf(name),
-                0,
-              );
-              const single = group.sections.length === 1;
+              const pendingCount = pendingIn(group);
+              if (group.sections.length === 1)
+                return (
+                  <button
+                    key={group.name}
+                    type="button"
+                    className={`curator-tabs__trigger${active ? " is-active" : ""}`}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => show(group.sections[0])}
+                  >
+                    {group.name}
+                  </button>
+                );
               return (
                 <div
                   key={group.name}
                   role="group"
                   aria-label={group.name}
-                  className={`curator-tabs__group${active ? " is-open" : ""}`}
+                  className={`curator-tabs__group${active ? " is-active" : ""}${open === group.name ? " is-open" : ""}`}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === "mouse") setOpen(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setOpen(null);
+                  }}
                 >
-                  {(single || !active) && (
-                    <button
-                      type="button"
-                      className="curator-tabs__group-name"
-                      aria-current={single && active ? "page" : undefined}
-                      aria-expanded={single ? undefined : false}
-                      onClick={() =>
-                        show(lastIn[group.name] ?? group.sections[0])
-                      }
-                    >
+                  <button
+                    type="button"
+                    className={`curator-tabs__trigger${active ? " is-active" : ""}`}
+                    aria-haspopup="true"
+                    aria-expanded={open === group.name}
+                    onClick={() => {
+                      if (!active)
+                        show(lastIn[group.name] ?? group.sections[0]);
+                      setOpen(open === group.name ? null : group.name);
+                    }}
+                  >
+                    <span className="curator-tabs__group-name">
                       {group.name}
-                      {!active && !!pendingCount && (
-                        <span className="curator-badge">{pendingCount}</span>
-                      )}
-                    </button>
-                  )}
-                  {!single && active && (
-                    <>
-                      <span
-                        className="curator-tabs__group-label"
-                        aria-hidden="true"
-                      >
-                        {group.name}
-                      </span>
-                      {group.sections.map((name) => (
-                        <button
-                          key={name}
-                          type="button"
-                          aria-current={section === name ? "page" : undefined}
-                          onClick={() => show(name)}
-                        >
-                          {name}
-                          {!!countOf(name) && (
-                            <span className="curator-badge">
-                              {countOf(name)}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </>
-                  )}
+                    </span>
+                    {active && (
+                      <span className="curator-tabs__current">{section}</span>
+                    )}
+                    {!!pendingCount && (
+                      <span className="curator-badge">{pendingCount}</span>
+                    )}
+                    <svg
+                      className="curator-tabs__chevron"
+                      viewBox="0 0 12 12"
+                      width="10"
+                      height="10"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M2.5 4.5 6 8l3.5-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                  <div className="curator-tabs__menu">
+                    {group.sections.map(item)}
+                  </div>
                 </div>
               );
             })}
+            <CuratorBackdropPicker state={backdrop} />
           </nav>
-          <CuratorSaveBar edge="top" state={saveBar} />
+          {away && (
+            <div className="curator-bubble">
+              <span className="curator-bubble__face" tabIndex={0}>
+                <span aria-hidden="true">☰</span>
+                {section}
+              </span>
+              <div
+                className="curator-bubble__menu"
+                role="navigation"
+                aria-label="Curator sections (shortcut)"
+              >
+                {curatorGroups.map((group) => (
+                  <div key={group.name} className="curator-bubble__group">
+                    <span className="curator-bubble__label">{group.name}</span>
+                    {group.sections.map(item)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="curator-panel" hidden={section !== "Upload"}>
             <UploadPanel />
           </div>
@@ -159,7 +240,7 @@ export default function Curator() {
           {panel("Dashboard", <CuratorDashboard onOpen={show} />, false)}
           {panel("Comments", <CommentModeration />, false)}
           {panel("Inbox", <ContactInbox />, false)}
-          <CuratorSaveBar edge="bottom" state={saveBar} />
+          <CuratorSaveBar state={saveBar} />
         </div>
       </ClassificationCatalogBoundary>
     </EditingBoundary>

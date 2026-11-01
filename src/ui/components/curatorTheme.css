@@ -1,0 +1,702 @@
+/* Curator's look: a backdrop of slow light under the panels, a menu of groups that
+   open under the pointer, a save card in the corner and icon buttons with colors. */
+
+/* ---------- Backdrops ---------- */
+.curator-workspace {
+  --bd-base: #f4f3ec;
+  --bd-a: #dfe9cf;
+  --bd-b: #f1e3c4;
+  --bd-c: #d4e6e1;
+  --bd-ink: #293126;
+  position: relative;
+  isolation: isolate;
+  background: var(--bd-base);
+  color: var(--bd-ink);
+}
+.curator-workspace::before,
+.curator-workspace::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Three soft lights drifting slowly, then a fine grain over them. */
+.curator-workspace::before {
+  background:
+    radial-gradient(40% 55% at 12% 18%, var(--bd-a), transparent 70%),
+    radial-gradient(38% 50% at 88% 22%, var(--bd-b), transparent 70%),
+    radial-gradient(45% 60% at 60% 95%, var(--bd-c), transparent 70%);
+  background-size: 140% 140%;
+  animation: backdrop-drift 38s ease-in-out infinite alternate;
+}
+.curator-workspace::after {
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@keyframes backdrop-drift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 60% 30%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+.curator-workspace[data-backdrop="paper"]::before {
+  animation: none;
+  opacity: 0;
+}
+.curator-workspace[data-backdrop="dusk"] {
+  --bd-base: #f3eeee;
+  --bd-a: #ead3d9;
+  --bd-b: #f3dcc0;
+  --bd-c: #d9d4ec;
+}
+.curator-workspace[data-backdrop="tide"] {
+  --bd-base: #eef3f3;
+  --bd-a: #cfe4ea;
+  --bd-b: #dbe8d6;
+  --bd-c: #c9d6ee;
+}
+.curator-workspace[data-backdrop="darkroom"] {
+  --bd-base: #e9e8e2;
+  --bd-a: #c9d3bd;
+  --bd-b: #e6c9a3;
+  --bd-c: #b9c6c2;
+}
+/* The editors let the backdrop show between their cards. */
+.curator-workspace .banner-editor,
+.curator-workspace .catalog-editor,
+.curator-workspace .upload-page {
+  background: transparent;
+}
+
+/* ---------- Plasma, the New collection light, for primary controls ---------- */
+.plasma {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background: #1f2d22;
+  border-color: #ffffff30;
+  text-shadow: 0 1px 2px #0006;
+}
+.plasma::before {
+  content: "";
+  position: absolute;
+  inset: -120% -40%;
+  z-index: -2;
+  background: conic-gradient(
+    from 0deg,
+    #4d6b3a,
+    #a9d77c,
+    #2e7a72,
+    #c8ecd2,
+    #6b55a3,
+    #e4b86a,
+    #4d6b3a
+  );
+  filter: blur(14px) saturate(1.1);
+  animation: plasma-spin 14s linear infinite;
+}
+.plasma::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 25% 20%, #ffffff55, transparent 45%),
+    linear-gradient(
+        115deg,
+        transparent 35%,
+        #ffffff3a 50%,
+        transparent 65%
+      ) -150%
+      0 / 250% 100% no-repeat,
+    #00000030;
+  mix-blend-mode: soft-light;
+  transition: background-position 0.8s ease;
+}
+.plasma:hover::after,
+.plasma:focus-visible::after {
+  background-position:
+    0 0,
+    150% 0,
+    0 0;
+}
+@keyframes plasma-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* ---------- The menu ---------- */
+.curator-workspace > .curator-tabs {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem clamp(0.75rem, 3vw, 2rem);
+  border-bottom: 1px solid #d9ddd0a0;
+  background: #fbfbf870;
+  backdrop-filter: blur(8px);
+  overflow: visible;
+}
+.curator-tabs__group {
+  position: relative;
+}
+.curator-workspace .curator-tabs .curator-tabs__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #3d4934;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.18s,
+    box-shadow 0.18s;
+}
+.curator-workspace .curator-tabs .curator-tabs__trigger:hover,
+.curator-tabs__group:hover > .curator-tabs__trigger,
+.curator-workspace .curator-tabs .curator-tabs__trigger:focus-visible {
+  background: #ffffffc0;
+  border-color: #cbd3c0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px #29312614;
+}
+/* The group being worked in wears the plasma; its name is small, the tab large. */
+.curator-workspace .curator-tabs .curator-tabs__trigger.is-active {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background: #1f2d22;
+  border-color: #ffffff30;
+  text-shadow: 0 1px 2px #0006;
+  box-shadow: 0 6px 16px #1f2d2233;
+}
+.curator-workspace .curator-tabs .curator-tabs__trigger.is-active::before {
+  content: "";
+  position: absolute;
+  inset: -160% -30%;
+  z-index: -1;
+  background: conic-gradient(
+    from 0deg,
+    #4d6b3a,
+    #a9d77c,
+    #2e7a72,
+    #c8ecd2,
+    #6b55a3,
+    #e4b86a,
+    #4d6b3a
+  );
+  filter: blur(12px);
+  opacity: 0.85;
+  animation: plasma-spin 14s linear infinite;
+}
+.curator-tabs__trigger.is-active .curator-tabs__group-name {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.curator-tabs__chevron {
+  transition: transform 0.2s;
+}
+.curator-tabs__group:hover .curator-tabs__chevron,
+.curator-tabs__group.is-open .curator-tabs__chevron {
+  transform: rotate(180deg);
+}
+
+.curator-tabs__menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 60;
+  display: grid;
+  min-width: 190px;
+  padding: 0.35rem;
+  border: 1px solid #dce0d4;
+  border-radius: 14px;
+  background: #fbfbf8f5;
+  box-shadow: 0 18px 40px #17211629;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.16s,
+    transform 0.16s,
+    visibility 0s 0.16s;
+}
+/* A bridge over the gap, so the pointer can travel from the name to the menu. */
+.curator-tabs__menu::before {
+  content: "";
+  position: absolute;
+  inset: -0.6rem 0 100% 0;
+}
+.curator-tabs__group:hover > .curator-tabs__menu,
+.curator-tabs__group.is-open > .curator-tabs__menu,
+.curator-tabs__group:has(:focus-visible) > .curator-tabs__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.16s,
+    transform 0.16s,
+    visibility 0s;
+}
+.curator-workspace .curator-tabs__menu button,
+.curator-bubble__menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #30382d;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    padding 0.15s;
+}
+.curator-workspace .curator-tabs__menu button:hover,
+.curator-workspace .curator-tabs__menu button:focus-visible,
+.curator-bubble__menu button:hover,
+.curator-bubble__menu button:focus-visible {
+  background: #e8ebdf;
+  padding-left: 0.95rem;
+}
+.curator-workspace .curator-tabs__menu button[aria-current="page"],
+.curator-bubble__menu button[aria-current="page"] {
+  background: #dfe6d3;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 #61744e;
+}
+
+/* The backdrop swatches close the menu: the chosen one shows; the others on hover. */
+.curator-backdrop-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding: 0.2rem;
+  border-radius: 999px;
+}
+.curator-tabs .curator-backdrop-swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #c3cab8;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    width 0.2s,
+    opacity 0.2s,
+    margin 0.2s;
+}
+.curator-tabs .curator-backdrop-swatch[aria-checked="false"] {
+  width: 0;
+  margin: 0 -0.15rem;
+  opacity: 0;
+  border-width: 0;
+}
+.curator-tabs .curator-backdrop-picker:hover .curator-backdrop-swatch,
+.curator-tabs
+  .curator-backdrop-picker:has(:focus-visible)
+  .curator-backdrop-swatch {
+  width: 22px;
+  margin: 0;
+  opacity: 1;
+  border-width: 2px;
+}
+.curator-backdrop-swatch:hover {
+  transform: scale(1.15);
+}
+.curator-backdrop-swatch[aria-checked="true"] {
+  box-shadow: 0 0 0 2px #4f6638;
+}
+.curator-backdrop-swatch--paper {
+  background: #f4f3ec;
+}
+.curator-backdrop-swatch--meadow {
+  background: conic-gradient(#dfe9cf, #f1e3c4, #d4e6e1, #dfe9cf);
+}
+.curator-backdrop-swatch--dusk {
+  background: conic-gradient(#ead3d9, #f3dcc0, #d9d4ec, #ead3d9);
+}
+.curator-backdrop-swatch--tide {
+  background: conic-gradient(#cfe4ea, #dbe8d6, #c9d6ee, #cfe4ea);
+}
+.curator-backdrop-swatch--darkroom {
+  background: conic-gradient(#c9d3bd, #e6c9a3, #b9c6c2, #c9d3bd);
+}
+
+/* ---------- The bubble that stands in for the menu once it scrolls away ---------- */
+.curator-bubble {
+  position: fixed;
+  top: 0.6rem;
+  right: 0.75rem;
+  z-index: 70;
+}
+.curator-bubble__face {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #ffffff80;
+  border-radius: 999px;
+  background: #f6f5f1b0;
+  box-shadow: 0 4px 18px #1a201814;
+  backdrop-filter: blur(10px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: default;
+}
+.curator-bubble__menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  gap: 0.35rem;
+  width: 220px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.4rem;
+  border: 1px solid #dce0d4;
+  border-radius: 14px;
+  background: #fbfbf8f5;
+  box-shadow: 0 18px 40px #17211629;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.16s,
+    transform 0.16s,
+    visibility 0s 0.16s;
+}
+.curator-bubble__menu::before {
+  content: "";
+  position: absolute;
+  inset: -0.6rem 0 100% 0;
+}
+.curator-bubble:hover .curator-bubble__menu,
+.curator-bubble:focus-within .curator-bubble__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.16s,
+    transform 0.16s,
+    visibility 0s;
+}
+.curator-bubble__group {
+  display: grid;
+}
+.curator-bubble__label {
+  padding: 0.35rem 0.75rem 0.15rem;
+  font:
+    600 0.6rem Arial,
+    sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7563;
+}
+
+/* ---------- Icon buttons: save green, cancel neutral, restore amber ---------- */
+.curator-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #c6cfbb;
+  border-radius: 50%;
+  background: #ffffffd0;
+  color: #3d4934;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+.curator-icon-button:hover:not(:disabled),
+.curator-icon-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px #29312620;
+}
+.curator-icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.curator-icon-button--save,
+.banner-editor .editor-icon-actions .curator-icon-button--save {
+  border-color: #3e6b34;
+  background: #4f7d3f;
+  color: #fff;
+}
+.curator-icon-button--save:hover:not(:disabled),
+.banner-editor
+  .editor-icon-actions
+  .curator-icon-button--save:hover:not(:disabled) {
+  background: #3f6a31;
+}
+.curator-icon-button--save[aria-busy="true"] svg {
+  animation: icon-pulse 0.9s ease-in-out infinite alternate;
+}
+.curator-icon-button--cancel:hover:not(:disabled) {
+  background: #f3ece4;
+  border-color: #c4a78a;
+  color: #6e3f1d;
+}
+.curator-icon-button--restore {
+  border-color: #d9b874;
+  color: #8a5b12;
+  background: #fff8e8;
+}
+.curator-icon-button--restore:hover:not(:disabled) {
+  background: #f8e8c2;
+}
+@keyframes icon-pulse {
+  to {
+    opacity: 0.4;
+  }
+}
+
+/* An editor's own actions: a row of icons beside its heading. */
+.editor-icon-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+/* ---------- The save card ---------- */
+.curator-savebar {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: min(420px, calc(100vw - 2rem));
+  padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  border: 1px solid #ffffff90;
+  border-radius: 999px;
+  background: #fbfbf8d8;
+  box-shadow:
+    0 10px 30px #1a201826,
+    0 0 0 1px #c9d3bd80;
+  backdrop-filter: blur(10px);
+  font-size: 0.8rem;
+  animation: savebar-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes savebar-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+}
+.curator-savebar__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 600;
+}
+.curator-savebar__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.curator-savebar__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d39b2a;
+  box-shadow: 0 0 0 0 #d39b2a80;
+  animation: dot-breathe 2.4s ease-out infinite;
+}
+@keyframes dot-breathe {
+  70% {
+    box-shadow: 0 0 0 6px #d39b2a00;
+  }
+  100% {
+    box-shadow: 0 0 0 0 #d39b2a00;
+  }
+}
+.curator-savebar__error {
+  color: #7a2a20;
+}
+.curator-savebar__actions {
+  display: flex;
+  flex: none;
+  gap: 0.3rem;
+}
+.curator-savebar .curator-savebar__hide {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+}
+.curator-savebar.is-folded {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.curator-savebar__tab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #3e6b34;
+  border-radius: 50%;
+  background: #4f7d3f;
+  color: #fff;
+  box-shadow: 0 8px 22px #1a201833;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.curator-savebar__tab:hover {
+  transform: scale(1.06);
+}
+.curator-savebar__count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #d39b2a;
+  color: #fff;
+  font:
+    700 0.65rem/18px Arial,
+    sans-serif;
+  box-shadow: 0 0 0 2px #fbfbf8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curator-workspace::before,
+  .plasma::before,
+  .curator-workspace .curator-tabs .curator-tabs__trigger.is-active::before,
+  .curator-savebar,
+  .curator-savebar__dot {
+    animation: none;
+  }
+}
+
+/* ---------- Property tabs: one segmented row of drawings and names ---------- */
+.property-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+  gap: 2px;
+  margin-bottom: 0.9rem;
+  padding: 3px;
+  border: 1px solid #d2d9c7;
+  border-radius: 14px;
+  background: #eef1e8e6;
+  box-shadow: 0 4px 14px #2931260f;
+  backdrop-filter: blur(8px);
+}
+.property-tabs [role="tab"] {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0.4rem 0.15rem 0.3rem;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #56634d;
+  font:
+    600 0.62rem/1.1 Arial,
+    sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.property-tabs [role="tab"] span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.property-tabs [role="tab"]:hover {
+  background: #ffffffb0;
+  color: #253d22;
+}
+.property-tabs [role="tab"]:hover svg {
+  transform: translateY(-1px);
+}
+.property-tabs [role="tab"] svg {
+  transition: transform 0.15s;
+}
+.property-tabs [role="tab"]:focus-visible {
+  outline: 2px solid #65774f;
+  outline-offset: 1px;
+}
+.property-tabs [role="tab"][aria-selected="true"] {
+  background: #fff;
+  color: #1f2d22;
+  box-shadow:
+    0 2px 8px #29312626,
+    inset 0 -2px 0 #61744e;
+}
+
+@media (min-width: 900px) {
+  .curator-panel > .banner-editor > header,
+  .curator-panel .upload-heading {
+    align-items: center;
+  }
+}
+
+/* The filter bar is built at nearly its real width: its tab widens the controls. */
+@media (min-width: 900px) {
+  .curator-panel .banner-editor__workspace.is-wide {
+    grid-template-columns: minmax(420px, 46%) minmax(0, 1fr);
+  }
+}
+
+/* With the header folded, its floating logo sits at the start of the menu's row. */
+.curator-page:has(.site-header[data-hidden="true"])
+  .curator-workspace
+  > .curator-tabs {
+  padding-left: 13rem;
+}

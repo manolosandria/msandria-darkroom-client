@@ -5,6 +5,7 @@ import {
   galleryLayoutLabels,
   galleryCropLabels,
 } from "@/src/domain/entities/GallerySettings";
+import { galleryOptionIcons } from "./GalleryVisitorControls";
 export function GalleryOptionsEditor({
   value = defaultVisitorOptions,
   disabled,
@@ -18,8 +19,7 @@ export function GalleryOptionsEditor({
     <fieldset disabled={disabled}>
       <legend>Visitor controls</legend>
       <p>
-        Choose which controls visitors can use. Keep at least one option in each
-        group.
+        Light up what visitors can choose. At least one stays on in each group.
       </p>
       {(
         [
@@ -27,10 +27,10 @@ export function GalleryOptionsEditor({
           ["crops", "View shapes", galleryCropLabels],
         ] as const
       ).map(([key, title, labels]) => (
-        <fieldset key={key}>
+        <fieldset key={key} className="gallery-option-tiles">
           <legend>{title}</legend>
           {Object.entries(labels).map(([option, label]) => (
-            <label className="gallery-editor-check" key={option}>
+            <label className="gallery-option-tile" key={option} title={label}>
               <input
                 type="checkbox"
                 aria-label={`Offer ${label}`}
@@ -47,7 +47,18 @@ export function GalleryOptionsEditor({
                   })
                 }
               />
-              {label}
+              <svg
+                viewBox="0 0 20 20"
+                width="30"
+                height="30"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                {galleryOptionIcons[option]}
+              </svg>
+              <span>{label}</span>
             </label>
           ))}
         </fieldset>

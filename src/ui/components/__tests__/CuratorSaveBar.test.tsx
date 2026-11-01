@@ -37,9 +37,8 @@ function Bars({ children }: { children: React.ReactNode }) {
   const state = useCuratorSaveBar();
   return (
     <>
-      <CuratorSaveBar edge="top" state={state} />
       {children}
-      <CuratorSaveBar edge="bottom" state={state} />
+      <CuratorSaveBar state={state} />
     </>
   );
 }
@@ -58,21 +57,20 @@ function show(save?: () => Promise<boolean>) {
 beforeEach(() => localStorage.clear());
 
 describe("CuratorSaveBar", () => {
-  it("appears above and below only while something is unsaved, and saves it all", async () => {
+  it("appears in its corner only while something is unsaved, and saves it all", async () => {
     const save = vi.fn().mockResolvedValue(true);
     show(save);
     expect(screen.queryByRole("region", { name: /Save changes/ })).toBeNull();
 
     await userEvent.type(screen.getByLabelText("Home banner"), "x");
-    const bars = screen.getAllByRole("region", { name: /Save changes/ });
-    expect(bars).toHaveLength(2);
-    expect(bars[0]).toHaveTextContent("Unsaved: Home banner");
+    const bar = screen.getByRole("region", { name: "Save changes" });
+    expect(bar).toHaveTextContent("Unsaved: Home banner");
     await userEvent.type(screen.getByLabelText("Gallery design"), "y");
-    expect(bars[1]).toHaveTextContent(
+    expect(bar).toHaveTextContent(
       "2 editors unsaved: Home banner, Gallery design",
     );
 
-    await userEvent.click(within(bars[1]).getByRole("button", { name: "Save all" }));
+    await userEvent.click(within(bar).getByRole("button", { name: "Save all" }));
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: /Save changes/ })).toBeNull(),
     );
@@ -108,19 +106,19 @@ describe("CuratorSaveBar", () => {
     expect(screen.getByLabelText("Home banner")).toHaveValue("");
   });
 
-  it("folds into a tab that brings it back, remembered per visitor", async () => {
+  it("folds into a corner button that brings it back, remembered per visitor", async () => {
     show();
     await userEvent.type(screen.getByLabelText("Home banner"), "x");
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Hide the save buttons" })[0],
+      screen.getByRole("button", { name: "Hide the save buttons" }),
     );
     expect(screen.queryByRole("region", { name: /Save changes/ })).toBeNull();
     expect(localStorage.getItem("curatorSaveBarHidden")).toBe("true");
-    const tabs = screen.getAllByRole("button", { name: /Show save buttons/ });
-    expect(tabs).toHaveLength(2);
-    await userEvent.click(tabs[1]);
-    expect(screen.getAllByRole("region", { name: /Save changes/ })).toHaveLength(
-      2,
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Show save buttons. Unsaved: Home banner",
+      }),
     );
+    expect(screen.getByRole("region", { name: "Save changes" })).toBeVisible();
   });
 });

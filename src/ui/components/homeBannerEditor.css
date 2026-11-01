@@ -360,3 +360,76 @@
 }
 .banner-editor__hint { margin: 0; font-size: 0.78rem; color: #4a5443; }
 .banner-editor__properties > [hidden] { display: none; }
+
+/* The preview's bar is see-through: only the two display choices show, as small glass
+   pills over whatever scrolls under them, the chosen one dark. */
+.banner-editor__preview-bar {
+  gap: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.banner-editor__preview-bar h2 {
+  font: 1rem Georgia, serif;
+  margin: 0;
+}
+.banner-editor__preview-bar .display-choice {
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #ffffff90;
+  border-radius: 999px;
+  background: #f6f5f1a8;
+  box-shadow: 0 4px 14px #1a20181a;
+  backdrop-filter: blur(8px);
+}
+.banner-editor__preview-bar .display-choice .visual-choice {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #4b5745;
+  transition: background 0.15s, color 0.15s;
+}
+.banner-editor__preview-bar .display-choice .visual-choice svg { width: 20px; height: 20px; }
+.banner-editor__preview-bar .display-choice .visual-choice small { font-size: 0.72rem; font-weight: 600; }
+.banner-editor__preview-bar .display-choice .visual-choice:hover { background: #ffffffc0; color: #253d22; }
+.banner-editor__preview-bar .display-choice .visual-choice[aria-pressed="true"] {
+  border: 0;
+  background: #2f4f2a;
+  color: #fff;
+  box-shadow: 0 4px 12px -4px #2f4f2aaa;
+}
+.banner-editor__preview-bar > span {
+  padding: 0.15rem 0.6rem;
+  border-radius: 1rem;
+  background: #fff5dcd0;
+  color: #8a5d0b;
+}
+.banner-editor__workspace--home > .banner-editor__preview {
+  padding: 0.5rem;
+  background: #eef0e980;
+  border-color: #d2d9c7;
+}
+
+/* The controls column is narrow beside the preview: its pieces follow the column's
+   width, not the window's, so Composition never spills out of it. */
+.banner-editor__properties,
+.banner-editor__inspector {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
+  .layout-picker { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+  .banner-editor .layout-picker__option { font-size: 0.68rem; line-height: 1.15; text-align: center; }
+  .welcome-panel-controls__grid { grid-template-columns: 1fr; }
+  .welcome-anchor { max-width: 11rem; }
+  .welcome-panel-styles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .welcome-panel-controls__colors { grid-template-columns: 1fr 1fr; }
+  .welcome-panel-controls__hint { max-width: none; }
+}

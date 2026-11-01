@@ -5,6 +5,10 @@ Feature: Curator workspace
     And it shows how many comments await moderation and how many messages are unread
     When I open Curator
     Then the menu groups Sections, Palettes, Photos and Admin
+    When I point at a group
+    Then its tabs open under it with the open one marked
+    When I scroll the menu out of view
+    Then a bubble in the corner names the open tab and lists every group
     And Dashboard counts what waits and opens each tab
     And a section I visited keeps its unsaved state while I look at another
 
@@ -34,25 +38,37 @@ Feature: Curator workspace
     Then the public gallery never lists it
     And its images reach me through the API, never as a public image URL
 
-  Scenario: Save and cancel from either end
+  Scenario: Save and cancel from the corner
     Given I am signed in as the administrator
     And two editors in Curator have unsaved changes
-    Then a bar at the top and another at the bottom say that two editors have changes
-    When I choose "Save all" in either bar
+    Then a small card in the bottom corner says that two editors have changes
+    When I choose "Save all" on it
     Then both editors are saved
-    When I hide the bars
-    Then a small tab brings them back, and the choice is remembered
+    When I fold the card
+    Then a round button in the corner brings it back, and the choice is remembered
+
+  Scenario: Dragging a Home slide two places
+    Given I am editing Home in Curator with four slides
+    When I drag the first slide past the next two
+    Then it lands third and the page keeps working
+
+  Scenario: A backdrop for Curator
+    Given I am signed in as the administrator
+    When I choose a backdrop at the end of Curator's menu
+    Then Curator wears that gradient, still when motion is reduced
+    And the choice is remembered in this browser
 
   Scenario: Properties in tabs beside the preview
     Given I am editing Home or Gallery in Curator
-    Then their properties are grouped in tabs beside the preview
+    Then their properties are grouped in one row of drawn tabs beside the preview
     And the arrow keys move between the tabs
+    And Save, Cancel and Restore are colored icons beside the heading
 
   Scenario: Arrange the gallery filter bar
     Given I am editing Gallery in Curator
     When I choose "Arrange the filter bar"
-    Then the usual bar appears as groups and pieces
-    When I drag the View options into the first group
+    Then the bar appears as visitors will see it, with names over its groups and pieces
+    When I drag the View options onto the first group
     Then the public gallery shows them in the bar instead of the Filters panel
     When I choose "Use the usual bar"
     Then the gallery keeps the bar it always had

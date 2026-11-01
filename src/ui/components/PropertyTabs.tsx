@@ -1,10 +1,19 @@
 "use client";
+import { propertyTabIcons } from "./propertyTabIcons";
+import "./curatorTheme.css";
+
+// Names too long for a sixth of a narrow column.
+const shortNames: Record<string, string> = {
+  Typography: "Type",
+  Composition: "Layout",
+  Introduction: "Intro",
+};
 
 /**
  * The tabs of a properties panel: one group of settings at a time instead of a long
  * scroll. The caller renders each panel with `propertyPanel(prefix, name, value)` so
  * tabs and panels name each other. Arrow keys move between tabs, Home and End jump to
- * the ends.
+ * the ends. Each tab shows its drawing over its name, in one segmented row.
  */
 export function PropertyTabs<T extends string>({
   label,
@@ -54,9 +63,12 @@ export function PropertyTabs<T extends string>({
           aria-controls={`${idPrefix}-panel-${name}`}
           aria-selected={value === name}
           tabIndex={value === name ? 0 : -1}
+          aria-label={name}
+          title={name}
           onClick={() => onChange(name)}
         >
-          {name}
+          {propertyTabIcons[name]}
+          <span aria-hidden="true">{shortNames[name] ?? name}</span>
         </button>
       ))}
     </div>
