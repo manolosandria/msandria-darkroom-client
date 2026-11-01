@@ -33,7 +33,7 @@ export default function ManageCollections({
       <div className="upload-container">
         <div className="upload-heading">
           <span className="upload-eyebrow">
-            THE DARKROOM /{" "}
+            CURATOR /{" "}
             {variants ? "VARIANTS" : (only ?? "Collections").toUpperCase()}
           </span>
           <h1>

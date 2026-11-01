@@ -526,3 +526,6 @@
   gap: 0.5rem;
   align-items: center;
 }
+
+/* Alone in its card, the bar keeps no bottom margin, so it sits in the middle. */
+.gallery-card[data-blocks="filters"] .gallery-browse { margin-bottom: 0; }

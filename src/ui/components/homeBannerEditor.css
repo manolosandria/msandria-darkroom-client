@@ -433,3 +433,32 @@
   .welcome-panel-controls__colors { grid-template-columns: 1fr 1fr; }
   .welcome-panel-controls__hint { max-width: none; }
 }
+
+/* One-line words are inputs and two-line ones grow without a resize grip; all of them
+   light up on hover and focus like the rest of Curator's fields. */
+.banner-editor input:not([type]),
+.banner-editor textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cfd6c5;
+  border-radius: 0.65rem;
+  background: #fbfcf8;
+  color: #293126;
+  font: inherit;
+  font-size: 0.88rem;
+  resize: none;
+  field-sizing: content;
+  min-height: 2.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.banner-editor input:not([type]):hover,
+.banner-editor textarea:hover {
+  border-color: #aebd9f;
+}
+.banner-editor input:not([type]):focus,
+.banner-editor textarea:focus {
+  outline: none;
+  border-color: #4f7d3f;
+  background: #fff;
+  box-shadow: 0 0 0 3px #4f7d3f22;
+}

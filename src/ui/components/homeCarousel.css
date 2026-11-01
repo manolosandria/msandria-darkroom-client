@@ -573,3 +573,17 @@
     transition: none;
   }
 }
+
+/* While a slide's photograph loads, its place shows a slow light sweep instead of a
+   black hole; the photograph covers it once it arrives. */
+.home-carousel__photo {
+  background:
+    linear-gradient(100deg, transparent 30%, #ffffff12 50%, transparent 70%) 0 0 / 250% 100%,
+    linear-gradient(135deg, #1d221d, #2a3129);
+  animation: home-photo-loading 1.8s ease-in-out 5;
+}
+@keyframes home-photo-loading {
+  from { background-position: 100% 0, 0 0; }
+  to { background-position: -150% 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .home-carousel__photo { animation: none; } }

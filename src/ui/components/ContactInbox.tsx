@@ -49,6 +49,7 @@ function Inbox() {
     <main className="upload-workspace">
       <div className="upload-container">
         <div className="upload-heading">
+          <span className="upload-eyebrow">CURATOR / INBOX</span>
           <h1>Inbox</h1>
           <p>Private inquiries from Contact. Email delivery is not enabled.</p>
         </div>

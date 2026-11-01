@@ -333,11 +333,23 @@ export default function UploadPanel({
         </>
       )}
       {!items.length && (
-        <div className="upload-empty">
-          <span>01 / SELECT</span>
-          <span>02 / REFINE & FRAME</span>
-          <span>03 / PUBLISH</span>
-        </div>
+        <ol className="upload-steps" aria-label="How publishing works">
+          <li aria-current="step">
+            <span className="upload-steps__number">1</span>
+            <strong>Select</strong>
+            <small>Drop or browse your photographs.</small>
+          </li>
+          <li>
+            <span className="upload-steps__number">2</span>
+            <strong>Refine &amp; frame</strong>
+            <small>Title, crops, frame and where it appears.</small>
+          </li>
+          <li>
+            <span className="upload-steps__number">3</span>
+            <strong>Publish</strong>
+            <small>One at a time, with an optimization report.</small>
+          </li>
+        </ol>
       )}
     </Shell>
   );
@@ -600,7 +612,7 @@ function Shell({
     <main className="upload-workspace" {...rest}>
       <div className="upload-container">
         <div className="upload-heading">
-          <span className="upload-eyebrow">THE DARKROOM / PUBLISH</span>
+          <span className="upload-eyebrow">CURATOR / UPLOAD</span>
           <h1>A place for your next photographs.</h1>
           <p>Select, refine, and give every photograph its own frame.</p>
         </div>

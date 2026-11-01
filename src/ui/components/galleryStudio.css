@@ -753,6 +753,10 @@
 .gallery-cards-row > .gallery-card {
   align-content: end;
 }
+/* A card of its own holding only the bar centers it, instead of leaving its top empty. */
+.gallery-cards-row > .gallery-card[data-blocks="filters"] {
+  align-content: center;
+}
 .gallery-card__row:has(> .gallery-browse:first-child),
 .gallery-cards-row:has(> .gallery-card:first-child .gallery-browse) {
   grid-template-columns: minmax(18rem, 1fr) minmax(0, auto);

@@ -15,7 +15,7 @@
 .studio-card[hidden] { display: none; }
 .studio-card--collections { background: linear-gradient(180deg, #fbfaf5, #f4f2ea); }
 .studio-card--categories { background: linear-gradient(180deg, #f7faf3, #edf3e6); }
-.studio-card--variants { background: linear-gradient(180deg, #f8f7fc, #eeedf6); }
+.studio-card--variants { background: linear-gradient(180deg, #fbfcf8, #f1f4ec); }
 .catalog-editor .studio-card section { border: 0; padding: 0; }
 .catalog-editor .studio-card > section + section { border-top: 1px solid #0000001a; padding-top: 1.5rem; }
 .studio-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 1.5rem; align-items: start; }

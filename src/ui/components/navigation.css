@@ -35,7 +35,7 @@
 .main-header__hide:hover,.main-header__hide:focus-visible { background:#e8ebdf; border-color:#c9ccbf; color:#253d22; transform:translateY(-2px); }
 .main-header__hide:active { transform:translateY(0) scale(.94); }
 
-@media(max-width:640px) { .main-header { gap:.7rem; } .main-header__brand { flex-basis:190px; } .main-header__actions { width:100%; justify-content:space-between; gap:.3rem; } .main-header__nav { gap:0; } .main-header__nav a { padding:.65rem .45rem; font-size:.78rem; } }
+@media(max-width:640px) { .main-header { gap:.4rem .7rem; padding:.7rem 1rem; } .main-header__brand { flex-basis:190px; } .main-header__actions { width:100%; justify-content:space-between; gap:.3rem; } .main-header__nav { gap:0; } .main-header__nav a { padding:.65rem .45rem; font-size:.78rem; } }
 /* Folded: the logo floats translucent in the top corner, over the page; pointing at
    it or tabbing into it opens the menu under it. */
 .site-header__dock { position:fixed; top:.6rem; left:.75rem; z-index:70; display:none; }
