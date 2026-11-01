@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import GalleryEditor from "../GalleryEditor";
+import { choose, chooseWhenReady } from "./chooseOption";
 import { defaultGallerySettings } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
 import { useSessionValue } from "../SessionProvider";
@@ -39,13 +40,9 @@ describe("Gallery studio", () => {
     render(<GalleryEditor />);
     const text = await screen.findByLabelText("Text 1");
     fireEvent.change(text, { target: { value: "New archive" } });
-    fireEvent.change(screen.getByLabelText("Edit style for"), {
-      target: { value: "animal" },
-    });
+    await chooseWhenReady(screen.getByLabelText("Edit style for"), "Animal");
     fireEvent.click(screen.getByLabelText("Customize this category"));
-    fireEvent.change(screen.getByLabelText("Gallery font"), {
-      target: { value: "mono" },
-    });
+    choose(screen.getByLabelText("Gallery font"), "Monospace · Courier");
     expect(screen.getByTestId("preview")).toHaveTextContent("New archive");
     expect(manageGallerySettings.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save gallery" }));

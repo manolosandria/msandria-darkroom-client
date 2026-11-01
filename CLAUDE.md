@@ -781,6 +781,29 @@ view transitions where the browser has them, and not under reduced motion. The p
 column scrolls on its own on wide screens, so composition, preview and slides stay in
 reach.
 
+## Shared controls
+
+Editors use a few shared controls instead of the browser's own, so every screen answers
+the pointer the same way:
+
+- **`ChoiceMenu`** replaces every native `select`: a raised button showing the chosen
+  option (with its drawing, colors, photo thumbnail or typeface), opening a card of
+  options under it, or over it near the bottom of the window. Options light under the
+  pointer, the chosen one is ticked, and the keyboard follows the select-only combobox
+  pattern (arrows, Home, End, Enter, Space, Escape, typing a name). It sits inside a
+  `<label>` or takes `ariaLabel`. Tests pick options with `choose`/`chooseWhenReady`
+  (`__tests__/chooseOption.ts`).
+- **`SegmentedChoice`** offers two to four options as a row of drawings
+  (`choiceIcons`): each has a tooltip and an accessible name, the chosen one is raised,
+  one line names the current choice, and arrow keys move it. Home's alignment, shape,
+  navigation and controls, Gallery's photo arrangement and the filter bar builder's
+  alignment use it. Collection pieces choose their size on a bar of cells.
+- **`EmptyState`**: a drawing in a soft circle, a title and an optional line, for lists
+  with nothing to show (Inbox, Comments, Photos, Collections).
+- Checkboxes, radios and sliders are drawn by `globals.css` with zero-specificity
+  `:where` rules (accent from `--control-accent`, Gallery's theme in Gallery), and every
+  enabled button shows the pointing hand and darkens a touch while pressed.
+
 ## Profiles, reactions and email sign-in
 
 **Filter bar builder.** Curator → Gallery → Filters → **Arrange the filter bar**

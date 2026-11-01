@@ -25,6 +25,8 @@ import { galleryDepartments } from "./galleryCategoryGroups";
 import { galleryOptionIcons } from "./GalleryVisitorControls";
 import "./galleryFilters.css";
 import "./galleryFilterBuilder.css";
+import { SegmentedChoice } from "./SegmentedChoice";
+import { choiceIcons } from "./choiceIcons";
 
 type Drag = { node: FilterNode };
 
@@ -573,34 +575,44 @@ export function GalleryFilterBuilder({
             onChange={(event) => set({ gap: Number(event.target.value) })}
           />
         </label>
-        <label>
-          Align
-          <select
-            value={selectedGroup.align}
-            onChange={(event) =>
-              set({ align: event.target.value as FilterGroup["align"] })
-            }
-          >
-            <option value="start">Start</option>
-            <option value="center">Center</option>
-            <option value="end">End</option>
-            <option value="stretch">Stretch</option>
-          </select>
-        </label>
-        <label>
-          Distribute
-          <select
-            value={selectedGroup.justify}
-            onChange={(event) =>
-              set({ justify: event.target.value as FilterGroup["justify"] })
-            }
-          >
-            <option value="start">From the start</option>
-            <option value="center">Centered</option>
-            <option value="end">To the end</option>
-            <option value="between">Spread out</option>
-          </select>
-        </label>
+        <SegmentedChoice<FilterGroup["align"]>
+          label="Align"
+          value={selectedGroup.align}
+          onChange={(align) => set({ align })}
+          options={[
+            { value: "start", label: "Start", icon: choiceIcons.crossStart },
+            { value: "center", label: "Center", icon: choiceIcons.crossCenter },
+            { value: "end", label: "End", icon: choiceIcons.crossEnd },
+            {
+              value: "stretch",
+              label: "Stretch",
+              icon: choiceIcons.crossStretch,
+            },
+          ]}
+        />
+        <SegmentedChoice<FilterGroup["justify"]>
+          label="Distribute"
+          value={selectedGroup.justify}
+          onChange={(justify) => set({ justify })}
+          options={[
+            {
+              value: "start",
+              label: "From the start",
+              icon: choiceIcons.mainStart,
+            },
+            {
+              value: "center",
+              label: "Centered",
+              icon: choiceIcons.mainCenter,
+            },
+            { value: "end", label: "To the end", icon: choiceIcons.mainEnd },
+            {
+              value: "between",
+              label: "Spread out",
+              icon: choiceIcons.mainBetween,
+            },
+          ]}
+        />
         <label className="filter-builder__check">
           <input
             type="checkbox"

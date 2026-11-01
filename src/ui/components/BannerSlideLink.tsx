@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { HomeBanner } from "@/src/domain/entities/HomeBanner";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { editCatalog } from "@/src/infrastructure/catalogServices";
+import { ChoiceMenu } from "./ChoiceMenu";
 
 type Slide = NonNullable<HomeBanner["slides"]>[number];
 
@@ -19,7 +20,9 @@ export function useSlideCatalog() {
       })
       .catch(() => {
         if (active)
-          setError("Catalog unavailable. Category and collection links are off.");
+          setError(
+            "Catalog unavailable. Category and collection links are off.",
+          );
       });
     return () => {
       active = false;
@@ -27,6 +30,27 @@ export function useSlideCatalog() {
   }, []);
   return { catalog, error };
 }
+
+const line = (d: string) => (
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d={d} />
+  </svg>
+);
+// A small drawing for each kind of destination, on the menu and its button.
+const destinationIcons = {
+  photo: line("M3 5h14v10H3zM3 13l4-4 3 3 2-2 5 5"),
+  gallery: line("M3 3h6v6H3zM11 3h6v6h-6zM3 11h6v6H3zM11 11h6v6h-6z"),
+  category: line("M3 10V3h7l7 7-7 7zM7 7h.01"),
+  collection: line("M5 6h10v11H5zM7 3h6M6 4.5h8"),
+  external: line("M11 3h6v6M17 3l-8 8M14 12v5H3V6h5"),
+};
 
 const destinationKind = (href: string) =>
   href.startsWith("https:")
@@ -56,12 +80,14 @@ export function SlideDestination({
   const kind = destinationKind(href);
   const query = new URLSearchParams(href.split("?")[1]);
   return (
-    <div className={`slide-destination${compact ? " slide-destination--compact" : ""}`}>
+    <div
+      className={`slide-destination${compact ? " slide-destination--compact" : ""}`}
+    >
       <label>
         Link destination
-        <select
+        <ChoiceMenu
           value={kind}
-          onChange={(e) =>
+          onChange={(next) =>
             onChange(
               (
                 {
@@ -75,55 +101,69 @@ export function SlideDestination({
                     : "/collections",
                   external: "https://www.instagram.com/",
                 } as Record<string, string>
-              )[e.target.value],
+              )[next],
             )
           }
-        >
-          <option value="photo">This photograph</option>
-          <option value="gallery">Gallery</option>
-          <option value="category" disabled={!catalog?.categories.length}>
-            Gallery category
-          </option>
-          <option value="collection" disabled={!catalog?.collections.length}>
-            Collection
-          </option>
-          <option value="external">External website (HTTPS)</option>
-        </select>
+          options={[
+            {
+              value: "photo",
+              label: "This photograph",
+              icon: destinationIcons.photo,
+            },
+            {
+              value: "gallery",
+              label: "Gallery",
+              icon: destinationIcons.gallery,
+            },
+            {
+              value: "category",
+              label: "Gallery category",
+              icon: destinationIcons.category,
+              disabled: !catalog?.categories.length,
+            },
+            {
+              value: "collection",
+              label: "Collection",
+              icon: destinationIcons.collection,
+              disabled: !catalog?.collections.length,
+            },
+            {
+              value: "external",
+              label: "External website",
+              description: "An HTTPS address",
+              icon: destinationIcons.external,
+            },
+          ]}
+        />
       </label>
       {kind === "category" && (
         <label>
           Category
-          <select
+          <ChoiceMenu
             value={query.get("category") ?? ""}
-            onChange={(e) =>
-              onChange(`/gallery?category=${encodeURIComponent(e.target.value)}`)
+            onChange={(next) =>
+              onChange(`/gallery?category=${encodeURIComponent(next)}`)
             }
-          >
-            {catalog?.categories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
+            options={(catalog?.categories ?? []).map((item) => ({
+              value: item.id,
+              label: item.name,
+            }))}
+          />
         </label>
       )}
       {kind === "collection" && (
         <label>
           Collection
-          <select
+          <ChoiceMenu
             value={query.get("collection") ?? ""}
-            onChange={(e) =>
-              onChange(
-                `/collections?collection=${encodeURIComponent(e.target.value)}`,
-              )
+            onChange={(next) =>
+              onChange(`/collections?collection=${encodeURIComponent(next)}`)
             }
-          >
-            {catalog?.collections.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
+            options={(catalog?.collections ?? []).map((item) => ({
+              value: item.id,
+              label: item.title,
+            }))}
+          />
         </label>
       )}
       {kind === "external" && (

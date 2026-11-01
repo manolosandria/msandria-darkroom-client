@@ -1,21 +1,21 @@
 import {describe,it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent} from '@testing-library/react';
 import {useState} from 'react';
 import {BannerSlideLink} from '../BannerSlideLink';
+import {choose,chooseWhenReady} from './chooseOption';
 import {defaultHomeBanner,HomeBanner} from '@/src/domain/entities/HomeBanner';
 vi.mock('@/src/infrastructure/catalogServices',()=>({editCatalog:{load:vi.fn().mockResolvedValue({categories:[{id:'city',name:'City'}],collections:[{id:'travel',title:'Travel'}],works:[],photos:[]})}}));
 function Harness(){const[banner,setBanner]=useState<HomeBanner>(defaultHomeBanner);return <BannerSlideLink photoId="a" title="A photograph" banner={banner} onChange={slides=>setBanner({...banner,slides})}/>;}
 describe('Slide destinations',()=>{
  it('offers public category and collection links and editable external HTTPS destinations',async()=>{
  render(<Harness/>);
- await waitFor(()=>expect(screen.getByRole('option',{name:'Gallery category'})).not.toBeDisabled());
  await screen.findByText(/Destination:/);
- fireEvent.change(screen.getByLabelText('Link destination'),{target:{value:'category'}});
- expect(await screen.findByLabelText('Category')).toHaveValue('city');
+ await chooseWhenReady(screen.getByLabelText('Link destination'),'Gallery category');
+ expect(await screen.findByLabelText('Category')).toHaveTextContent('City');
  expect(screen.getByText(/Destination:/)).toHaveTextContent('/gallery?category=city');
- fireEvent.change(screen.getByLabelText('Link destination'),{target:{value:'collection'}});
- expect(await screen.findByLabelText('Collection')).toHaveValue('travel');
- fireEvent.change(screen.getByLabelText('Link destination'),{target:{value:'external'}});
+ choose(screen.getByLabelText('Link destination'),'Collection');
+ expect(await screen.findByLabelText('Collection')).toHaveTextContent('Travel');
+ choose(screen.getByLabelText('Link destination'),'External website');
  fireEvent.change(screen.getByLabelText('HTTPS URL'),{target:{value:'https://www.instagram.com/photographer/'}});
  fireEvent.change(screen.getByLabelText('Slide title'),{target:{value:'Follow my work'}});
  expect(screen.getByLabelText('Slide title')).toHaveValue('Follow my work');

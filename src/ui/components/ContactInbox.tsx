@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { InboxMessage } from "@/src/domain/repositories/ContactRepository";
 import { manageContact } from "@/src/infrastructure/contactServices";
 import { useSessionValue } from "./SessionProvider";
+import { EmptyState } from "./EmptyState";
 
 export default function ContactInbox() {
   const { user } = useSessionValue();
@@ -62,7 +63,9 @@ function Inbox() {
         {!messages ? (
           <p>Loading inbox…</p>
         ) : !messages.length ? (
-          <p>No messages yet.</p>
+          <EmptyState picture="inbox" title="No messages yet.">
+            Messages sent from Contact arrive here.
+          </EmptyState>
         ) : (
           <ul className="inbox-messages">
             {messages.map((message) => (

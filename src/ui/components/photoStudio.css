@@ -1487,3 +1487,10 @@ button[aria-pressed="true"] .collection-choice__check {
   background: #3d5a2d;
   color: #fff;
 }
+
+/* Library photos in Variants are picked with a click on the whole card. */
+.variant-studio__pick { cursor: pointer; }
+.variant-studio__pick:has(input:disabled) { cursor: not-allowed; }
+
+/* The empty state brings its own drawing; the frame is the dashed card alone. */
+.photo-browser__empty { padding: 0; }

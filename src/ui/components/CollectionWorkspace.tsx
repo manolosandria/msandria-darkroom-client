@@ -2,7 +2,7 @@
 
 import styles from "./EditorFeedback.module.css";
 
-import { useId, useState } from "react";
+import { KeyboardEvent, useId, useState } from "react";
 import {
   Catalog,
   CatalogCollection,
@@ -1112,22 +1112,49 @@ function CellSelect({
   disabled?: boolean;
   onChange: (value: number) => void;
 }) {
+  // A bar of cells, filled up to the size: a click picks a size, the arrow keys
+  // grow or shrink it, and the number beside it says the size in words.
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const by = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[
+      event.key
+    ];
+    if (!by || disabled) return;
+    event.preventDefault();
+    const next = Math.min(max, Math.max(1, value + by));
+    if (next !== value) onChange(next);
+    event.currentTarget
+      .querySelector<HTMLElement>(`[data-cells="${next}"]`)
+      ?.focus();
+  }
   return (
-    <label>
-      <span>
-        {label}
-        <span className="sr-only"> on {device}</span>
+    <div className="cell-size">
+      <span className="cell-size__label" aria-hidden="true">
+        {label} <b>{value}</b>
       </span>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value))}
+      <div
+        role="radiogroup"
+        aria-label={`${label} on ${device}`}
+        aria-disabled={disabled || undefined}
+        className="cell-size__bar"
+        onKeyDown={onKeyDown}
       >
         {Array.from({ length: max }, (_, cell) => (
-          <option key={cell + 1}>{cell + 1}</option>
+          <button
+            key={cell + 1}
+            type="button"
+            role="radio"
+            data-cells={cell + 1}
+            data-filled={cell < value || undefined}
+            aria-checked={cell + 1 === value}
+            aria-label={String(cell + 1)}
+            title={`${cell + 1} ${cell ? "cells" : "cell"}`}
+            tabIndex={cell + 1 === value ? 0 : -1}
+            disabled={disabled}
+            onClick={() => cell + 1 !== value && onChange(cell + 1)}
+          />
         ))}
-      </select>
-    </label>
+      </div>
+    </div>
   );
 }
 

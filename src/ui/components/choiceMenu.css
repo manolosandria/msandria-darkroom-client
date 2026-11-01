@@ -1,0 +1,280 @@
+/* ChoiceMenu: a raised button that shows the chosen option, and a card of options
+   that opens under it (or over it near the bottom of the window). */
+.choice-menu {
+  --choice-ink: #263022;
+  --choice-quiet: #6b7563;
+  --choice-line: #cfd6c5;
+  --choice-accent: #4f7d3f;
+  --choice-wash: #eef3e7;
+  position: relative;
+  display: block;
+  min-width: 0;
+  font:
+    500 0.88rem/1.25 Arial,
+    sans-serif;
+  color: var(--choice-ink);
+}
+.choice-menu .choice-menu__button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.8rem;
+  border: 1px solid var(--choice-line);
+  border-radius: 0.7rem;
+  background: linear-gradient(#fff, #fbfcf8);
+  box-shadow:
+    0 1px 0 #fff inset,
+    0 1px 2px #1f281a14;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.choice-menu .choice-menu__button:hover:not(:disabled) {
+  border-color: #a9b79b;
+  box-shadow:
+    0 1px 0 #fff inset,
+    0 4px 12px -4px #1f281a33;
+  transform: translateY(-1px);
+}
+.choice-menu .choice-menu__button:focus-visible {
+  outline: none;
+  border-color: var(--choice-accent);
+  box-shadow: 0 0 0 3px #4f7d3f33;
+}
+.choice-menu.is-open .choice-menu__button {
+  border-color: var(--choice-accent);
+  box-shadow: 0 0 0 3px #4f7d3f26;
+  transform: none;
+}
+.choice-menu .choice-menu__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.choice-menu__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choice-menu__chevron {
+  flex: none;
+  color: var(--choice-quiet);
+  transition: transform 0.2s;
+}
+.choice-menu.is-open .choice-menu__chevron {
+  transform: rotate(180deg);
+  color: var(--choice-accent);
+}
+
+.choice-menu__list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 60;
+  display: grid;
+  gap: 2px;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(26rem, 90vw);
+  max-height: 18rem;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid #dfe4d8;
+  border-radius: 0.9rem;
+  background: #fffffff7;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 18px 40px -16px #1a221640,
+    0 2px 6px #1a22160f;
+  animation: choice-menu-in 0.16s ease-out;
+}
+.choice-menu.opens-up .choice-menu__list {
+  top: auto;
+  bottom: calc(100% + 0.35rem);
+}
+@keyframes choice-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.choice-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    padding 0.12s;
+}
+.choice-menu__option.is-active {
+  background: var(--choice-wash);
+  padding-left: 0.75rem;
+}
+.choice-menu__option[aria-selected="true"] {
+  color: #24451c;
+  font-weight: 700;
+}
+.choice-menu__option[aria-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.choice-menu__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.choice-menu__text small {
+  font-weight: 400;
+  font-size: 0.74rem;
+  color: var(--choice-quiet);
+}
+.choice-menu__tick {
+  flex: none;
+  color: var(--choice-accent);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.choice-menu__option[aria-selected="true"] .choice-menu__tick {
+  opacity: 1;
+  transform: none;
+}
+.choice-menu__icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.45rem;
+  background: var(--choice-wash);
+  color: var(--choice-accent);
+}
+.choice-menu__icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+.choice-menu__swatch {
+  display: inline-flex;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid #0000001f;
+  border-radius: 999px;
+}
+.choice-menu__swatch i {
+  display: block;
+  width: 0.7rem;
+  height: 1.1rem;
+}
+.choice-menu__swatch i:only-child {
+  width: 1.1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice-menu *,
+  .choice-menu__list {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* SegmentedChoice: a row of drawings in one tray, the chosen one raised. */
+/* Specific enough to win over an editor's generic form-button rule. */
+.segmented-choice {
+  margin: 0.6rem 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  font:
+    600 0.82rem/1.2 Arial,
+    sans-serif;
+  color: #263022;
+}
+.segmented-choice__row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.2rem;
+  width: max-content;
+  max-width: 100%;
+  padding: 0.2rem;
+  border: 1px solid #dfe4d8;
+  border-radius: 0.8rem;
+  background: #eef1e9;
+  box-shadow: 0 1px 2px #1f281a14 inset;
+}
+.segmented-choice .segmented-choice__row button {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: #5b6653;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.segmented-choice .segmented-choice__row button svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.segmented-choice .segmented-choice__row button:hover:not(:disabled) {
+  background: #ffffffb3;
+  color: #2f4a27;
+  transform: translateY(-1px);
+}
+.segmented-choice .segmented-choice__row button[aria-checked="true"] {
+  border-color: #c9d6bc;
+  background: #fff;
+  color: #3e6b34;
+  box-shadow: 0 2px 6px -2px #1f281a40;
+}
+.segmented-choice .segmented-choice__row button:focus-visible {
+  outline: 2px solid #4f7d3f;
+  outline-offset: 1px;
+}
+.segmented-choice .segmented-choice__row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.segmented-choice__current {
+  grid-row: 1;
+  grid-column: 2;
+  font-weight: 500;
+  font-size: 0.76rem;
+  color: #6b7563;
+}
+@media (prefers-reduced-motion: reduce) {
+  .segmented-choice .segmented-choice__row button {
+    transition: none;
+  }
+}
+
+/* A photo as an option's drawing. */
+.choice-menu__thumb {
+  flex: none;
+  width: 2.2rem;
+  height: 1.6rem;
+  border-radius: 0.35rem;
+  object-fit: cover;
+  background: #e6ebe0;
+}

@@ -59,6 +59,12 @@ async function saveAndAccept(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: "Accept" }));
 }
 
+// The size a cell bar shows: the name of its chosen cell.
+const cells = (label: string) =>
+  within(screen.getByLabelText(label))
+    .getByRole("radio", { checked: true })
+    .getAttribute("aria-label");
+
 describe("catalog tabs", () => {
   it("keeps a stale draft and offers an explicit reload without retrying the write", async () => {
     vi.mocked(manageCatalog.load).mockResolvedValue(catalog([{ id: "c", version: 4, title: "City", categories: [], entries: [] }]));
@@ -234,13 +240,15 @@ describe("collection editor", () => {
     await user.type(screen.getByLabelText("Collection title"), "City");
     await user.type(screen.getByLabelText("Description"), "  At night ");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.selectOptions(
-      screen.getByLabelText("Width on wide screens"),
-      "4",
+    await user.click(
+      within(screen.getByLabelText("Width on wide screens")).getByRole(
+        "radio",
+        { name: "4" },
+      ),
     );
     await saveAndAccept(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Offline");
-    expect(screen.getByLabelText("Width on wide screens")).toHaveValue("4");
+    expect(cells("Width on wide screens")).toBe("4");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
     await saveAndAccept(user);
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -335,7 +343,8 @@ describe("collection editor", () => {
     await user.type(within(picker).getByRole("searchbox"), "colo");
     expect(within(picker).getAllByRole("button", { name: /^Add / })).toHaveLength(1);
     await user.clear(within(picker).getByRole("searchbox"));
-    await user.selectOptions(within(picker).getByLabelText("Category"), "cat");
+    await user.click(within(picker).getByLabelText("Category"));
+    await user.click(within(picker).getByRole("option", { name: "Street" }));
     expect(
       within(picker).getByRole("button", { name: "Add Monochrome" }),
     ).toBeInTheDocument();
@@ -392,8 +401,8 @@ describe("collection editor", () => {
     fireEvent.pointerUp(corner);
     // New photos start 2×2 on the eight-column grid.
     expect(tile).toHaveStyle({ "--span-columns": "4", "--span-rows": "3" });
-    expect(screen.getByLabelText("Width on wide screens")).toHaveValue("4");
-    expect(screen.getByLabelText("Height on wide screens")).toHaveValue("3");
+    expect(cells("Width on wide screens")).toBe("4");
+    expect(cells("Height on wide screens")).toBe("3");
   });
 
   it("gives a piece its own phone size when resized in the phone layout", async () => {
@@ -404,7 +413,10 @@ describe("collection editor", () => {
     expect(
       screen.getByRole("checkbox", { name: "Own size on phones" }),
     ).not.toBeChecked();
-    expect(screen.getByLabelText("Width on phones")).toBeDisabled();
+    for (const cell of within(
+      screen.getByLabelText("Width on phones"),
+    ).getAllByRole("radio"))
+      expect(cell).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /Phones/ }));
     expect(
       screen.getByRole("list", { name: "Collection composition on phones" }),

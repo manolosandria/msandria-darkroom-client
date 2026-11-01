@@ -14,6 +14,7 @@ import { PhotoImage } from "./PhotoImage";
 import { CollectionMosaic } from "./CollectionMosaic";
 import { textsForPage } from "@/src/domain/collectionLayout";
 import "./publicCatalog.css";
+import { EmptyState } from "./EmptyState";
 
 export default function PublicCollections() {
   const loadCatalog = useCallback(() => editCatalog.load(), []);
@@ -86,7 +87,7 @@ export default function PublicCollections() {
             ))}
           </ul>
         ) : (
-          <p>No collections yet.</p>
+          <EmptyState picture="collections" title="No collections yet." />
         ))}
     </main>
   );

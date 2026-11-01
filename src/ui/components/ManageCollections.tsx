@@ -11,6 +11,7 @@ import { EditingBoundary } from "./EditingWorkspace";
 import { useSessionValue } from "./SessionProvider";
 import { ErrorMessage } from "./ErrorMessage";
 import { VariantStudio } from "./VariantStudio";
+import { ChoiceMenu } from "./ChoiceMenu";
 
 const TABS = ["Collections", "Categories"] as const;
 type Tab = (typeof TABS)[number] | "Variants";
@@ -283,27 +284,6 @@ function CatalogEditorContent({
                     </button>
                   ))}
                 </div>
-                <label>
-                  Edit category
-                  <select
-                    value={categoryId}
-                    onChange={(event) => {
-                      setCategoryId(event.target.value);
-                      setCategoryName(
-                        catalog.categories.find(
-                          (item) => item.id === event.target.value,
-                        )?.name ?? "",
-                      );
-                    }}
-                  >
-                    <option value="">New category</option>
-                    {catalog.categories.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
@@ -355,24 +335,23 @@ function CatalogEditorContent({
                 <h2>Photo categories</h2>
                 <label>
                   Photo
-                  <select
+                  <ChoiceMenu
                     value={photoId}
-                    onChange={(event) => {
-                      setPhotoId(event.target.value);
+                    placeholder="Choose a photo"
+                    onChange={(id) => {
+                      setPhotoId(id);
                       setPhotoCategories(
                         catalog.photos
-                          .find((photo) => photo.id === event.target.value)
+                          .find((photo) => photo.id === id)
                           ?.categories.map((category) => category.id) ?? [],
                       );
                     }}
-                  >
-                    <option value="">Choose a photo</option>
-                    {photos.map((photo) => (
-                      <option key={photo.getId()} value={photo.getId()}>
-                        {photo.getTitle()}
-                      </option>
-                    ))}
-                  </select>
+                    options={photos.map((photo) => ({
+                      value: photo.getId(),
+                      label: photo.getTitle(),
+                      icon: <PhotoThumb photo={photo} />,
+                    }))}
+                  />
                 </label>
                 {photoId && (
                   <>
@@ -456,4 +435,15 @@ function CatalogEditorContent({
       )}
     </div>
   );
+}
+
+// The smallest rendition of a photo, as the drawing of its menu option.
+function PhotoThumb({ photo }: { photo: Photo }) {
+  const [smallest] = [...photo.getRenditions()].sort(
+    (a, b) => a.width - b.width,
+  );
+  return smallest ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="choice-menu__thumb" src={smallest.url} alt="" loading="lazy" />
+  ) : null;
 }

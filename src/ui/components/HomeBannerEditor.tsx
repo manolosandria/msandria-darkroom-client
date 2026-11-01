@@ -19,6 +19,9 @@ import { EditorActions } from "./EditorActions";
 import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
+import { ChoiceMenu } from "./ChoiceMenu";
+import { SegmentedChoice } from "./SegmentedChoice";
+import { choiceIcons } from "./choiceIcons";
 
 // The banner's properties, one group at a time beside the preview.
 const propertyTabs = [
@@ -299,16 +302,15 @@ function Editor() {
               <legend>Typography</legend>
               <label>
                 Font
-                <select
+                <ChoiceMenu
                   value={draft.font}
-                  onChange={(event) => change("font", event.target.value)}
-                >
-                  {bannerFonts.map((font) => (
-                    <option key={font.id} value={font.id}>
-                      {font.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(font) => change("font", font)}
+                  options={bannerFonts.map((font) => ({
+                    value: font.id,
+                    label: font.name,
+                    font: font.family,
+                  }))}
+                />
               </label>
               <label>
                 Title size · {draft.fontSize}px
@@ -322,28 +324,42 @@ function Editor() {
                   }
                 />
               </label>
-              <label>
-                Text alignment
-                <select
-                  value={draft.textAlign}
-                  onChange={(event) => change("textAlign", event.target.value)}
-                >
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                </select>
-              </label>
-              <label>
-                Banner shape
-                <select
-                  value={draft.shape}
-                  onChange={(event) => change("shape", event.target.value)}
-                >
-                  <option value="square">Rectangle</option>
-                  <option value="rounded">Rounded corners</option>
-                  <option value="arch">Arch</option>
-                </select>
-              </label>
+              <SegmentedChoice
+                label="Text alignment"
+                value={draft.textAlign}
+                onChange={(align) => change("textAlign", align)}
+                options={[
+                  { value: "left", label: "Left", icon: choiceIcons.alignLeft },
+                  {
+                    value: "center",
+                    label: "Center",
+                    icon: choiceIcons.alignCenter,
+                  },
+                  {
+                    value: "right",
+                    label: "Right",
+                    icon: choiceIcons.alignRight,
+                  },
+                ]}
+              />
+              <SegmentedChoice
+                label="Banner shape"
+                value={draft.shape}
+                onChange={(shape) => change("shape", shape)}
+                options={[
+                  {
+                    value: "square",
+                    label: "Rectangle",
+                    icon: choiceIcons.shapeRectangle,
+                  },
+                  {
+                    value: "rounded",
+                    label: "Rounded corners",
+                    icon: choiceIcons.shapeRounded,
+                  },
+                  { value: "arch", label: "Arch", icon: choiceIcons.shapeArch },
+                ]}
+              />
             </fieldset>
             <fieldset
               disabled={busy}
@@ -418,29 +434,45 @@ function Editor() {
               {...propertyPanel("home", "Carousel", propertyTab)}
             >
               <legend>Carousel</legend>
-              <label>
-                Navigation
-                <select
-                  value={draft.navigation ?? "dots"}
-                  onChange={(event) => change("navigation", event.target.value)}
-                >
-                  <option value="dots">Dots</option>
-                  <option value="thumbnails">Photograph thumbnails</option>
-                  <option value="progress">Progress bar</option>
-                </select>
-              </label>
-              <label>
-                Controls placement
-                <select
-                  value={draft.controlsPosition ?? "below"}
-                  onChange={(event) =>
-                    change("controlsPosition", event.target.value)
-                  }
-                >
-                  <option value="below">Below photograph</option>
-                  <option value="overlay">Over photograph</option>
-                </select>
-              </label>
+              <SegmentedChoice
+                label="Navigation"
+                value={draft.navigation ?? "dots"}
+                onChange={(navigation) => change("navigation", navigation)}
+                options={[
+                  {
+                    value: "dots",
+                    label: "Dots",
+                    icon: choiceIcons.navigationDots,
+                  },
+                  {
+                    value: "thumbnails",
+                    label: "Photograph thumbnails",
+                    icon: choiceIcons.navigationThumbnails,
+                  },
+                  {
+                    value: "progress",
+                    label: "Progress bar",
+                    icon: choiceIcons.navigationProgress,
+                  },
+                ]}
+              />
+              <SegmentedChoice
+                label="Controls placement"
+                value={draft.controlsPosition ?? "below"}
+                onChange={(place) => change("controlsPosition", place)}
+                options={[
+                  {
+                    value: "below",
+                    label: "Below photograph",
+                    icon: choiceIcons.placeBelow,
+                  },
+                  {
+                    value: "overlay",
+                    label: "Over photograph",
+                    icon: choiceIcons.placeOver,
+                  },
+                ]}
+              />
               <label>
                 Banner height · {draft.bannerHeight ?? 620}px
                 <input

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BannerSlideList } from "../BannerSlideList";
 import { HomeBanner } from "@/src/domain/entities/HomeBanner";
 import { Photo } from "@/src/domain/entities/Photo";
+import { chooseWhenReady } from "./chooseOption";
 
 vi.mock("@/src/infrastructure/catalogServices", () => ({
   editCatalog: {
@@ -121,10 +122,10 @@ describe("BannerSlideList", () => {
     );
     const detail = screen.getByRole("region", { name: "Slide 1: Photo a" });
     expect(within(detail).getByLabelText("Title for Photo a")).toBeVisible();
-    await within(detail).findByRole("option", { name: "Gallery category" });
-    fireEvent.change(within(detail).getByLabelText("Link destination"), {
-      target: { value: "category" },
-    });
+    await chooseWhenReady(
+      within(detail).getByLabelText("Link destination"),
+      "Gallery category",
+    );
     expect(latestOf()[0].href).toBe("/gallery?category=city");
     fireEvent.click(within(detail).getByRole("button", { name: "Remove" }));
     expect(latestOf().map((item) => item.photoId)).toEqual(["b"]);
