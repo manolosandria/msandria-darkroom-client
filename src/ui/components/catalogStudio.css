@@ -253,3 +253,59 @@
 .category-browser button { cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s, background .15s; }
 .category-browser button:hover { transform: translateY(-2px); border-color: #9fb38c; background: #fbfcf8; box-shadow: 0 8px 18px -12px #2b332266; }
 .category-browser button:active { transform: none; }
+
+/* Categories as a studio: the library on the left, the editor and the photo's
+   classification on the right, held in view while the library scrolls. */
+.studio-card--categories { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,360px); align-items:start; gap:1.25rem; border:0; padding:0; background:none; }
+.studio-card--categories>section.category-studio__library { padding:1.4rem; border-radius:1.1rem; background:#fbfcf8; border:1px solid #e0e5d7; box-shadow:0 14px 34px -26px #2b332280; }
+.category-studio__head h2 { margin:0; font:400 1.6rem/1.2 Georgia,serif; color:#263022; }
+.category-studio__head p { margin:.3rem 0 0; }
+.category-studio__library .category-browser { grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); margin:1.2rem 0 0; }
+.category-browser button { align-content:start; gap:.35rem; min-height:0; padding:.6rem .6rem .8rem; background:#fff; }
+.category-browser button strong { padding:0 .2rem; font:600 .95rem/1.2 Arial,sans-serif; color:#263022; text-transform:capitalize; }
+.category-browser button small { padding:0 .2rem; }
+.category-browser__peek { display:grid; grid-template-columns:2fr 1fr; grid-template-rows:1fr 1fr; gap:3px; height:96px; margin-bottom:.35rem; overflow:hidden; border-radius:.55rem; background:linear-gradient(135deg,#e8eddf,#dfe6d4); }
+.category-browser__peek img { width:100%; height:100%; border-radius:0; object-fit:cover; }
+.category-browser__peek img:first-child { grid-row:1 / 3; }
+.category-browser__peek img:only-child { grid-column:1 / 3; }
+.category-browser button[aria-pressed=true] { outline:0; border-color:#5f8a4c; background:#f2f7ec; box-shadow:0 0 0 3px #5f8a4c33, 0 10px 22px -16px #2b332299; }
+.category-browser button.category-browser__new { display:grid; place-items:center; align-content:center; gap:.5rem; min-height:150px; border:1.5px dashed #a9b99a; background:#f6f9f1; color:#3e6b34; font:600 .9rem Arial,sans-serif; }
+.category-browser__plus { display:grid; place-items:center; width:2.6rem; height:2.6rem; border-radius:50%; background:linear-gradient(135deg,#7fa86a,#4f7d3f); color:#fff; font-size:1.4rem; box-shadow:0 8px 18px -10px #2f4f2a; transition:transform .2s; }
+.category-browser__new:hover .category-browser__plus { transform:rotate(90deg) scale(1.06); }
+.category-studio__side { position:sticky; top:1rem; display:grid; gap:1rem; }
+.catalog-editor .studio-card .category-studio__side>section { display:grid; gap:.75rem; padding:1.2rem; border-radius:1.1rem; background:#fff; border:1px solid #e0e5d7; box-shadow:0 14px 34px -26px #2b332280; }
+.category-studio__side h3 { margin:0; font:400 1.2rem/1.25 Georgia,serif; color:#263022; }
+.category-studio__side p { margin:0; font-size:.8rem; }
+.category-studio__side form { display:grid; gap:.8rem; }
+.category-studio__side label { display:grid; gap:.35rem; font:600 .8rem Arial,sans-serif; color:#3d4934; }
+.category-studio__side input:not([type]) { padding:.65rem .8rem; border:1px solid #cfd6c5; border-radius:.7rem; background:#fbfcf8; font:inherit; font-weight:400; transition:border-color .15s, box-shadow .15s; }
+.category-studio__side input:not([type]):focus { outline:none; border-color:#4f7d3f; box-shadow:0 0 0 3px #4f7d3f26; }
+.category-studio__actions { display:flex; gap:.5rem; }
+.catalog-editor .category-studio__side .studio-save { flex:1; padding:.6rem 1rem; font-size:.85rem; }
+.category-studio__delete { padding:.55rem .9rem; border:1px solid #e2c3bb; border-radius:.7rem; background:#fff; color:#8f2d1d; font:600 .8rem Arial,sans-serif; transition:background .15s, border-color .15s; }
+.category-studio__delete:hover { background:#fbefec; border-color:#d9a59a; }
+/* The photo's categories as chips that switch on and off. */
+.category-studio__classify fieldset { display:flex; flex-wrap:wrap; gap:.4rem; margin:0; padding:0; border:0; }
+.category-studio__classify legend { margin-bottom:.4rem; font:600 .8rem Arial,sans-serif; color:#3d4934; }
+.category-studio__classify fieldset label { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .7rem .35rem .45rem; border:1px solid #d3dbc8; border-radius:999px; background:#f7f9f3; font-weight:500; cursor:pointer; transition:background .15s, border-color .15s; }
+.category-studio__classify fieldset label:hover { border-color:#9fb38c; }
+.category-studio__classify fieldset label:has(input:checked) { border-color:#5f8a4c; background:#e9f1e1; color:#24451c; }
+@media (max-width: 900px) {
+  .studio-card--categories { grid-template-columns:1fr; }
+  .category-studio__side { position:static; }
+}
+.catalog-editor .studio-card.studio-card--categories { background:none; border:0; box-shadow:none; padding:0; }
+
+/* Collections overview: a light card instead of the generic dark frame, larger covers,
+   and the details panel as a raised card beside them. */
+.catalog-editor section.studio-card--collections { border: 1px solid #e3e6dc; border-radius: 1.1rem; box-shadow: 0 14px 34px -26px #2b332280; }
+.studio-collection-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.1rem; margin: 0; padding: 0; list-style: none; }
+.catalog-editor .studio-collection-card { gap: .3rem; padding: .55rem .55rem .8rem; border-radius: .9rem; transition: transform .18s, box-shadow .18s, border-color .18s; }
+.catalog-editor .studio-collection-card strong { padding: .2rem .25rem 0; font: 600 .98rem/1.25 Arial, sans-serif; color: #263022; }
+.catalog-editor .studio-collection-card small { padding: 0 .25rem; }
+.studio-collection-card__cover { aspect-ratio: 4 / 3; border-radius: .6rem; background: linear-gradient(135deg, #eceee6, #e1e6d8); }
+.studio-panel { border-radius: 1.1rem; }
+.studio-panel .empty-state { margin: 0; }
+.studio-summary { gap: .6rem; }
+.studio-summary p { margin: 0; }
+.studio-summary h3 { margin: .2rem 0 0; }

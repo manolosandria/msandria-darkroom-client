@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { manageContact } from "@/src/infrastructure/contactServices";
 import { RateLimitError } from "@/src/domain/errors/RateLimitError";
+import { EmptyState } from "./EmptyState";
 
 export default function ContactForm() {
   const [draft, setDraft] = useState({
@@ -16,19 +17,35 @@ export default function ContactForm() {
   return (
     <main className="upload-workspace">
       <div className="upload-container contact-container">
-        <div className="upload-heading">
+        <div className="upload-heading contact-intro">
           <span className="upload-eyebrow">GET IN TOUCH</span>
           <h1>Let&apos;s talk photography.</h1>
           <p>Send a private message to the photographer.</p>
+          <ul className="contact-facts">
+            <li>
+              <span aria-hidden="true">{contactIcons.private}</span>
+              Only the photographer reads it.
+            </li>
+            <li>
+              <span aria-hidden="true">{contactIcons.inbox}</span>
+              It waits in a private inbox; no automatic email is sent.
+            </li>
+            <li>
+              <span aria-hidden="true">{contactIcons.length}</span>
+              Up to 3,000 characters, without links.
+            </li>
+          </ul>
         </div>
         {sent ? (
-          <p role="status">
-            Your message is in the photographer&apos;s inbox. Thank you.
-          </p>
+          <div role="status" className="contact-sent">
+            <EmptyState picture="done" title="Thank you.">
+              Your message is in the photographer&apos;s inbox.
+            </EmptyState>
+          </div>
         ) : (
           <form
             noValidate
-            className="upload-card"
+            className="upload-card contact-form"
             onSubmit={async (event) => {
               event.preventDefault();
               if (busy) return;
@@ -133,8 +150,9 @@ export default function ContactForm() {
                 I agree to use my details to handle this inquiry.
               </label>
               {error && <p role="alert">{error}</p>}
-              <button className="upload-primary">
+              <button className="upload-primary contact-send">
                 {busy ? "Sending…" : "Send message"}
+                <span aria-hidden="true">→</span>
               </button>
             </fieldset>
           </form>
@@ -143,3 +161,21 @@ export default function ContactForm() {
     </main>
   );
 }
+
+const draw = (d: string) => (
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d={d} />
+  </svg>
+);
+const contactIcons = {
+  private: draw("M5 9V7a5 5 0 0 1 10 0v2M4 9h12v8H4zM10 12v2"),
+  inbox: draw("M3 11l2.5-6h9L17 11v5H3zM3 11h4l1 2h4l1-2h4"),
+  length: draw("M4 5h12M4 9h12M4 13h8M4 17h5"),
+};

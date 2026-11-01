@@ -38,3 +38,21 @@
 .gallery-category-chips button[aria-pressed=true] { background:#384e2b; border-color:#384e2b; color:white; }
 
 @media(prefers-reduced-motion:reduce) { .gallery-category-chips button { transition:none; } }
+
+/* The grid fits however many collections there are: two share the width, one is a
+   wide feature; covers lift under the pointer and the arrow leans towards the click. */
+.public-collections:has(> li:nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.public-collections:has(> li:only-child) { grid-template-columns: minmax(0, 52rem); }
+.public-collection__open { border-radius: 1rem; transition: transform .25s ease; }
+.public-collection__cover { border-radius: .9rem; box-shadow: 0 1px 0 #0000000d; transition: box-shadow .3s ease; }
+.public-collection__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, #0000002e); opacity: 0; transition: opacity .3s ease; pointer-events: none; }
+.public-collection__open:hover, .public-collection__open:focus-visible { transform: translateY(-4px); }
+.public-collection__open:hover .public-collection__cover, .public-collection__open:focus-visible .public-collection__cover { box-shadow: 0 22px 44px -26px #000a; }
+.public-collection__open:hover .public-collection__cover::after { opacity: 1; }
+.public-collection__arrow { z-index: 1; box-shadow: 0 6px 16px -6px #0006; transition: transform .25s ease, background .25s ease, color .25s ease; }
+.public-collection__open:hover .public-collection__arrow, .public-collection__open:focus-visible .public-collection__arrow { transform: translate(2px, -2px) scale(1.08); background: #171717; color: #fff; }
+.public-collection h2 { transition: color .2s ease; }
+.collection-back { display: inline-flex; align-items: center; gap: .4rem; background: color-mix(in srgb, currentColor 4%, transparent); transition: background .2s ease, transform .2s ease; }
+.collection-back:hover { background: color-mix(in srgb, currentColor 10%, transparent); transform: translateX(-2px); }
+@media (max-width: 600px) { .public-collections:has(> li:nth-child(2):last-child) { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .public-collection__open, .public-collection__arrow, .public-collection__cover, .collection-back { transition: none; } }

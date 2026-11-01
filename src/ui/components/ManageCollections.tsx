@@ -96,9 +96,7 @@ function CatalogEditorContent({
   const [photoCategories, setPhotoCategories] = useState<string[]>([]);
   const [workId, setWorkId] = useState("");
   const [work, setWork] = useState<WorkDraft>({ title: "", photoIds: [] });
-  const [chosen, setTab] = useState<Tab>(
-    variants ? "Variants" : "Collections",
-  );
+  const [chosen, setTab] = useState<Tab>(variants ? "Variants" : "Collections");
   const tab = only ?? chosen;
   const load = useCallback(async () => {
     const [nextCatalog, nextPhotos] = await Promise.all([
@@ -184,18 +182,41 @@ function CatalogEditorContent({
       {error && (
         <p role="alert">
           {error}{" "}
-          <button disabled={busy} onClick={async () => {
-            if (workId && !window.confirm("Discard the current variant edits and reload the saved catalog?")) return;
-            setBusy(true);
-            try {
-              const latest = await load();
-              const current = latest.works.find(item => item.id === workId);
-              setWork(current ? { version: current.version, title: current.title, photoIds: current.variants.map(variant => variant.photoId) } : { title: "", photoIds: [] });
-              if (!current) setWorkId("");
-              setError(""); setNotice("Catalog reloaded.");
-            } catch { setError("Could not reload the catalog. Your edits are kept."); }
-            finally { setBusy(false); }
-          }}>
+          <button
+            disabled={busy}
+            onClick={async () => {
+              if (
+                workId &&
+                !window.confirm(
+                  "Discard the current variant edits and reload the saved catalog?",
+                )
+              )
+                return;
+              setBusy(true);
+              try {
+                const latest = await load();
+                const current = latest.works.find((item) => item.id === workId);
+                setWork(
+                  current
+                    ? {
+                        version: current.version,
+                        title: current.title,
+                        photoIds: current.variants.map(
+                          (variant) => variant.photoId,
+                        ),
+                      }
+                    : { title: "", photoIds: [] },
+                );
+                if (!current) setWorkId("");
+                setError("");
+                setNotice("Catalog reloaded.");
+              } catch {
+                setError("Could not reload the catalog. Your edits are kept.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
             Reload catalog
           </button>
         </p>
@@ -244,137 +265,177 @@ function CatalogEditorContent({
               aria-labelledby="studio-tab-Categories"
               className="studio-card studio-card--categories"
             >
-              <section>
-                <h2>Categories</h2>
-                <p className="upload-muted">
-                  Small labels. New ways to discover your photographs.
-                </p>
+              <section
+                className="category-studio__library"
+                aria-label="Category library"
+              >
+                <header className="category-studio__head">
+                  <h2>Categories</h2>
+                  <p className="upload-muted">
+                    Small labels. New ways to discover your photographs.
+                  </p>
+                </header>
                 <div className="category-browser">
                   <button
                     type="button"
+                    className="category-browser__new"
                     aria-pressed={!categoryId}
                     onClick={() => {
                       setCategoryId("");
                       setCategoryName("");
                     }}
                   >
-                    ＋ New category
+                    <span className="category-browser__plus" aria-hidden="true">
+                      ＋
+                    </span>
+                    New category
                   </button>
-                  {catalog.categories.map((item) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      aria-pressed={categoryId === item.id}
-                      onClick={() => {
-                        setCategoryId(item.id);
-                        setCategoryName(item.name);
-                      }}
-                    >
-                      <strong>{item.name}</strong>
-                      <small>
-                        {
-                          catalog.photos.filter((photo) =>
-                            photo.categories.some(
-                              (category) => category.id === item.id,
-                            ),
-                          ).length
-                        }{" "}
-                        photos
-                      </small>
-                    </button>
-                  ))}
-                </div>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void save(
-                      () =>
-                        editCatalog.saveCategory(
-                          categoryName,
-                          categoryId || undefined,
-                        ),
-                      () => {
-                        setCategoryId("");
-                        setCategoryName("");
-                      },
+                  {catalog.categories.map((item) => {
+                    const members = catalog.photos.filter((photo) =>
+                      photo.categories.some(
+                        (category) => category.id === item.id,
+                      ),
                     );
-                  }}
-                >
-                  <fieldset>
+                    return (
+                      <button
+                        type="button"
+                        key={item.id}
+                        aria-pressed={categoryId === item.id}
+                        onClick={() => {
+                          setCategoryId(item.id);
+                          setCategoryName(item.name);
+                        }}
+                      >
+                        <span
+                          className="category-browser__peek"
+                          aria-hidden="true"
+                        >
+                          {members.slice(0, 3).map((member) => {
+                            const photo = photos.find(
+                              (candidate) => candidate.getId() === member.id,
+                            );
+                            return photo ? (
+                              <PhotoThumb key={member.id} photo={photo} />
+                            ) : null;
+                          })}
+                        </span>
+                        <strong>{item.name}</strong>
+                        <small>
+                          {members.length}{" "}
+                          {members.length === 1 ? "photo" : "photos"}
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+              <aside className="category-studio__side">
+                <section className="category-studio__editor">
+                  <h3>
+                    {categoryId
+                      ? `Edit ${catalog.categories.find((item) => item.id === categoryId)?.name ?? "category"}`
+                      : "New category"}
+                  </h3>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void save(
+                        () =>
+                          editCatalog.saveCategory(
+                            categoryName,
+                            categoryId || undefined,
+                          ),
+                        () => {
+                          setCategoryId("");
+                          setCategoryName("");
+                        },
+                      );
+                    }}
+                  >
                     <label>
                       Category name
                       <input
                         required
                         maxLength={80}
                         value={categoryName}
+                        placeholder="Street, Night, Portraits…"
                         onChange={(event) =>
                           setCategoryName(event.target.value)
                         }
                       />
                     </label>
-                    <button className="studio-save">Save category</button>
-                  </fieldset>
-                </form>
-                {categoryId && (
-                  <button
-                    onClick={() =>
-                      remove("categories", categoryId, () => {
-                        setCategoryId("");
-                        setCategoryName("");
+                    <div className="category-studio__actions">
+                      <button className="studio-save">Save category</button>
+                      {categoryId && (
+                        <button
+                          type="button"
+                          className="category-studio__delete"
+                          onClick={() =>
+                            remove("categories", categoryId, () => {
+                              setCategoryId("");
+                              setCategoryName("");
+                              setPhotoCategories(
+                                photoCategories.filter(
+                                  (id) => id !== categoryId,
+                                ),
+                              );
+                            })
+                          }
+                        >
+                          Delete category
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </section>
+                <section className="category-studio__classify">
+                  <h3>Photo categories</h3>
+                  <p className="upload-muted">
+                    Choose a photograph, then switch its categories on or off.
+                  </p>
+                  <label>
+                    Photo
+                    <ChoiceMenu
+                      value={photoId}
+                      placeholder="Choose a photo"
+                      onChange={(id) => {
+                        setPhotoId(id);
                         setPhotoCategories(
-                          photoCategories.filter((id) => id !== categoryId),
+                          catalog.photos
+                            .find((photo) => photo.id === id)
+                            ?.categories.map((category) => category.id) ?? [],
                         );
-                      })
-                    }
-                  >
-                    Delete category
-                  </button>
-                )}
-              </section>
-              <section>
-                <h2>Photo categories</h2>
-                <label>
-                  Photo
-                  <ChoiceMenu
-                    value={photoId}
-                    placeholder="Choose a photo"
-                    onChange={(id) => {
-                      setPhotoId(id);
-                      setPhotoCategories(
-                        catalog.photos
-                          .find((photo) => photo.id === id)
-                          ?.categories.map((category) => category.id) ?? [],
-                      );
-                    }}
-                    options={photos.map((photo) => ({
-                      value: photo.getId(),
-                      label: photo.getTitle(),
-                      icon: <PhotoThumb photo={photo} />,
-                    }))}
-                  />
-                </label>
-                {photoId && (
-                  <>
-                    {categories(photoCategories, setPhotoCategories)}
-                    <button
-                      className="studio-save"
-                      onClick={() =>
-                        void save(() =>
-                          editCatalog.setPhotoCategories(
-                            photoId,
-                            photoCategories,
-                            photos
-                              .find((photo) => photo.getId() === photoId)
-                              ?.getVersion(),
-                          ),
-                        )
-                      }
-                    >
-                      Save photo categories
-                    </button>
-                  </>
-                )}
-              </section>
+                      }}
+                      options={photos.map((photo) => ({
+                        value: photo.getId(),
+                        label: photo.getTitle(),
+                        icon: <PhotoThumb photo={photo} />,
+                      }))}
+                    />
+                  </label>
+                  {photoId && (
+                    <>
+                      {categories(photoCategories, setPhotoCategories)}
+                      <button
+                        className="studio-save"
+                        onClick={() =>
+                          void save(() =>
+                            editCatalog.setPhotoCategories(
+                              photoId,
+                              photoCategories,
+                              photos
+                                .find((photo) => photo.getId() === photoId)
+                                ?.getVersion(),
+                            ),
+                          )
+                        }
+                      >
+                        Save photo categories
+                      </button>
+                    </>
+                  )}
+                </section>
+              </aside>
             </fieldset>
           )}
           {tab === "Variants" && (
@@ -444,6 +505,11 @@ function PhotoThumb({ photo }: { photo: Photo }) {
   );
   return smallest ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img className="choice-menu__thumb" src={smallest.url} alt="" loading="lazy" />
+    <img
+      className="choice-menu__thumb"
+      src={smallest.url}
+      alt=""
+      loading="lazy"
+    />
   ) : null;
 }

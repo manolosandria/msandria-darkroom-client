@@ -84,7 +84,7 @@ function ModerationQueue() {
     });
 
   return (
-    <ol className="my-6 flex max-w-3xl flex-col gap-4">
+    <ol className="inbox-messages">
       {state.comments.map((comment) => (
         <PendingItem key={comment.id} comment={comment} onSettled={() => settle(comment.id)} />
       ))}
@@ -110,37 +110,40 @@ function PendingItem({ comment, onSettled }: { comment: PendingComment; onSettle
   };
 
   return (
-    <li className="upload-card p-5 space-y-3">
-      <p className="text-xs text-gray-600">
-        <span className="font-semibold text-gray-900">{comment.authorName ?? DELETED_AUTHOR}</span>{" "}
-        on{" "}
-        <Link href={`/photo/${encodeURIComponent(comment.photo.id)}`} className="upload-link">
-          {comment.photo.title}
-        </Link>{" "}
-        · {formatCommentDate(comment.createdAt)}
+    <li className="upload-card message-card message-card--unread">
+      <span className="message-card__avatar" aria-hidden="true">
+        {(comment.authorName ?? DELETED_AUTHOR).trim().charAt(0).toUpperCase()}
+      </span>
+      <p className="message-card__meta">
+        <strong>{comment.authorName ?? DELETED_AUTHOR}</strong>{" "}
+        <span>
+          on{" "}
+          <Link href={`/photo/${encodeURIComponent(comment.photo.id)}`} className="upload-link">
+            {comment.photo.title}
+          </Link>
+        </span>{" "}
+        <time>{formatCommentDate(comment.createdAt)}</time>
       </p>
-      <p className="whitespace-pre-line break-words text-sm leading-relaxed">{comment.body}</p>
+      <p className="message-card__body">{comment.body}</p>
       {error && (
         <p role="alert" className="upload-error">
           {error}
         </p>
       )}
-      <div className="flex flex-wrap gap-3">
+      <div className="message-card__actions">
         <button
           type="button"
-          className="upload-primary"
+          className="message-card__approve"
           disabled={busy}
           onClick={() => act(() => approveComment.execute(comment.id))}
-        >
-          Approve
+        ><span aria-hidden="true">✓</span>Approve
         </button>
         <button
           type="button"
-          className="upload-secondary"
+          className="message-card__delete"
           disabled={busy}
           onClick={() => act(() => deleteComment.execute(comment.id))}
-        >
-          Delete
+        ><span aria-hidden="true">✕</span>Delete
         </button>
       </div>
     </li>

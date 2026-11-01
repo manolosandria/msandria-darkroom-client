@@ -37,6 +37,7 @@ import { PhotoPicker } from "./PhotoPicker";
 import { CollectionCanvas, isHiddenFromPublic } from "./CollectionCanvas";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
+import { EmptyState } from "./EmptyState";
 
 /** The editor keeps photos and text blocks in one reading order. */
 type EditorDraft = Omit<CollectionDraft, "entries" | "texts"> & {
@@ -70,8 +71,12 @@ const toggle = (ids: string[], id: string) =>
   ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 const findPhoto = (photos: Photo[], id?: string | null) =>
   photos.find((photo) => photo.getId() === id);
+// The chosen cover, else the first of its photos that is at hand.
 const coverOf = (collection: CatalogCollection, photos: Photo[]) =>
-  findPhoto(photos, collection.coverPhotoId ?? collection.entries[0]?.photoId);
+  findPhoto(photos, collection.coverPhotoId) ??
+  collection.entries
+    .map((entry) => findPhoto(photos, entry.photoId))
+    .find(Boolean);
 
 export function CollectionWorkspace({
   catalog,
@@ -211,9 +216,10 @@ function CollectionBrowser({
             onEdit={() => onOpen(collection.id)}
           />
         ) : (
-          <p className="studio-panel__empty">
-            Choose a collection to see its categories, description and photos.
-          </p>
+          <EmptyState picture="collections" title="Choose a collection" quiet>
+            Its categories, description and photos show here. A double click
+            opens it in the editor.
+          </EmptyState>
         )}
       </aside>
     </div>

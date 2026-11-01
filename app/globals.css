@@ -619,3 +619,68 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
 .upload-drop-target:focus-visible > span:first-child {
   transform: translateY(-3px);
 }
+
+/* Contact: the invitation and how the message is handled on the left, the form on the
+   right; fields light up on hover and focus, and consent is a card to tick. */
+.contact-container { max-width: 72rem; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: start; }
+.contact-intro { position: sticky; top: 2rem; }
+.contact-facts { display: grid; gap: .9rem; margin: 2rem 0 0; padding: 0; list-style: none; }
+.contact-facts li { display: flex; align-items: center; gap: .8rem; font-size: .9rem; color: #4d5745; }
+.contact-facts li > span { display: grid; flex: none; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: linear-gradient(145deg, #eef3e6, #dfe8d4); color: #4f7d3f; box-shadow: 0 8px 18px -12px #3d4f2e80; }
+.contact-facts svg { width: 1.15rem; height: 1.15rem; }
+.contact-container .contact-form { padding: clamp(1.25rem, 3vw, 2.25rem); border-radius: 1.2rem; border-color: #e0e4d8; box-shadow: 0 24px 60px -40px #2b332299; }
+.contact-form .upload-fields > label { color: #3d4934; }
+.contact-form .upload-fields input:not([type=checkbox]), .contact-form .upload-fields textarea,
+.email-sign-in input { border-radius: .75rem; border-color: #d6dccd; background: #fbfcf8; padding: .8rem .95rem; transition: border-color .15s, box-shadow .15s, background .15s; }
+.contact-form .upload-fields input:not([type=checkbox]):hover, .contact-form .upload-fields textarea:hover,
+.email-sign-in input:hover { border-color: #aebd9f; }
+.contact-form .upload-fields input:not([type=checkbox]):focus, .contact-form .upload-fields textarea:focus,
+.email-sign-in input:focus { outline: none; border-color: #4f7d3f; background: #fff; box-shadow: 0 0 0 4px #4f7d3f1f; }
+.contact-form .upload-muted { margin: 0; font-size: .78rem; line-height: 1.55; }
+.contact-consent { padding: .8rem 1rem; border: 1px solid #dfe4d8; border-radius: .8rem; background: #f8faf5; font-size: .85rem !important; font-weight: 500 !important; cursor: pointer; transition: border-color .15s, background .15s; }
+.contact-consent:hover { border-color: #aebd9f; }
+.contact-consent:has(input:checked) { border-color: #5f8a4c; background: #edf4e6; color: #24451c; }
+.contact-send, .email-sign-in .upload-primary { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; padding: .95rem 1.4rem; border-radius: .8rem; font-size: .92rem; background: linear-gradient(135deg, #4f7a3c, #2f4f2a); box-shadow: 0 10px 24px -14px #2f4f2acc; transition: transform .18s, box-shadow .18s, filter .18s; }
+.contact-send:hover:not(:disabled), .email-sign-in .upload-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 30px -14px #2f4f2acc; background: linear-gradient(135deg, #5c8c46, #355a2f); }
+.contact-send span { transition: transform .2s; }
+.contact-send:hover span { transform: translateX(4px); }
+.contact-sent .empty-state { margin: 0; }
+@media (max-width: 900px) {
+  .contact-container { grid-template-columns: 1fr; }
+  .contact-intro { position: static; }
+  .contact-facts { margin-top: 1.25rem; }
+}
+
+/* Email sign-in: one centered card with an envelope drawing. */
+.email-sign-in { display: grid; justify-items: start; gap: 1rem; max-width: 30rem; padding: clamp(1.5rem, 4vw, 2.5rem); border-radius: 1.2rem; border-color: #e0e4d8; box-shadow: 0 24px 60px -40px #2b332299; }
+.email-sign-in__mark { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 50%; background: linear-gradient(145deg, #eef3e6, #dfe8d4); color: #4f7d3f; box-shadow: 0 10px 22px -14px #3d4f2e80; }
+.email-sign-in__mark svg { width: 1.5rem; height: 1.5rem; }
+.email-sign-in form { display: grid; gap: .9rem; width: 100%; }
+.email-sign-in label { display: grid; gap: .4rem; }
+.email-sign-in input { width: 100%; border: 1px solid #d6dccd; }
+.email-sign-in .upload-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.upload-container:has(> .email-sign-in) { max-width: 30rem; margin-inline: auto; }
+
+/* Inbox messages and comments awaiting review share one card: an initial in a circle,
+   who and where on one line with the date at its end, the words as a quote, and the
+   actions as colored buttons. Waiting items carry an accent bar on their left. */
+.inbox-messages { display: grid; gap: 1rem; max-width: 52rem; margin: 1.5rem 0; padding: 0; list-style: none; }
+.inbox-messages > li.message-card, .message-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem 1rem; padding: 1.25rem 1.4rem; border-radius: 1rem; border-color: #e0e4d8; box-shadow: 0 14px 34px -28px #2b332280; transition: box-shadow .2s, transform .2s; }
+.message-card:hover { box-shadow: 0 18px 40px -26px #2b332299; }
+.message-card--unread::before { content: ""; position: absolute; inset: 1rem auto 1rem 0; width: 3px; border-radius: 0 3px 3px 0; background: linear-gradient(#7fa86a, #4f7d3f); }
+.message-card__avatar { grid-row: span 3; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: linear-gradient(145deg, #eef3e6, #d9e4cc); color: #3e6b34; font: 600 1rem Georgia, serif; }
+.message-card__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; margin: 0; font-size: .82rem; color: #6b7563; }
+.message-card__meta strong { color: #263022; font-size: .95rem; }
+.message-card__meta a { color: #4f7d3f; text-decoration: none; }
+.message-card__meta a:hover { text-decoration: underline; }
+.message-card__meta time { margin-left: auto; font-size: .75rem; }
+.message-card__body { margin: 0; padding: .8rem 1rem; border-radius: .2rem .9rem .9rem .9rem; background: #f6f8f2; color: #2e3729; font-size: .92rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.message-card__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.message-card__approve, .message-card__delete { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .95rem; border-radius: 999px; font: 600 .8rem Arial, sans-serif; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
+.message-card__approve { border: 1px solid #3e6b34; background: #4f7d3f; color: #fff; }
+.message-card__approve:hover:not(:disabled) { background: #3f6a31; transform: translateY(-1px); box-shadow: 0 6px 14px -6px #2f4f2acc; }
+.message-card__delete { border: 1px solid #e2c3bb; background: #fff; color: #8f2d1d; }
+.message-card__delete:hover:not(:disabled) { background: #fbefec; border-color: #d9a59a; transform: translateY(-1px); }
+.message-card__approve:disabled, .message-card__delete:disabled { opacity: .5; cursor: not-allowed; }
+.message-card .upload-error, .message-card [role=alert] { grid-column: 2; margin: 0; }
+@media (max-width: 600px) { .message-card__meta time { margin-left: 0; width: 100%; } }

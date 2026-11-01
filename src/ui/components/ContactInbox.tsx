@@ -69,29 +69,36 @@ function Inbox() {
         ) : (
           <ul className="inbox-messages">
             {messages.map((message) => (
-              <li key={message.id} className="upload-card">
-                <header>
-                  <strong>{message.name}</strong> · {message.email}{" "}
+              <li
+                key={message.id}
+                className={`upload-card message-card${message.readAt ? "" : " message-card--unread"}`}
+              >
+                <span className="message-card__avatar" aria-hidden="true">
+                  {message.name.trim().charAt(0).toUpperCase()}
+                </span>
+                <header className="message-card__meta">
+                  <strong>{message.name}</strong>
+                  <a href={`mailto:${message.email}`}>{message.email}</a>
                   {!message.readAt && (
                     <span className="curator-badge">Unread</span>
                   )}
+                  <time dateTime={message.createdAt}>
+                    {new Date(message.createdAt).toLocaleString()}
+                  </time>
                 </header>
-                <p className="whitespace-pre-wrap break-words">
-                  {message.body}
-                </p>
-                <small>{new Date(message.createdAt).toLocaleString()}</small>
-                <div className="catalog-editor__row">
+                <p className="message-card__body">{message.body}</p>
+                <div className="message-card__actions">
                   {!message.readAt && (
                     <button
-                      className="upload-primary"
+                      className="message-card__approve"
                       disabled={busy}
                       onClick={() => act(() => manageContact.read(message.id))}
                     >
-                      Mark as read
+                      <span aria-hidden="true">✓</span>Mark as read
                     </button>
                   )}
                   <button
-                    className="upload-secondary"
+                    className="message-card__delete"
                     disabled={busy}
                     onClick={() => {
                       if (
@@ -102,7 +109,7 @@ function Inbox() {
                         void act(() => manageContact.remove(message.id));
                     }}
                   >
-                    Delete message
+                    <span aria-hidden="true">✕</span>Delete message
                   </button>
                 </div>
               </li>
