@@ -889,6 +889,17 @@ the pointer the same way:
   `:where` rules (accent from `--control-accent`, Gallery's theme in Gallery), and every
   enabled button shows the pointing hand and darkens a touch while pressed.
 
+Several screens were recomposed with the shared controls: **Categories** is a studio
+(the library of category cards, each with a peek of its photographs, beside an editor
+card and a card that classifies one photograph with on/off chips); Curator's
+**Collections** overview has larger covers, a light card and an empty state in its side
+panel; the public **Collections** grid adapts to one, two or three collections and its
+covers lift under the pointer; **Contact** sets the invitation and three facts about the
+message beside the form card; **Sign in by email** is one centered card; **Inbox** and
+**Comments** share a message card (initial, who and where, the date, the words as a
+quote, and colored Approve/Mark as read and Delete buttons, with an accent bar while
+waiting).
+
 ## Profiles, reactions and email sign-in
 
 **Filter bar builder.** Curator → Gallery → Filters → **Arrange the filter bar**

@@ -127,7 +127,8 @@ function CollectionCover({
         </div>
         <div className="public-collection__text">
           <p className="public-catalog__eyebrow">
-            {collection.entries.length} photographs
+            {collection.entries.length}{" "}
+            {collection.entries.length === 1 ? "photograph" : "photographs"}
           </p>
           <h2>{collection.title}</h2>
           {collection.description && (

@@ -68,7 +68,19 @@ export default function EmailSignIn({ ports }: { ports: EmailSignInPorts }) {
           <span className="upload-eyebrow">THE DARKROOM / SIGN IN</span>
           <h1>Sign in by email.</h1>
         </div>
-        <section className="upload-card p-6 md:p-8 max-w-xl space-y-4">
+        <section className="upload-card email-sign-in">
+          <span className="email-sign-in__mark" aria-hidden="true">
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 5h14v10H3zM3 5l7 6 7-6" />
+            </svg>
+          </span>
           {state === "verifying" ? (
             <p role="status">Signing you in…</p>
           ) : state === "signedIn" || (session.user && state !== "sent") ? (
@@ -112,7 +124,7 @@ export default function EmailSignIn({ ports }: { ports: EmailSignInPorts }) {
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2"
+                  placeholder="you@example.com"
                 />
               </label>
               <button
