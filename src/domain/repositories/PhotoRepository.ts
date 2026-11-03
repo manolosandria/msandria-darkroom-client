@@ -43,7 +43,7 @@ export class PhotoUploadError extends Error {
 
 export interface PhotoRepository {
     findById(id: string): Promise<Photo | null>;
-    upload(draft: PhotoDraft): Promise<PublishedPhoto>;
+    upload(draft: PhotoDraft, signal?: AbortSignal): Promise<PublishedPhoto>;
     save(photo: Photo, original?: Photo): Promise<void>;
     delete(id: string): Promise<void>;
     findAll(): Promise<Photo[] | null>;

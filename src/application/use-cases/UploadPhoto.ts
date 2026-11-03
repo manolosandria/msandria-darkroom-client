@@ -7,7 +7,7 @@ import {
 export class UploadPhoto {
   constructor(private photoRepository: PhotoRepository) {}
 
-  async execute(draft: PhotoDraft): Promise<PublishedPhoto> {
-    return this.photoRepository.upload(draft);
+  async execute(draft: PhotoDraft, signal?: AbortSignal): Promise<PublishedPhoto> {
+    return this.photoRepository.upload(draft, signal);
   }
 }

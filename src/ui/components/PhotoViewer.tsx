@@ -278,6 +278,15 @@ export default function PhotoViewer({
             >
               {photo.getTitle()}
             </figcaption>
+            {all && (
+              <div className={fade}>
+                <ViewerVariants
+                  photoId={photoId}
+                  photos={all}
+                  position={photo.getVariantCorner()}
+                />
+              </div>
+            )}
           </figure>
         )}
 
@@ -360,7 +369,6 @@ export default function PhotoViewer({
         )}
 
         <div className={fade}>
-          {all && <ViewerVariants photoId={photoId} photos={all} />}
           <QualitySelector quality={quality} onChange={setQuality} />
         </div>
       </div>

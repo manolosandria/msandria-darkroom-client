@@ -1,7 +1,12 @@
 import { PhotoFrame } from "./PhotoFrame";
 import { PhotoHighlights } from "./PhotoHighlights";
 import { PHOTO_QUALITY_WIDTH, PhotoQuality } from "./PhotoQuality";
-import { DEFAULT_TITLE_POSITION, PhotoTitlePosition } from "./PhotoTitlePosition";
+import {
+  automaticVariantCorner,
+  DEFAULT_TITLE_POSITION,
+  PhotoTitlePosition,
+  PhotoVariantPosition,
+} from "./PhotoTitlePosition";
 
 // How the photo was taken, as read from its EXIF by the API. Aperture is an f-number,
 // exposure time is in seconds and focal length in millimetres; null when not recorded.
@@ -57,6 +62,7 @@ export type PhotoParams = Partial<PhotoClassification> & {
   highlights?: PhotoHighlights;
   frame?: PhotoFrame | null;
   titlePosition?: PhotoTitlePosition;
+  variantPosition?: PhotoVariantPosition;
   metadata?: PhotoMetadata;
 };
 
@@ -66,6 +72,7 @@ export class Photo {
   private readonly highlights: PhotoHighlights;
   private readonly frame: PhotoFrame | null;
   private readonly titlePosition: PhotoTitlePosition;
+  private readonly variantPosition: PhotoVariantPosition;
   private readonly metadata: PhotoMetadata;
   private readonly id: string;
   private title: string;
@@ -85,6 +92,11 @@ export class Photo {
     this.highlights = params.highlights ?? {};
     this.frame = params.frame ?? null;
     this.titlePosition = params.titlePosition ?? DEFAULT_TITLE_POSITION;
+    // A stored corner that meets the title falls back to the bottom centre.
+    this.variantPosition =
+      params.variantPosition && params.variantPosition !== this.titlePosition
+        ? params.variantPosition
+        : null;
     this.metadata = params.metadata ?? {};
     this.id = params.id;
     this.title = params.title.trim();
@@ -135,6 +147,13 @@ export class Photo {
   }
   getTitlePosition() {
     return this.titlePosition;
+  }
+  getVariantPosition() {
+    return this.variantPosition;
+  }
+  /** The corner the viewer puts the variants in: the chosen one, or the automatic one. */
+  getVariantCorner() {
+    return this.variantPosition ?? automaticVariantCorner(this.titlePosition);
   }
   getMetadata() {
     return this.metadata;

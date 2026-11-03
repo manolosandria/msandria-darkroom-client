@@ -1,6 +1,9 @@
 "use client";
+import { useState } from "react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { photoDetails } from "@/src/ui/photoDetails";
+import { HighlightView, highlightViews } from "@/src/ui/highlightViews";
+import { PhotoImage } from "./PhotoImage";
 import { PhotoComments } from "./PhotoComments";
 import { PhotoReactions } from "./PhotoReactions";
 
@@ -58,7 +61,65 @@ export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
         )}
       </section>
 
+      <PhotoHighlightsSection key={`highlights:${photo.getId()}`} photo={photo} />
+
       <PhotoComments key={photo.getId()} photoId={photo.getId()} />
     </aside>
+  );
+}
+
+// The crops the photographer chose for the thumbnails, each in its own shape. Choosing one
+// shows it large under the row; choosing it again folds it.
+function PhotoHighlightsSection({ photo }: { photo: Photo }) {
+  const views = highlightViews(photo.getHighlights());
+  const [open, setOpen] = useState<string | null>(null);
+  if (!views.length) return null;
+  const shown = views.find((view) => view.key === open);
+  const ratio = (view: HighlightView) =>
+    (photo.getAspectRatio() * view.crop.width) / view.crop.height;
+  return (
+    <section aria-label="Highlights" className="photo-viewer__panel-section">
+      <h3 className="photo-viewer__panel-heading">Highlights</h3>
+      <ul className="photo-viewer__highlights">
+        {views.map((view) => (
+          <li key={view.key}>
+            <button
+              type="button"
+              aria-pressed={open === view.key}
+              aria-label={`Show the ${view.label} highlight`}
+              onClick={() => setOpen(open === view.key ? null : view.key)}
+            >
+              <span
+                className="photo-viewer__highlight-image"
+                style={{ aspectRatio: `${ratio(view)}` }}
+              >
+                <PhotoImage
+                  photo={photo}
+                  maxWidth={320}
+                  fallbackSizes="96px"
+                  className="object-cover"
+                  crop={view.crop}
+                />
+              </span>
+              <small>{view.label}</small>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {shown && (
+        <figure className="photo-viewer__highlight-large">
+          <span style={{ aspectRatio: `${ratio(shown)}` }}>
+            <PhotoImage
+              photo={photo}
+              maxWidth={960}
+              fallbackSizes="360px"
+              className="object-cover"
+              crop={shown.crop}
+            />
+          </span>
+          <figcaption>{shown.label}</figcaption>
+        </figure>
+      )}
+    </section>
   );
 }

@@ -135,6 +135,30 @@ describe("Curator", () => {
     expect(screen.getByText("Categories editor")).toBeVisible();
   });
 
+  it("folds into one pill that names the open tab, keeps the backdrop and opens every group", async () => {
+    show(admin);
+    await screen.findByRole("button", { name: "Admin3" });
+    await userEvent.click(screen.getByRole("button", { name: "Hide the tabs" }));
+    const pill = screen.getByRole("button", {
+      name: "Curator sections: Photos, Upload",
+    });
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+    // The backdrop is still one press away.
+    expect(screen.getByRole("radiogroup", { name: "Backdrop" })).toBeInTheDocument();
+    await userEvent.click(pill);
+    expect(pill).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Variants" }));
+    expect(screen.getByText("Variant studio")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Curator sections: Photos, Variants" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(screen.getByRole("button", { name: "Show the tabs" }));
+    expect(
+      screen.getByRole("navigation", { name: "Curator sections" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Hide the tabs" })).toBeInTheDocument();
+  });
+
   it("badges the admin group, comments and inbox, and opens them from the dashboard", async () => {
     show(admin);
     await userEvent.click(

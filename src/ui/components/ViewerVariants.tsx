@@ -4,14 +4,20 @@ import Link from "next/link";
 import { editCatalog } from "@/src/infrastructure/catalogServices";
 import { getPhotoById } from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
+import { PhotoVariantPosition } from "@/src/domain/entities/PhotoTitlePosition";
 import { PhotoImage } from "./PhotoImage";
 import "./catalogStudio.css";
+
+// Over the photo, in the corner the photo chose (never the title's), or centred at the
+// bottom when it chose none.
 export function ViewerVariants({
   photoId,
   photos,
+  position = null,
 }: {
   photoId: string;
   photos: Photo[];
+  position?: PhotoVariantPosition;
 }) {
   const [variants, setVariants] = useState<Photo[]>([]);
   useEffect(() => {
@@ -42,7 +48,11 @@ export function ViewerVariants({
   }, [photoId, photos]);
   if (variants.length < 2) return null;
   return (
-    <nav className="viewer-variants" aria-label="Photograph variants">
+    <nav
+      className="viewer-variants"
+      data-corner={position?.toLowerCase().replace("_", "-") ?? "bottom-center"}
+      aria-label="Photograph variants"
+    >
       <span className="viewer-variants__label" aria-hidden="true">
         {variants.length} variants
       </span>

@@ -50,7 +50,7 @@ describe("UploadPhoto", () => {
 
     const result = await new UploadPhoto(makeRepository({ upload })).execute(draft);
 
-    expect(upload).toHaveBeenCalledWith(draft);
+    expect(upload).toHaveBeenCalledWith(draft, undefined);
     expect(result).toBe(published);
   });
 

@@ -15,7 +15,12 @@
 .studio-card[hidden] { display: none; }
 .studio-card--collections { background: linear-gradient(180deg, #fbfaf5, #f4f2ea); }
 .studio-card--categories { background: linear-gradient(180deg, #f7faf3, #edf3e6); }
-.studio-card--variants { background: linear-gradient(180deg, #fbfcf8, #f1f4ec); }
+/* Variants: a lit card, not a flat sheet. A light wash in two corners, the plasma's colours as a thin band on top. */
+.studio-card--variants { position: relative; isolation: isolate; border-color: #4f7d3f24; background: radial-gradient(120% 90% at 0% 0%, #e6f0da 0%, transparent 55%), radial-gradient(90% 80% at 100% 0%, #f5ecd8 0%, transparent 60%), linear-gradient(180deg, #fbfcf8, #edf1e6); box-shadow: 0 1px 2px #0000000f, 0 28px 56px -30px #2b332266, inset 0 1px 0 #fff; }
+.studio-card--variants::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background: linear-gradient(90deg, #4d6b3a, #a9d77c, #2e7a72, #6b55a3, #e4b86a) top / 100% 4px no-repeat; opacity: .85; }
+.studio-card--variants::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: .35; background-image: radial-gradient(#2b33220d 1px, transparent 1px); background-size: 14px 14px; mask-image: linear-gradient(180deg, #000, transparent 45%); }
+.studio-card--variants > section > h2 { font-family: Georgia, serif; font-size: clamp(1.4rem, 2.4vw, 1.8rem); font-weight: 400; color: #1f2a1a; }
+.studio-card--variants > section > p { max-width: 62ch; margin-top: .35rem; color: #5f6758; line-height: 1.55; }
 .catalog-editor .studio-card section { border: 0; padding: 0; }
 .catalog-editor .studio-card > section + section { border-top: 1px solid #0000001a; padding-top: 1.5rem; }
 .studio-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 1.5rem; align-items: start; }
@@ -166,6 +171,13 @@
 .variant-assignment select { max-width:100%; padding:.6rem; border:1px solid #cbd4bd; border-radius:.4rem; background:white; }
 /* Viewer: the work's variants as a strip along the bottom edge, the current one marked. */
 .viewer-variants { position:absolute; bottom:1.25rem; left:50%; transform:translateX(-50%); z-index:20; display:grid; justify-items:center; gap:.35rem; max-width:min(70%, 36rem); padding:.5rem .6rem .45rem; background:#141914d9; border:1px solid #ffffff30; border-radius:.9rem; backdrop-filter:blur(6px); box-shadow:0 12px 30px -12px #000c; }
+/* Over the photo, in the corner it chose; never the title's (the API refuses that). */
+.viewer-variants[data-corner] { bottom:auto; left:auto; right:auto; top:auto; transform:none; }
+.viewer-variants[data-corner="bottom-center"] { bottom:.9rem; left:50%; transform:translateX(-50%); }
+.viewer-variants[data-corner="bottom-left"] { bottom:.9rem; left:.9rem; justify-items:start; }
+.viewer-variants[data-corner="bottom-right"] { bottom:.9rem; right:.9rem; justify-items:end; }
+.viewer-variants[data-corner="top-left"] { top:.9rem; left:.9rem; justify-items:start; }
+.viewer-variants[data-corner="top-right"] { top:.9rem; right:.9rem; justify-items:end; }
 .viewer-variants__label { color:#d8dccf; font:600 .62rem/1 Arial, sans-serif; letter-spacing:.14em; text-transform:uppercase; }
 .viewer-variants__strip { display:flex; gap:.45rem; max-width:100%; overflow-x:auto; scrollbar-width:thin; padding:2px; }
 .viewer-variants a { display:block; position:relative; width:58px; min-width:58px; height:58px; border-radius:.45rem; overflow:hidden; opacity:.7; box-shadow:0 0 0 1px #ffffff40; transition:opacity .15s, transform .15s, box-shadow .15s; }

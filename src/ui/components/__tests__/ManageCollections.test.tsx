@@ -598,9 +598,23 @@ it("adds a library photo to a new work and uploads dropped files with the work's
     screen.getByLabelText("Upload files…"),
     new File(["image"], "night_infrared.jpg", { type: "image/jpeg" }),
   );
+  // The file waits as a card with its own fields, starting from the work's visibility.
+  const queue = screen.getByRole("region", { name: "Files to upload" });
+  expect(within(queue).getByLabelText("Title of night_infrared.jpg")).toHaveValue("night infrared");
+  await userEvent.type(
+    within(queue).getByLabelText("Description of night_infrared.jpg"),
+    "Shot after dark",
+  );
+  expect(uploadPhoto.execute).not.toHaveBeenCalled();
+  await userEvent.click(within(queue).getByRole("button", { name: "Upload all (1)" }));
   expect(await within(zone).findByText("Infrared")).toBeInTheDocument();
   expect(uploadPhoto.execute).toHaveBeenCalledWith(
-    expect.objectContaining({ title: "night infrared", visibility: "PRIVATE" }),
+    expect.objectContaining({
+      title: "night infrared",
+      description: "Shot after dark",
+      visibility: "PRIVATE",
+    }),
+    expect.any(AbortSignal),
   );
   expect(screen.getByLabelText("Work title")).toHaveValue("Infrared");
   await userEvent.click(screen.getByRole("button", { name: "Save variants" }));
@@ -610,6 +624,55 @@ it("adds a library photo to a new work and uploads dropped files with the work's
       undefined,
     ),
   );
+});
+
+it("reorders a work's variants and makes another one the main", async () => {
+  vi.mocked(manageCatalog.saveWork).mockResolvedValue({ id: "w", title: "Two", version: 1, variants: [] });
+  render(<CatalogEditor variants />);
+  const library = await screen.findByRole("region", { name: "Photo library" });
+  for (const box of within(library).getAllByRole("checkbox")) await userEvent.click(box);
+  const zone = screen.getByRole("group", { name: "Variants of this work" });
+  expect(within(zone).getByText("★ Main")).toBeInTheDocument();
+  await userEvent.click(within(zone).getByRole("button", { name: "Make Monochrome the main variant" }));
+  expect(within(zone).getByRole("button", { name: "Monochrome is the main variant" })).toBeDisabled();
+  // The arrow keys on a photo move it one place.
+  within(zone).getByRole("button", { name: /^Monochrome, variant 1 of 2/ }).focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(within(zone).getByRole("button", { name: /^Color, variant 1 of 2, main/ })).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText("Work title"), "Two");
+  await userEvent.click(screen.getByRole("button", { name: "Save variants" }));
+  await waitFor(() =>
+    expect(manageCatalog.saveWork).toHaveBeenCalledWith(
+      { title: "Two", photoIds: ["Color", "Monochrome"] },
+      undefined,
+    ),
+  );
+});
+
+it("cancels an upload on its way and keeps the file to try again", async () => {
+  vi.mocked(uploadPhoto.execute).mockImplementation(
+    (_draft, signal) =>
+      new Promise((_resolve, reject) =>
+        signal?.addEventListener("abort", () =>
+          reject(new DOMException("Aborted", "AbortError")),
+        ),
+      ),
+  );
+  render(<CatalogEditor variants />);
+  await screen.findByRole("region", { name: "Photo library" });
+  await userEvent.upload(screen.getByLabelText("Upload files…"), [
+    new File(["a"], "first.jpg", { type: "image/jpeg" }),
+    new File(["b"], "second.jpg", { type: "image/jpeg" }),
+  ]);
+  const queue = screen.getByRole("region", { name: "Files to upload" });
+  await userEvent.click(within(queue).getByRole("button", { name: "Upload all (2)" }));
+  // Both travel at once.
+  expect(uploadPhoto.execute).toHaveBeenCalledTimes(2);
+  await userEvent.click(within(queue).getByRole("button", { name: "Cancel all" }));
+  expect(await within(queue).findByRole("listitem", { name: "first.jpg: Cancelled" })).toBeInTheDocument();
+  expect(within(queue).getByRole("listitem", { name: "second.jpg: Cancelled" })).toBeInTheDocument();
+  expect(within(queue).getAllByRole("button", { name: "Try again" })).toHaveLength(2);
+  expect(screen.getByRole("button", { name: "Save variants" })).toBeDisabled();
 });
 
 it("adds a photo dragged from the library and refuses files that are not images", async () => {

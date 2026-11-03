@@ -219,6 +219,39 @@ describe("ApiPhotoRepository", () => {
     const photo = await new ApiPhotoRepository(API_URL, fetchFn).findById("t");
     expect(photo?.getTitlePosition()).toBe("TOP_LEFT");
   });
+  it("reads the variant corner, and drops one that meets the title", async () => {
+    const corner = await new ApiPhotoRepository(
+      API_URL,
+      respondWith({
+        ...apiPhoto("v"),
+        description: null,
+        titlePosition: "TOP_LEFT",
+        variantPosition: "BOTTOM_RIGHT",
+      }),
+    ).findById("v");
+    expect(corner?.getVariantPosition()).toBe("BOTTOM_RIGHT");
+    const clash = await new ApiPhotoRepository(
+      API_URL,
+      respondWith({
+        ...apiPhoto("v"),
+        description: null,
+        titlePosition: "TOP_LEFT",
+        variantPosition: "TOP_LEFT",
+      }),
+    ).findById("v");
+    expect(clash?.getVariantPosition()).toBeNull();
+  });
+  it("hands the upload's abort signal to fetch", async () => {
+    const fetchFn = respondWith({ ...apiPhoto("up"), optimizationIssues: [] });
+    const controller = new AbortController();
+    await new ApiPhotoRepository(API_URL, fetchFn).upload(
+      { file: new File(["x"], "x.jpg", { type: "image/jpeg" }), title: "Up" },
+      controller.signal,
+    );
+    expect((fetchFn.mock.calls[0][1] as RequestInit).signal).toBe(
+      controller.signal,
+    );
+  });
   it("replaces in one multipart request with edits and without overriding Content-Type", async () => {
     const fetchFn = respondWith({ ...apiPhoto("a/b"), optimizationIssues: [] });
     const photo = new Photo({
@@ -695,6 +728,7 @@ describe("ApiPhotoRepository save", () => {
           description: "Evening walk",
           highlights: { square: crop },
           titlePosition: "BOTTOM_LEFT",
+          variantPosition: null,
           visibility: "PUBLIC",
           categoryNames: [],
           collections: [],
