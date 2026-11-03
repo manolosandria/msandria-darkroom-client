@@ -62,6 +62,7 @@ export function rememberTilesOnViewerClick(
 ) {
   if (!(target instanceof Element) || !target.closest('a[href^="/photo/"]'))
     return;
+  rememberViewerReturn(currentPage());
   rememberViewerSequence(
     tiles.map((tile, index) => {
       const first = shown(tile, index);
@@ -73,4 +74,34 @@ export function rememberTilesOnViewerClick(
       ];
     }),
   );
+}
+
+// The page a photo was opened from, so the viewer's return arrow and Escape go back
+// there (a profile, a collection) instead of always to Gallery.
+const RETURN_KEY = "viewerReturn";
+
+export function rememberViewerReturn(href: string) {
+  try {
+    window.sessionStorage.setItem(RETURN_KEY, href);
+  } catch {
+    // Without storage the viewer returns to Gallery.
+  }
+}
+
+export function viewerReturn(): string {
+  try {
+    const href = window.sessionStorage.getItem(RETURN_KEY) ?? "";
+    // Only a path of this site: never another origin.
+    return href.startsWith("/") && !href.startsWith("//") ? href : "/gallery";
+  } catch {
+    return "/gallery";
+  }
+}
+
+const currentPage = () => window.location.pathname + window.location.search;
+
+// A plain list of photos, such as a profile's likes: its order and its page.
+export function rememberPhotoListOnViewerClick(photoIds: string[]) {
+  rememberViewerReturn(currentPage());
+  rememberViewerSequence(photoIds.map((id) => [id]));
 }

@@ -39,7 +39,7 @@ export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
       )}
 
       <section className="photo-viewer__panel-section">
-        <PhotoReactions photoId={photo.getId()} />
+        <PhotoReactions photoId={photo.getId()} photo={photo} />
       </section>
 
       <section aria-label="Details" className="photo-viewer__panel-section">

@@ -13,9 +13,18 @@ export type ProfileCard = {
   cover: Photo | null;
 };
 
-/** Someone else's profile. A private one says only the name they chose. */
+/**
+ * Someone else's profile. A private one says only the name, photo and cover they
+ * chose; the email and the lists stay hidden.
+ */
 export type PublicProfile =
-  | { id: string; publicName: string | null; profilePublic: false }
+  | {
+      id: string;
+      publicName: string | null;
+      profilePublic: false;
+      avatar: Photo | null;
+      cover: Photo | null;
+    }
   | (ProfileCard & {
       profilePublic: true;
       // Present only when the person made each list public.

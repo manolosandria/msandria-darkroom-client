@@ -16,6 +16,8 @@ import { groupGalleryCategories } from "./galleryCategoryGroups";
 import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
 import { GalleryPageLayoutEditor } from "./GalleryPageLayoutEditor";
 import { GalleryFilterBuilder } from "./GalleryFilterBuilder";
+import { GalleryFilterPieces } from "./GalleryFilterPieces";
+import type { FilterGroup } from "@/src/domain/galleryFilterLayout";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
 import { EditorActions } from "./EditorActions";
 import Gallery from "./Gallery";
@@ -165,6 +167,15 @@ function Editor() {
       setNotice("");
     }
   }
+  // The pieces panel, the tree editor and dragging in the preview all change this.
+  function changeFilterLayout(filterLayout: FilterGroup | undefined) {
+    setDraft((previous) => {
+      const next = { ...previous, filterLayout };
+      if (!filterLayout) delete next.filterLayout;
+      return next;
+    });
+    setNotice("");
+  }
   return (
     <div className="banner-editor gallery-editor">
       <header>
@@ -232,7 +243,7 @@ function Editor() {
         </p>
       ) : (
         <div
-          className={`banner-editor__workspace${tab === "Filters" ? " is-wide" : ""}`}
+          className="banner-editor__workspace"
         >
           <form
             id="gallery-settings-form"
@@ -334,19 +345,21 @@ function Editor() {
               </details>
             </fieldset>
             <div {...propertyPanel("gallery", "Filters", tab)}>
-              <GalleryFilterBuilder
+              <GalleryFilterPieces
                 categories={categories}
                 settings={draft}
                 disabled={busy}
-                onChange={(filterLayout) => {
-                  setDraft((previous) => {
-                    const next = { ...previous, filterLayout };
-                    if (!filterLayout) delete next.filterLayout;
-                    return next;
-                  });
-                  setNotice("");
-                }}
+                onChange={changeFilterLayout}
               />
+              <details className="filter-pieces__advanced">
+                <summary>Containers and keyboard arrangement</summary>
+                <GalleryFilterBuilder
+                  categories={categories}
+                  settings={draft}
+                  disabled={busy}
+                  onChange={changeFilterLayout}
+                />
+              </details>
               <GalleryDepartmentsEditor
                 categories={categories}
                 settings={draft}
@@ -545,7 +558,10 @@ function Editor() {
               <div
                 className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
               >
-                <Gallery settings={draft} />
+                <Gallery
+                  settings={draft}
+                  onArrangeFilters={tab === "Filters" ? changeFilterLayout : undefined}
+                />
               </div>
             </div>
           </section>

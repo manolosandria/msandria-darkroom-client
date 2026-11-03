@@ -8,6 +8,11 @@ export type MosaicSize = {
   rows: number;
   mobileColumns?: number | null;
   mobileRows?: number | null;
+  /**
+   * The wide-screen column the piece starts at (1–8). Absent, it follows the piece
+   * before it; starting at that piece's column puts it underneath.
+   */
+  column?: number | null;
 };
 export type CollectionEntry = MosaicSize & {
   photoId: string;

@@ -33,7 +33,7 @@ import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { PhotoInfoPanel } from "./PhotoInfoPanel";
 import { ViewerVariants } from "./ViewerVariants";
 import { QualitySelector } from "./QualitySelector";
-import { sequenceNeighbors } from "@/src/ui/viewerSequence";
+import { sequenceNeighbors, viewerReturn } from "@/src/ui/viewerSequence";
 
 interface PhotoViewerProps {
   photoId: string;
@@ -122,7 +122,14 @@ export default function PhotoViewer({
     loading,
     error,
     retry,
-  } = usePhotoFetch(fetchPhoto, "Photo not found");
+  } = usePhotoFetch(
+    fetchPhoto,
+    "Photo not found",
+    undefined,
+    true,
+    false,
+    `photo:${photoId}`,
+  );
   const { data: all } = usePhotoFetch(fetchAll, "No photos found");
 
   // Opened from Gallery or a collection, the arrows follow that order; otherwise the
@@ -133,6 +140,11 @@ export default function PhotoViewer({
   useEffect(() => {
     queueMicrotask(() => setSequence(sequenceNeighbors(photoId)));
   }, [photoId]);
+  // The page the photo was opened from, such as a profile; Gallery otherwise.
+  const [returnTo, setReturnTo] = useState("/gallery");
+  useEffect(() => {
+    queueMicrotask(() => setReturnTo(viewerReturn()));
+  }, []);
   const index = all ? all.findIndex((entry) => entry.getId() === photoId) : -1;
   const previousId =
     sequence?.previousId ??
@@ -159,12 +171,12 @@ export default function PhotoViewer({
       // Escape closes the panel first, and only then leaves the photo.
       else if (event.key === "Escape") {
         if (panelOpen) setViewerPanelOpen(false);
-        else router.push("/gallery");
+        else router.push(returnTo);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, previousId, nextId, router, panelOpen]);
+  }, [go, previousId, nextId, router, panelOpen, returnTo]);
 
   const show = () => {
     hiddenAt.current = null;
@@ -270,8 +282,8 @@ export default function PhotoViewer({
         )}
 
         <Link
-          href="/gallery"
-          aria-label="Back to gallery"
+          href={returnTo}
+          aria-label={returnTo === "/gallery" ? "Back to gallery" : "Back"}
           // The panel follows the visitor between photos, not back into the gallery.
           onClick={() => setViewerPanelOpen(false)}
           className={`photo-viewer__control absolute left-4 top-4 z-20 ${fade}`}

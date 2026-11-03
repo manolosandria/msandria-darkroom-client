@@ -113,37 +113,40 @@ describe("ProfileSettings", () => {
 });
 
 describe("ProfileView", () => {
-  it("shows only the chosen name of a private profile", async () => {
-    render(
+  it("shows a private profile's name, photo and cover to others, and nothing else", async () => {
+    withSession(
       <ProfileView
         id="usr_2"
-        load={vi
-          .fn()
-          .mockResolvedValue({
-            id: "usr_2",
-            publicName: "Luis M.",
-            profilePublic: false,
-          })}
+        load={vi.fn().mockResolvedValue({
+          id: "usr_2",
+          publicName: "Luis M.",
+          profilePublic: false,
+          avatar: photo("face"),
+          cover: photo("sky"),
+        })}
       />,
+      ana,
     );
     expect(
       await screen.findByRole("heading", { name: "Luis M." }),
     ).toBeInTheDocument();
     expect(screen.getByText("This profile is private.")).toBeInTheDocument();
+    expect(screen.getByAltText("Photo sky")).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
   });
 
   it("shows email and the lists a public profile shares", async () => {
-    render(
+    withSession(
       <ProfileView
-        id="usr_1"
+        id="usr_3"
         load={vi.fn().mockResolvedValue({
-          ...own(),
+          ...own({ id: "usr_3" }),
           profilePublic: true,
           likes: [photo("liked")],
           favorites: undefined,
         })}
       />,
+      ana,
     );
     expect(
       await screen.findByRole("link", { name: "ana@example.com" }),
@@ -152,9 +155,29 @@ describe("ProfileView", () => {
     expect(screen.queryByRole("heading", { name: "Favorites" })).toBeNull();
   });
 
+  it("shows everything to its owner even while private", async () => {
+    const load = vi.fn();
+    withSession(
+      <ProfileView
+        id="usr_1"
+        load={load}
+        loadMine={vi.fn().mockResolvedValue(own())}
+      />,
+      ana,
+    );
+    expect(
+      await screen.findByRole("link", { name: "ana@example.com" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Your profile is private/)).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Likes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Favorites" })).toBeInTheDocument();
+    expect(load).not.toHaveBeenCalled();
+  });
+
   it("says when the profile does not exist", async () => {
-    render(
+    withSession(
       <ProfileView id="x" load={vi.fn().mockRejectedValue(new Error())} />,
+      null,
     );
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This profile does not exist.",

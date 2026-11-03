@@ -951,3 +951,93 @@ trades it, a single time, with `POST /auth/email/verify`, which answers like
 `POST /auth/google` with the user and the session cookie. An expired or used link
 offers a new one. The API needs `WEB_ORIGIN` and its mail settings; without them it
 answers 503 and the page points to Google.
+
+## Site header and general settings
+
+Every page opens with the full header (`MainHeader`): the logo and the main links,
+placed by the general settings. The account (`SessionMenu`) and the fold chevron live
+in the top-right corner of every page, apart from the logo, fixed to the window: the
+chevron is the rightmost control and never moves, so the header folds and unfolds
+without moving the pointer; once the header is gone the corner turns into a frosted
+pill. The account opens from a small corner arrow, as on an Office dialog launcher. Signed out, the corner is a small
+**Sign in** button whose card offers Google and the email link; signed in, it shows the
+profile photo (or the initial) and the name, and opens a card with the cover, photo,
+name, email, the Admin label, **Profile**, **Settings** (`/account`) and sign-out. The
+profile comes from `GET /auth/me/profile`, once per account.
+
+When the settings hide the header on scroll, scrolling past it leaves the logo floating
+in the top-left corner with a small arrow and the menu under it (hover or focus), level
+with the account pill; **Show header** returns to the top. Otherwise the header sticks to the top. The
+chevron still folds the header by hand, remembered as before (`headerHidden`).
+
+Curator → Sections → **General** (`SiteGeneralEditor`) edits `GET`/admin
+`PUT /site/settings`: header style (light, dark, frosted glass), where its links sit,
+hiding on scroll, heading and text fonts (local stacks) and the main palette, with a
+preview and explicit save (version checked, 409 keeps the draft).
+`SiteSettingsProvider` (in `app/layout.tsx`) loads them once and sets `--site-background`,
+`--site-text`, `--site-accent`, `--site-surface`, `--site-heading-font` and
+`--site-body-font` on the root; `globals.css` reads them with the original look as
+fallback, and pages with a look of their own keep it. The API must serve
+`/site/settings` before this client is deployed.
+
+**Profiles seen by their owner.** `/profile/[id]` asks who is signed in first: the owner
+sees everything (`GET /auth/me/profile`), email and both lists included, with a note on
+how others see it. Anyone else sees a private profile as its public name, photo and
+cover with **This profile is private.**; a public one adds the email and the lists it
+shares. A photo opened from a profile's likes or favorites remembers that page
+(`viewerReturn` in `sessionStorage`, next to the sequence): the viewer's return arrow
+and Escape go back to it, and its arrows follow that list. Gallery, collections and
+Home record their own page the same way.
+
+**Phones.** Below 640 px the header keeps the logo, three bars and the account; the
+bars open the links in a sheet from the bottom (`MenuSheet`, closed by Escape, a press
+outside or a link). Once the header is gone, a round menu button (`MenuButton`) floats
+on an edge of the window, bottom right at first: dragged, it settles on the nearest
+edge and remembers it (`menuButtonPlace` in `localStorage`, guarded).
+
+**Use as.** Beside Like and Save, a signed-in visitor can use the photograph as profile
+photo or cover (`UseAsProfilePhoto`): a dialog asks which, then shows the current one
+beside the new one, and only **Use as …** saves it (`PATCH /auth/me/profile`). The API
+accepts only photographs of the public gallery; the account menu follows at once
+(`profile:changed`).
+
+**Coming back is instant.** `recentReads` keeps, in memory for the tab, what was read a
+moment ago: a photo's detail, a Gallery page, a profile. Opening the same photo again
+or returning shows it at once while the API is asked again, and its answer replaces it:
+a photo made private in between disappears (the viewer says it was not found, the
+Gallery page drops it). Nothing is stored, and the cache is emptied when the signed-in
+account changes. Renditions are reused from the browser's HTTP cache.
+
+**Arranging the filter bar in the preview.** Curator → Gallery → Filters lists the
+pieces the bar shows as switches (`GalleryFilterPieces`: search, Filters button, reset,
+chosen filters, count, view options and any department shown in the bar) and adds
+containers. The preview keeps its full width, and while the Filters tab is open each
+piece and container in it carries a grip (`useFilterArrange`): drag it before or after
+another piece, or into a container, where a line or a glow shows the drop. Moves that
+break the tree's limits are refused. The tree editor with keyboard moves and container
+properties stays under **Containers and keyboard arrangement**, and the category groups
+(departments) are edited below it.
+
+**Narrow windows and Curator's menu.** Below 1100 px the header swaps its links for the
+three bars; when the header leaves, the floating menu button flies from where the bars
+were to its edge, so the move is visible. Curator's tabs show and hide from one button
+naming the current group and tab; narrow screens start with them hidden and open them as
+a centered column, every group with its tabs, and choosing one folds them again.
+`/curator?section=<tab>` opens that tab: the account menu's **Admin** label opens
+Dashboard.
+
+**Collections editor.** The inspector's section buttons show that section alone, with
+**View all** to show them all. Each piece can start at a chosen wide-screen column
+(`column`, **Starts at** under its size): starting at the same column as the piece before
+puts it underneath, such as a text under a photograph. Without it, a piece follows the
+one before. The API must accept `column` (migration `20261103000000_collection_column`)
+before this client saves it.
+
+**Home gestures and the photo link.** Over the photograph (`text-overlay`), the Welcome
+title takes the carousel's own gestures: sliding over it changes the slide, and pressing
+its link still opens it. Curator → Home → Carousel offers **Open the slide's link from
+anywhere on the photograph** (`photoLink`, off by default): on, a click on the photograph
+goes through the title's own link. The page never grows wider than the window
+(`overflow-x: clip` on `html` and `body`), so a wide editor cannot leave a phone zoomed
+out after moving to another page. On wide screens Curator's tab button is an icon at the
+start of the tabs' row while they show, and names group and tab when folded.

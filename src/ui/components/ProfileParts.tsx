@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Photo } from "@/src/domain/entities/Photo";
 import { ProfileCard } from "@/src/domain/entities/Profile";
 import { PhotoImage } from "./PhotoImage";
+import { rememberPhotoListOnViewerClick } from "@/src/ui/viewerSequence";
 import "./profiles.css";
 
 export function ProfileAvatar({
@@ -44,7 +45,13 @@ export function ProfilePhotos({
     <ul className="profile-photos" aria-label={label}>
       {photos.map((photo) => (
         <li key={photo.getId()}>
-          <Link href={`/photo/${photo.getId()}`} aria-label={photo.getTitle()}>
+          <Link
+            href={`/photo/${photo.getId()}`}
+            aria-label={photo.getTitle()}
+            onClick={() =>
+              rememberPhotoListOnViewerClick(photos.map((each) => each.getId()))
+            }
+          >
             <PhotoImage
               photo={photo}
               fallbackSizes="120px"

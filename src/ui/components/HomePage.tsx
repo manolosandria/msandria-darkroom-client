@@ -217,6 +217,75 @@ export default function HomePage({
     if (photos?.length)
       setIndex((selected + step + photos.length) % photos.length);
   };
+  // Swipes, drags and the click that ends one, shared by the carousel and the title
+  // laid over it: sliding over the title moves the photographs too, and its link
+  // still opens when it is simply pressed.
+  const gestures: React.DOMAttributes<HTMLElement> = {
+    onPointerDown: (event) => {
+      if (
+        event.pointerType === "mouse" &&
+        event.button === 0 &&
+        !(event.target as HTMLElement).closest("button,.banner-live-handle")
+      ) {
+        swipe.current = { x: event.clientX, y: event.clientY };
+      }
+    },
+    onPointerUp: (event) => {
+      if (event.pointerType !== "mouse" || !swipe.current) return;
+      const origin = swipe.current;
+      swipe.current = null;
+      const dx = event.clientX - origin.x,
+        dy = event.clientY - origin.y;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        suppressClick.current = true;
+        move(dx < 0 ? 1 : -1);
+      }
+    },
+    onPointerCancel: () => {
+      swipe.current = null;
+    },
+    onTouchStart: (event) => {
+      suppressClick.current = false;
+      swipe.current =
+        event.touches.length === 1
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+          : null;
+    },
+    onTouchMove: (event) => {
+      const start = swipe.current;
+      if (!start || event.touches.length !== 1) {
+        swipe.current = null;
+        return;
+      }
+      const dx = event.touches[0].clientX - start.x;
+      const dy = event.touches[0].clientY - start.y;
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3)
+        suppressClick.current = true;
+    },
+    onTouchEnd: (event) => {
+      const start = swipe.current;
+      swipe.current = null;
+      if (!start || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - start.x;
+      const dy = event.changedTouches[0].clientY - start.y;
+      if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        suppressClick.current = true;
+        move(dx < 0 ? 1 : -1);
+      }
+    },
+    onTouchCancel: () => {
+      swipe.current = null;
+      suppressClick.current = false;
+    },
+    onClickCapture: (event) => {
+      if (suppressClick.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick.current = false;
+      }
+    },
+  };
+
   return (
     <div className="home-banner-scope">
       <main
@@ -251,6 +320,9 @@ export default function HomePage({
           data-own={heading ? true : undefined}
           {...(onPlaceWelcome && banner.layout === "text-overlay"
             ? placement.panel
+            : {})}
+          {...(!onArrange && !onPlaceWelcome && banner.layout === "text-overlay"
+            ? gestures
             : {})}
         >
           {onArrange && (
@@ -291,73 +363,9 @@ export default function HomePage({
           className="home-carousel"
 
           tabIndex={0}
-          onPointerDown={(event) => {
-            if (
-              event.pointerType === "mouse" &&
-              event.button === 0 &&
-              !(event.target as HTMLElement).closest(
-                "button,.banner-live-handle",
-              )
-            ) {
-              swipe.current = { x: event.clientX, y: event.clientY };
-            }
-          }}
-          onPointerUp={(event) => {
-            if (event.pointerType !== "mouse" || !swipe.current) return;
-            const origin = swipe.current;
-            swipe.current = null;
-            const dx = event.clientX - origin.x,
-              dy = event.clientY - origin.y;
-            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-              suppressClick.current = true;
-              move(dx < 0 ? 1 : -1);
-            }
-          }}
-          onPointerCancel={() => {
-            swipe.current = null;
-          }}
+          {...gestures}
           aria-label="Featured photographs"
           aria-roledescription="carousel"
-          onTouchStart={(event) => {
-            suppressClick.current = false;
-            swipe.current =
-              event.touches.length === 1
-                ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
-                : null;
-          }}
-          onTouchMove={(event) => {
-            const start = swipe.current;
-            if (!start || event.touches.length !== 1) {
-              swipe.current = null;
-              return;
-            }
-            const dx = event.touches[0].clientX - start.x;
-            const dy = event.touches[0].clientY - start.y;
-            if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3)
-              suppressClick.current = true;
-          }}
-          onTouchEnd={(event) => {
-            const start = swipe.current;
-            swipe.current = null;
-            if (!start || !event.changedTouches.length) return;
-            const dx = event.changedTouches[0].clientX - start.x;
-            const dy = event.changedTouches[0].clientY - start.y;
-            if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-              suppressClick.current = true;
-              move(dx < 0 ? 1 : -1);
-            }
-          }}
-          onTouchCancel={() => {
-            swipe.current = null;
-            suppressClick.current = false;
-          }}
-          onClickCapture={(event) => {
-            if (suppressClick.current) {
-              event.preventDefault();
-              event.stopPropagation();
-              suppressClick.current = false;
-            }
-          }}
           onKeyDown={(event) => {
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
               event.preventDefault();
@@ -381,7 +389,24 @@ export default function HomePage({
                 key={photo.getId()}
                 draggable={false}
                 className="home-carousel__image"
-                onClick={() => onEditPhoto?.(photo)}
+                data-link={banner.photoLink && !onEditPhoto ? true : undefined}
+                onClick={(event) => {
+                  if (onEditPhoto) return onEditPhoto(photo);
+                  // The title is a link of its own; elsewhere the photograph follows it
+                  // when the banner asks for it.
+                  if (
+                    !banner.photoLink ||
+                    (event.target as Element).closest("a")
+                  )
+                    return;
+                  // Through the title's own link: same destination, same memory of
+                  // Home's order for the viewer.
+                  event.currentTarget
+                    .querySelector<HTMLAnchorElement>(
+                      ".home-carousel__caption a",
+                    )
+                    ?.click();
+                }}
               >
                 {banner.imageMode === "framed" ? (
                   <FramedSlide photo={photo} view={view!} />

@@ -529,3 +529,23 @@
 
 /* Alone in its card, the bar keeps no bottom margin, so it sits in the middle. */
 .gallery-card[data-blocks="filters"] .gallery-browse { margin-bottom: 0; }
+
+/* Arranging in Curator's preview: each piece and container shows a grip; the controls
+   inside do not react, and a line (or a glow, inside a container) marks the drop. */
+.gallery-browse.is-arranging .gallery-browse__piece,
+.gallery-browse.is-arranging .gallery-browse__group:not(.gallery-browse--arranged > .gallery-browse__group:only-child) { position: relative; outline: 1px dashed color-mix(in srgb, currentColor 28%, transparent); outline-offset: 3px; border-radius: .6rem; transition: outline-color .15s, opacity .15s; }
+.gallery-browse.is-arranging .gallery-browse__piece > :not(.gallery-browse__grip) { pointer-events: none; }
+.gallery-browse.is-arranging .gallery-browse__piece:hover,
+.gallery-browse.is-arranging .gallery-browse__group:hover { outline-color: color-mix(in srgb, currentColor 55%, transparent); }
+.gallery-browse__grip { position: absolute; top: -.85rem; left: .3rem; z-index: 3; padding: .05rem .45rem; border-radius: 999px; background: #384e2b; color: #fff; font-size: .62rem; font-weight: 700; letter-spacing: .04em; white-space: nowrap; cursor: grab; user-select: none; touch-action: none; opacity: .85; }
+.gallery-browse__grip:hover { opacity: 1; }
+.gallery-browse[data-dragging] { cursor: grabbing; }
+.gallery-browse[data-dragging] .gallery-browse__grip { cursor: grabbing; }
+.gallery-browse [data-dragged] { opacity: .4; }
+.gallery-browse [data-drop="before"]::before,
+.gallery-browse [data-drop="after"]::after { content: ""; position: absolute; z-index: 4; background: #6f8f4a; border-radius: 3px; box-shadow: 0 0 0 3px #6f8f4a33; }
+.gallery-browse [data-direction="row"] > [data-drop="before"]::before { top: 0; bottom: 0; left: -6px; width: 3px; }
+.gallery-browse [data-direction="row"] > [data-drop="after"]::after { top: 0; bottom: 0; right: -6px; width: 3px; }
+.gallery-browse [data-direction="column"] > [data-drop="before"]::before { left: 0; right: 0; top: -6px; height: 3px; }
+.gallery-browse [data-direction="column"] > [data-drop="after"]::after { left: 0; right: 0; bottom: -6px; height: 3px; }
+.gallery-browse [data-drop="inside"] { outline: 2px solid #6f8f4a !important; background: #6f8f4a14; }

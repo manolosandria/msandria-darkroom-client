@@ -27,6 +27,7 @@ import {
   PhotoBlock,
   splitBlocks,
   TextBlock,
+  fitColumn,
 } from "@/src/domain/collectionLayout";
 import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
@@ -337,6 +338,8 @@ function CollectionEditor({
     "categories",
     "display",
   ]);
+  // A section tab shows that section alone; View all brings every one back.
+  const [only, setOnly] = useState<string | null>(null);
   const prefix = useId();
   const { confirm } = useEditingWorkspace();
   const composition = toPayload(draft, excluded);
@@ -536,12 +539,9 @@ function CollectionEditor({
   }
   function jump(key: string) {
     toggleSection(key, true);
-    requestAnimationFrame(() =>
-      document
-        .getElementById(`${prefix}-${key}`)
-        ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
-    );
+    setOnly(key);
   }
+  const hiddenSection = (key: string) => only !== null && only !== key;
   return (
     <form
       className="studio-editor collection-develop"
@@ -747,11 +747,19 @@ function CollectionEditor({
                 <button
                   type="button"
                   key={section.id}
+                  aria-pressed={only === section.id}
                   onClick={() => jump(section.id)}
                 >
                   {section.label}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-pressed={only === null}
+                onClick={() => setOnly(null)}
+              >
+                View all
+              </button>
             </nav>
             <InspectorSection
               id={`${prefix}-photo`}
@@ -767,6 +775,7 @@ function CollectionEditor({
               }
               open={sectionOpen("photo")}
               onToggle={(open) => toggleSection("photo", open)}
+              hidden={hiddenSection("photo")}
             >
               <aside
                 aria-label={
@@ -847,6 +856,7 @@ function CollectionEditor({
               label="Details"
               open={sectionOpen("details")}
               onToggle={(open) => toggleSection("details", open)}
+              hidden={hiddenSection("details")}
             >
               <div className="studio-fields">
                 <label>
@@ -877,6 +887,7 @@ function CollectionEditor({
               summary={String(existingCategoryIds(draft.categoryIds).length)}
               open={sectionOpen("categories")}
               onToggle={(open) => toggleSection("categories", open)}
+              hidden={hiddenSection("categories")}
             >
               <fieldset className="studio-fields">
                 <legend className="sr-only">Categories</legend>
@@ -910,6 +921,7 @@ function CollectionEditor({
               summary={draft.showVariants ? "Variants" : undefined}
               open={sectionOpen("display")}
               onToggle={(open) => toggleSection("display", open)}
+              hidden={hiddenSection("display")}
             >
               <label className="studio-check">
                 <input
@@ -932,6 +944,7 @@ function CollectionEditor({
                 label="Delete"
                 open={sectionOpen("danger")}
                 onToggle={(open) => toggleSection("danger", open)}
+              hidden={hiddenSection("danger")}
               >
                 <button
                   type="button"
@@ -1198,6 +1211,43 @@ function SizeFields({
           onChange={(rows) => onChange({ rows })}
         />
       </div>
+      <div
+        className="studio-start"
+        role="radiogroup"
+        aria-label="Starts at column on wide screens"
+      >
+        <span className="studio-size__device">Starts at</span>
+        {[0, ...Array.from({ length: MOSAIC_COLUMNS }, (_, i) => i + 1)].map(
+          (column) => {
+            const current = (fitColumn(size) ?? 0) === column;
+            const fits = column + size.columns - 1 <= MOSAIC_COLUMNS;
+            return (
+              <button
+                key={column}
+                type="button"
+                role="radio"
+                aria-checked={current}
+                aria-label={column ? `Column ${column}` : "After the piece before"}
+                title={
+                  column
+                    ? fits
+                      ? `Start at column ${column}`
+                      : "Too wide to start here"
+                    : "Follow the piece before"
+                }
+                disabled={!fits}
+                onClick={() => onChange({ column: column || null })}
+              >
+                {column || "Auto"}
+              </button>
+            );
+          },
+        )}
+      </div>
+      <small className="upload-muted">
+        Start a piece at the same column as the one before it to put it
+        underneath, such as a text under a photograph.
+      </small>
       <div className="studio-size__row">
         <span className="studio-size__device">
           <LayoutIcon kind="mobile" /> Phone

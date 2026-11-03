@@ -13,6 +13,7 @@
   object-fit: cover;
 }
 .profile-avatar {
+  position: relative;
   display: inline-block;
   width: 88px;
   height: 88px;
@@ -47,6 +48,7 @@
 }
 .profile-photos a,
 .profile-photos button {
+  position: relative;
   display: block;
   aspect-ratio: 1;
   overflow: hidden;
@@ -206,3 +208,36 @@
     transition: none;
   }
 }
+
+/* Your own profile says how others see it. */
+.profile-own-note {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 0.6rem;
+  background: #f1f4ea;
+  color: #3d4934;
+  font-size: 0.88rem;
+}
+
+/* "Use as": choose profile photo or cover, then compare before confirming. */
+.use-as { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 1rem; background: #10140f73; backdrop-filter: blur(3px); }
+.use-as__card { display: grid; gap: 1rem; width: min(440px, 100%); padding: 1.4rem; border-radius: 1.1rem; background: #fff; color: #262c22; box-shadow: 0 24px 60px #10140f40; }
+.use-as__card h2 { margin: 0; font-family: Georgia, serif; font-size: 1.3rem; font-weight: 400; }
+.use-as__choices { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.use-as__choices button { display: grid; justify-items: center; gap: .6rem; padding: 1rem .6rem; border: 1px solid #dce0d4; border-radius: .9rem; font-weight: 600; cursor: pointer; transition: background .15s, transform .15s; }
+.use-as__choices button:hover, .use-as__choices button:focus-visible { background: #eef1e7; transform: translateY(-2px); }
+.use-as__shape { display: block; background: linear-gradient(135deg, #61744e, #c9d3b8); }
+.use-as__shape--avatar { width: 52px; height: 52px; border-radius: 50%; }
+.use-as__shape--cover { width: 96px; height: 52px; border-radius: 8px; }
+.use-as__compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .6rem; }
+.use-as__compare figure { display: grid; justify-items: center; gap: .4rem; margin: 0; }
+.use-as__compare figcaption { font-size: .78rem; color: #6b7264; text-transform: uppercase; letter-spacing: .1em; }
+.use-as__frame { position: relative; overflow: hidden; background: #eceee6; }
+.use-as__frame--avatar { width: 112px; height: 112px; border-radius: 50%; }
+.use-as__frame--cover { width: 100%; aspect-ratio: 16 / 7; border-radius: 10px; }
+.use-as__frame img { object-fit: cover; }
+.use-as__arrow { font-size: 1.4rem; color: #61744e; }
+.use-as__actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.use-as__actions button { padding: .55rem 1rem; border-radius: 999px; border: 1px solid #d6dacd; font-weight: 600; cursor: pointer; }
+.use-as__actions .use-as__confirm { background: #384e2b; border-color: #384e2b; color: #fff; }
+.use-as__actions .use-as__confirm:disabled { opacity: .6; }

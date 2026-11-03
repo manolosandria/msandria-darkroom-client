@@ -77,7 +77,7 @@ describe("ApiProfileRepository", () => {
     ).rejects.toBeInstanceOf(ProfilePhotoError);
   });
 
-  it("reads a private profile as its name alone", async () => {
+  it("reads a private profile as its name, photo and cover", async () => {
     await expect(
       repository(
         respondWith({
@@ -90,6 +90,8 @@ describe("ApiProfileRepository", () => {
       id: "usr_2",
       publicName: "Luis M.",
       profilePublic: false,
+      avatar: null,
+      cover: null,
     });
   });
 
