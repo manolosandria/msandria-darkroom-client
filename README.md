@@ -1071,3 +1071,25 @@ goes through the title's own link. The page never grows wider than the window
 (`overflow-x: clip` on `html` and `body`), so a wide editor cannot leave a phone zoomed
 out after moving to another page. On wide screens Curator's tab button is an icon at the
 start of the tabs' row while they show, and names group and tab when folded.
+
+## Curator: fold arrow, admin pill, undo and review
+
+Curator's first group is now **Curator** (General, Home, Gallery, Collections). The tabs'
+row ends with the backdrop swatches, always all in view, and an arrow that folds the row
+into the lit pill (`CuratorPill`); beside the pill, the swatches and an arrow bring the
+tabs back. On every other page the administrator has the same pill, off, in the header's
+corner (`CuratorShortcut`), with every section as a link (`/curator?section=…`).
+
+An editor that passes its `document` (saved version, draft, restore) to
+`useUnsavedEditor` records each change as a step: **Undo** in the save bar or Ctrl+Z
+outside a text field takes back the last change of any editor (changes to one field
+within a second are one step). Saving opens **Review changes** (`ChangeReview`), every
+change field by field (`changeSummary`) with **Accept**/**Discard**; discarded changes go
+back to the saved value and the rest is saved. Home, Gallery, Palettes, General,
+Collections, Photos and Home photo highlights take part; saving with nothing pending saves
+at once.
+
+In Curator → Gallery → Filters, pointing at or focusing a piece in the list lights the
+same piece in the preview (`data-filter-piece`, `data-spotlight`). In the preview, a piece
+dropped within 16 px of a container's edge lands beside the container instead of inside
+it, so it can go under the last container.

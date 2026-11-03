@@ -95,10 +95,17 @@ export default function SiteGeneralEditor({
       setBusy(false);
     }
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: "General",
     save,
     discard: () => saved && setDraft(saved),
+    document: saved
+      ? {
+          original: saved,
+          draft,
+          restore: (value) => setDraft(value as SiteSettings),
+        }
+      : undefined,
   });
 
   const change = (next: Partial<SiteSettings>) => {
@@ -157,7 +164,7 @@ export default function SiteGeneralEditor({
             className="site-general__form"
             onSubmit={async (event) => {
               event.preventDefault();
-              await save();
+              await review();
             }}
           >
             <fieldset disabled={busy}>

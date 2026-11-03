@@ -125,12 +125,19 @@ function Editor() {
     }));
     setNotice("");
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: "Home banner",
     save,
     discard: () => {
       if (saved) setDraft(saved);
     },
+    document: saved
+      ? {
+          original: saved,
+          draft,
+          restore: (value) => setDraft(value as HomeBanner),
+        }
+      : undefined,
   });
   return (
     <div className="banner-editor">
@@ -199,7 +206,7 @@ function Editor() {
             aria-label="Banner properties"
             onSubmit={async (event) => {
               event.preventDefault();
-              await save();
+              await review();
             }}
           >
             <PropertyTabs

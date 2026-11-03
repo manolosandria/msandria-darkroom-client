@@ -14,7 +14,9 @@ import { useSessionValue } from "../SessionProvider";
 vi.mock("../SessionProvider", () => ({ useSessionValue: vi.fn() }));
 vi.mock("../EditingWorkspace", () => ({
   useEditingWorkspace: () => ({ confirm: async () => true }),
-  useUnsavedEditor: vi.fn(),
+  useUnsavedEditor: vi.fn((_dirty: boolean, editor: { save: () => Promise<boolean> }) => ({
+    review: () => editor.save(),
+  })),
 }));
 vi.mock("@/src/infrastructure/gallerySettingsServices", () => ({
   manageGallerySettings: { get: vi.fn(), save: vi.fn() },

@@ -6,7 +6,9 @@ import type { ManageSiteSettings } from "@/src/application/use-cases/ManageSiteS
 
 vi.mock("../EditingWorkspace", () => ({
   useEditingWorkspace: () => ({ confirm: async () => true }),
-  useUnsavedEditor: () => {},
+  useUnsavedEditor: (_dirty: boolean, editor: { save: () => Promise<boolean> }) => ({
+    review: () => editor.save(),
+  }),
 }));
 
 const { default: SiteGeneralEditor } = await import("../SiteGeneralEditor");

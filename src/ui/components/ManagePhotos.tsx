@@ -785,7 +785,45 @@ function PhotoEditor({
       setSaving(false);
     }
   }
-  useUnsavedEditor(dirty, { label: photo.getTitle(), save: persist, discard });
+  // Everything the form edits but the replacement file, as one document for Undo and
+  // for the review before saving.
+  const edits = {
+    title,
+    description,
+    titlePosition,
+    variantPosition,
+    frame,
+    highlights,
+    classification,
+  };
+  const { review } = useUnsavedEditor(dirty, {
+    label: photo.getTitle(),
+    save: persist,
+    discard,
+    document: {
+      original: {
+        title: photo.getTitle(),
+        description: photo.getDescription() ?? "",
+        titlePosition: photo.getTitlePosition(),
+        variantPosition: photo.getVariantPosition(),
+        frame: photo.getFrame(),
+        highlights: photo.getHighlights(),
+        classification: photo.getClassification(),
+      },
+      draft: edits,
+      restore: (value) => {
+        const next = value as typeof edits;
+        setTitle(next.title);
+        setDescription(next.description);
+        setTitlePosition(next.titlePosition);
+        setVariantPosition(next.variantPosition);
+        setFrame(next.frame);
+        setHighlights(next.highlights);
+        setClassification(next.classification);
+        setSaved(false);
+      },
+    },
+  });
   const changed = () => setSaved(false);
   function toggleSection(id: SectionId, open: boolean) {
     setOpenSections((previous) =>
@@ -897,15 +935,17 @@ function PhotoEditor({
           }
           return;
         }
+        // A new file is confirmed apart, since the current one cannot come back; then
+        // the changes are reviewed one by one.
         if (
-          await confirm(
-            file ? "Replace the file and save?" : "Save photo changes?",
-            file
-              ? `The current file of "${title}" will be replaced by ${file.name}. The previous file cannot be recovered.`
-              : 'Save changes to "' + title + '"?',
-          )
+          file &&
+          !(await confirm(
+            "Replace the file and save?",
+            `The current file of "${title}" will be replaced by ${file.name}. The previous file cannot be recovered.`,
+          ))
         )
-          await persist();
+          return;
+        await review();
       }}
     >
       <PhotoStage

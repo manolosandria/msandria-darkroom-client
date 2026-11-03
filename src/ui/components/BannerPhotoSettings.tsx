@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { HomeBanner } from "@/src/domain/entities/HomeBanner";
-import { Highlight } from "@/src/domain/entities/PhotoHighlights";
+import { Highlight, PhotoHighlights } from "@/src/domain/entities/PhotoHighlights";
 import { BannerSlideLink } from "./BannerSlideLink";
 import { HighlightEditor } from "./HighlightEditor";
 import { ResolutionBadge } from "./ResolutionBadge";
@@ -84,10 +84,15 @@ export function BannerPhotoSettings({
       setBusy(false);
     }
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: "Home photo highlights",
     save,
     discard: () => setHighlights(photo.getHighlights()),
+    document: {
+      original: photo.getHighlights(),
+      draft: highlights,
+      restore: (value) => setHighlights(value as PhotoHighlights),
+    },
   });
   const full = { x: 0, y: 0, width: 1, height: 1 };
   const crops: { id: string; name: string; crop: Highlight }[] = [
@@ -235,7 +240,7 @@ export function BannerPhotoSettings({
             width={photo.getWidth()}
             height={photo.getHeight()}
           />
-          <button type="button" disabled={busy || !dirty} onClick={save}>
+          <button type="button" disabled={busy || !dirty} onClick={() => void review()}>
             {busy ? "Saving…" : "Save photo highlights"}
           </button>
           <p>

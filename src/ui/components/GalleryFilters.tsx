@@ -15,6 +15,7 @@ import {
   filterElementLabels,
   FilterGroup,
   FilterNode,
+  filterPieceKey,
   placedPieces,
 } from "@/src/domain/galleryFilterLayout";
 import { useFilterArrange } from "@/src/ui/hooks/useFilterArrange";
@@ -252,6 +253,8 @@ export function GalleryFilters({
     arrange.active
       ? {
           "data-filter-node": node.id,
+          // What the list of pieces in Curator calls it, to light it from there.
+          "data-filter-piece": filterPieceKey(node),
           "data-drop":
             arrange.drop?.targetId === node.id ? arrange.drop.mode : undefined,
           "data-dragged": arrange.dragging === node.id || undefined,

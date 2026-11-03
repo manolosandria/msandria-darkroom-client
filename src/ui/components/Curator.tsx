@@ -19,27 +19,20 @@ import { useSessionValue } from "./SessionProvider";
 import { CuratorBackdropPicker, useCuratorBackdrop } from "./CuratorBackdrop";
 import "./curatorLayout.css";
 import "./curatorTheme.css";
+import { CuratorPill } from "./CuratorPill";
+import {
+  CURATOR_SECTION_KEY,
+  curatorGroupOf,
+  curatorGroups,
+  CuratorSection,
+  curatorSections,
+} from "@/src/ui/curatorSections";
 
-// The menu, by what each part is for: the site as a whole and its public sections, the palette
-// library, the photographs and what is done with them, and the administration.
-export const curatorGroups = [
-  { name: "Sections", sections: ["General", "Home", "Gallery", "Collections"] },
-  { name: "Palettes", sections: ["Palettes"] },
-  { name: "Photos", sections: ["Photos", "Upload", "Categories", "Variants"] },
-  { name: "Admin", sections: ["Dashboard", "Comments", "Inbox"] },
-] as const;
-type Section = (typeof curatorGroups)[number]["sections"][number];
-const sections: readonly Section[] = curatorGroups.flatMap(
-  (group) => group.sections,
-);
+type Section = CuratorSection;
+const sections = curatorSections;
 // Earlier names, so a remembered tab still opens.
 const renamed: Record<string, Section> = { Moderation: "Comments" };
-// The folded menu's pill, opened by a press like a group's menu.
-const DOCK = "__dock";
-const groupOf = (section: Section) =>
-  curatorGroups.find((group) =>
-    (group.sections as readonly Section[]).includes(section),
-  )!;
+const groupOf = curatorGroupOf;
 
 export default function Curator() {
   const { user } = useSessionValue();
@@ -54,7 +47,7 @@ export default function Curator() {
     setLastIn((previous) => ({ ...previous, [groupOf(name).name]: name }));
     if (remember)
       try {
-        sessionStorage.setItem("curatorSection", name);
+        sessionStorage.setItem(CURATOR_SECTION_KEY, name);
       } catch {
         /* Keep the current tab in memory. */
       }
@@ -66,7 +59,7 @@ export default function Curator() {
     try {
       // A link may name the tab (`/curator?section=Dashboard`); otherwise the last one.
       const asked = new URLSearchParams(window.location.search).get("section");
-      const stored = asked ?? sessionStorage.getItem("curatorSection") ?? "";
+      const stored = asked ?? sessionStorage.getItem(CURATOR_SECTION_KEY) ?? "";
       const remembered = renamed[stored] ?? stored;
       if (sections.includes(remembered as Section))
         queueMicrotask(() => show(remembered as Section, false));
@@ -115,9 +108,7 @@ export default function Curator() {
     if (!open) return;
     const close = (event: PointerEvent) => {
       if (
-        !(event.target as Element).closest?.(
-          ".curator-tabs__group, .curator-dock__nav",
-        )
+        !(event.target as Element).closest?.(".curator-tabs__group")
       )
         setOpen(null);
     };
@@ -146,89 +137,34 @@ export default function Curator() {
     <EditingBoundary>
       <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>
         <div className="curator-workspace" data-backdrop={backdrop.value}>
-          {menuShown ? (
-            <button
-              type="button"
-              className="curator-menu-toggle"
-              aria-expanded
-              aria-controls="curator-tabs"
-              aria-label="Hide the tabs"
-              title="Hide the tabs"
-              onClick={() => setMenuShown(false)}
-            >
-              <span aria-hidden="true">✕</span>
-            </button>
-          ) : (
-            // Folded, the menu is one floating pill naming the open tab, like the site's
-            // docked logo: pointing at it, tabbing into it or pressing it opens every
-            // group under it. The backdrop swatches stay beside it.
+          {!menuShown && (
+            // Folded, the tabs are one lit pill naming the open tab; the backdrop
+            // swatches and the arrow that brings the tabs back stay beside it.
             <div className="curator-dock">
-              <div
-                className={`curator-dock__nav${open === DOCK ? " is-open" : ""}`}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === "mouse") setOpen(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setOpen(null);
-                }}
-              >
-                <button
-                  type="button"
-                  className="curator-dock__pill"
-                  aria-haspopup="true"
-                  aria-expanded={open === DOCK}
-                  aria-label={`Curator sections: ${current.name}, ${section}`}
-                  onClick={() => setOpen(open === DOCK ? null : DOCK)}
-                >
-                  <span className="curator-dock__group">{current.name}</span>
-                  <span className="curator-dock__tab">{section}</span>
-                  {!!pendingIn(current) && (
-                    <span className="curator-badge">{pendingIn(current)}</span>
-                  )}
-                  <svg
-                    className="curator-dock__hint"
-                    viewBox="0 0 12 12"
-                    width="10"
-                    height="10"
-                    aria-hidden="true"
+              <CuratorPill
+                lit
+                group={current.name}
+                tab={section}
+                badge={pendingIn(current)}
+                renderItem={(name, close) => (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-current={section === name ? "page" : undefined}
+                    onClick={() => {
+                      show(name);
+                      close();
+                    }}
                   >
-                    <path
-                      d="M2.5 4.5 6 8l3.5-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-                <div
-                  className="curator-dock__menu"
-                  role="navigation"
-                  aria-label="Curator sections"
-                >
-                  {curatorGroups.map((group) => (
-                    <div key={group.name} className="curator-dock__group-list">
-                      <span className="curator-bubble__label">{group.name}</span>
-                      {group.sections.map(item)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="curator-dock__unfold"
-                aria-expanded={false}
-                aria-controls="curator-tabs"
-                aria-label="Show the tabs"
-                title="Show the tabs"
-                onClick={() => {
-                  setOpen(null);
-                  setMenuShown(true);
-                }}
-              >
-                <span aria-hidden="true">☰</span>
-              </button>
+                    {name}
+                    {!!countOf(name) && (
+                      <span className="curator-badge">{countOf(name)}</span>
+                    )}
+                  </button>
+                )}
+              />
               <CuratorBackdropPicker state={backdrop} />
+              <FoldArrow folded onClick={() => setMenuShown(true)} />
             </div>
           )}
           <nav
@@ -317,6 +253,7 @@ export default function Curator() {
               );
             })}
             <CuratorBackdropPicker state={backdrop} />
+            <FoldArrow folded={false} onClick={() => setMenuShown(false)} />
           </nav>
           {away && menuShown && (
             <div className="curator-bubble">
@@ -356,5 +293,38 @@ export default function Curator() {
         </div>
       </ClassificationCatalogBoundary>
     </EditingBoundary>
+  );
+}
+
+// At the far right of the tabs' row, it folds them into the pill; beside the pill, it
+// brings them back.
+function FoldArrow({
+  folded,
+  onClick,
+}: {
+  folded: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="curator-fold"
+      aria-expanded={!folded}
+      aria-controls="curator-tabs"
+      aria-label={folded ? "Show the tabs" : "Hide the tabs"}
+      title={folded ? "Show the tabs" : "Hide the tabs"}
+      onClick={onClick}
+    >
+      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+        <path
+          d={folded ? "M5 7.5l5 5 5-5" : "M5 12.5 10 7.5l5 5"}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }

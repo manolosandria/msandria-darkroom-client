@@ -292,7 +292,7 @@
   box-shadow: inset 3px 0 0 #61744e;
 }
 
-/* The backdrop swatches close the menu: the chosen one shows; the others on hover. */
+/* The backdrop swatches close the menu, all of them in view, before the fold arrow. */
 .curator-backdrop-picker {
   display: flex;
   align-items: center;
@@ -315,21 +315,6 @@
     width 0.2s,
     opacity 0.2s,
     margin 0.2s;
-}
-.curator-tabs .curator-backdrop-swatch[aria-checked="false"] {
-  width: 0;
-  margin: 0 -0.15rem;
-  opacity: 0;
-  border-width: 0;
-}
-.curator-tabs .curator-backdrop-picker:hover .curator-backdrop-swatch,
-.curator-tabs
-  .curator-backdrop-picker:has(:focus-visible)
-  .curator-backdrop-swatch {
-  width: 22px;
-  margin: 0;
-  opacity: 1;
-  border-width: 2px;
 }
 .curator-backdrop-swatch:hover {
   transform: scale(1.15);
@@ -472,6 +457,14 @@
   background: #f3ece4;
   border-color: #c4a78a;
   color: #6e3f1d;
+}
+.curator-icon-button--undo {
+  border-color: #b9c7d6;
+  color: #2f4a66;
+  background: #f1f5fa;
+}
+.curator-icon-button--undo:hover:not(:disabled) {
+  background: #e1eaf4;
 }
 .curator-icon-button--restore {
   border-color: #d9b874;
@@ -701,10 +694,7 @@
 @media (min-width: 900px) {
   .curator-page:has(.site-header[data-docked])
     .curator-workspace
-    > .curator-tabs,
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-menu-toggle {
+    > .curator-tabs {
     margin-left: 13rem;
   }
   .curator-page:has(.site-header[data-docked])
@@ -721,35 +711,6 @@
   }
 }
 
-/* The button that shows and hides Curator's tabs, naming where the curator is. */
-.curator-workspace > .curator-menu-toggle {
-  position: relative;
-  z-index: 51;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0.5rem clamp(0.75rem, 3vw, 2rem) 0;
-  padding: 0.45rem 0.9rem;
-  border: 1px solid #cbd3c0;
-  border-radius: 999px;
-  background: #ffffffc8;
-  color: #2f3a29;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: background 0.18s, transform 0.18s;
-}
-.curator-workspace > .curator-menu-toggle:hover {
-  background: #fff;
-  transform: translateY(-1px);
-}
-.curator-menu-toggle__group {
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #6b7563;
-}
 .curator-workspace > .curator-tabs[hidden] {
   display: none;
 }
@@ -811,54 +772,32 @@
   }
 }
 
-/* Wide screens: while the tabs show, the button is an icon at the start of their row
-   (they already name the group and tab); folded, it stands alone with both names. */
-@media (min-width: 900px) {
-  .curator-workspace > .curator-menu-toggle[aria-expanded="true"] {
-    position: absolute;
-    top: 0.5rem;
-    left: clamp(0.75rem, 3vw, 2rem);
-    margin: 0;
-    width: 2.4rem;
-    height: 2.4rem;
-    padding: 0;
-    justify-content: center;
-  }
-  .curator-workspace
-    > .curator-menu-toggle[aria-expanded="true"]
-    > :not(:first-child) {
-    display: none;
-  }
-  .curator-workspace
-    > .curator-menu-toggle[aria-expanded="true"]
-    + .curator-tabs {
-    padding-left: calc(clamp(0.75rem, 3vw, 2rem) + 3rem);
-  }
-  /* Docked: the row is as tall as the floating pills, and starts after the logo. */
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-menu-toggle[aria-expanded="true"] {
-    top: 0.9rem;
-    left: 13rem;
-    margin: 0;
-  }
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-menu-toggle[aria-expanded="true"]
-    + .curator-tabs {
-    margin-left: 0;
-    padding-left: 16.5rem;
-  }
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-menu-toggle[aria-expanded="false"] {
-    margin-top: 0.9rem;
-  }
+/* ---------- The fold arrow, at the far right of the tabs' row ---------- */
+.curator-fold {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 1px solid #cbd3c0;
+  border-radius: 50%;
+  background: #ffffffc8;
+  color: #3d4934;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    transform 0.18s,
+    box-shadow 0.18s;
+}
+.curator-fold:hover,
+.curator-fold:focus-visible {
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px #29312614;
 }
 
-/* ---------- Folded: one floating pill, like the site's docked logo ---------- */
-/* The pill names the group and the open tab; pointing at it, tabbing into it or
-   pressing it opens every group under it. The backdrop swatches stay beside it. */
+/* ---------- Folded: the lit pill, the swatches and the arrow ---------- */
 .curator-workspace > .curator-dock {
   position: relative;
   z-index: 51;
@@ -870,149 +809,16 @@
   margin: 0.5rem clamp(0.75rem, 3vw, 2rem) 0;
   animation: curator-menu-in 0.22s ease both;
 }
-.curator-dock__nav {
-  position: relative;
-}
-.curator-dock__pill,
-.curator-dock__unfold {
-  display: inline-flex;
-  align-items: center;
+.curator-dock .curator-fold {
+  width: 3rem;
   height: 3rem;
-  border: 1px solid #ffffff80;
-  border-radius: 999px;
+  border-color: #ffffff80;
   background: #f6f5f1d6;
-  color: #30382d;
   box-shadow:
     0 4px 18px #1a201826,
     0 0 0 1px #1a20180d;
   backdrop-filter: blur(12px) saturate(1.3);
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
 }
-.curator-dock__pill {
-  gap: 0.6rem;
-  padding: 0 1rem 0 1.15rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-.curator-dock__unfold {
-  justify-content: center;
-  width: 3rem;
-  padding: 0;
-  font-size: 1rem;
-}
-.curator-dock__nav:hover .curator-dock__pill,
-.curator-dock__nav.is-open .curator-dock__pill,
-.curator-dock__nav:has(:focus-visible) .curator-dock__pill,
-.curator-dock__unfold:hover,
-.curator-dock__unfold:focus-visible {
-  background: #f6f5f1f2;
-  box-shadow: 0 8px 26px #1a201826;
-}
-.curator-dock__unfold:hover {
-  transform: translateY(-1px);
-}
-.curator-dock__group {
-  font-size: 0.64rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #6b7563;
-}
-.curator-dock__tab {
-  font-family: Georgia, serif;
-  font-size: 1.05rem;
-  font-weight: 400;
-}
-.curator-dock__hint {
-  color: #5d6656;
-  transition: transform 0.2s;
-}
-.curator-dock__nav:hover .curator-dock__hint,
-.curator-dock__nav.is-open .curator-dock__hint,
-.curator-dock__nav:has(:focus-visible) .curator-dock__hint {
-  transform: rotate(180deg);
-}
-.curator-dock__menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 60;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
-  gap: 0.35rem 0.5rem;
-  width: max-content;
-  max-width: min(420px, calc(100vw - 2rem));
-  max-height: 75vh;
-  overflow-y: auto;
-  margin-top: 0.4rem;
-  padding: 0.45rem;
-  border: 1px solid #dce0d4;
-  border-radius: 14px;
-  background: #fbfbf8f5;
-  box-shadow: 0 18px 40px #17211629;
-  backdrop-filter: blur(10px);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  transition:
-    opacity 0.18s,
-    transform 0.18s,
-    visibility 0s 0.18s;
-}
-/* A bridge over the gap, so the pointer can travel from the pill to the menu. */
-.curator-dock__menu::before {
-  content: "";
-  position: absolute;
-  inset: -0.5rem 0 100% 0;
-}
-.curator-dock__nav:hover .curator-dock__menu,
-.curator-dock__nav.is-open .curator-dock__menu,
-.curator-dock__nav:has(:focus-visible) .curator-dock__menu {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition:
-    opacity 0.18s,
-    transform 0.18s,
-    visibility 0s;
-}
-.curator-dock__group-list {
-  display: grid;
-  align-content: start;
-}
-.curator-workspace .curator-dock__menu button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: #30382d;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    padding 0.15s;
-}
-.curator-workspace .curator-dock__menu button:hover,
-.curator-workspace .curator-dock__menu button:focus-visible {
-  background: #e8ebdf;
-  padding-left: 0.95rem;
-}
-.curator-workspace .curator-dock__menu button[aria-current="page"] {
-  background: #dfe6d3;
-  font-weight: 700;
-  box-shadow: inset 3px 0 0 #61744e;
-}
-/* Out of the tabs' row, the swatches all show, so the backdrop is one press away. */
 .curator-dock .curator-backdrop-picker {
   margin-left: 0.15rem;
   padding: 0 0.55rem;
@@ -1052,10 +858,6 @@
   .curator-page:has(.site-header[data-docked]) .curator-workspace > .curator-dock {
     margin-top: 0;
   }
-  .curator-dock__menu {
-    grid-template-columns: minmax(0, 1fr);
-    width: min(280px, calc(100vw - 2rem));
-  }
   .curator-dock .curator-backdrop-picker {
     padding: 0 0.4rem;
   }
@@ -1070,9 +872,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .curator-workspace > .curator-dock,
-  .curator-dock * {
+  .curator-workspace > .curator-dock {
     animation: none !important;
-    transition: none !important;
   }
 }

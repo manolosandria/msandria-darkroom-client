@@ -492,10 +492,15 @@ function CollectionEditor({
       setBusy(false);
     }
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: draft.title || "New collection",
     save: persist,
     discard,
+    document: {
+      original: baseline,
+      draft,
+      restore: (value) => setDraft(value as typeof draft),
+    },
   });
   if (!active) return null;
   const index = draft.blocks.findIndex((block) => block.key === selected);
@@ -547,16 +552,8 @@ function CollectionEditor({
       className="studio-editor collection-develop"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (
-          !busy &&
-          (await confirm(
-            "Save collection?",
-            'Save changes to "' +
-              draft.title +
-              '"? Other collections will not be saved.',
-          ))
-        )
-          await persist();
+        // The review lists this collection's changes alone; others stay as drafts.
+        if (!busy) await review();
       }}
     >
       <fieldset disabled={busy}>

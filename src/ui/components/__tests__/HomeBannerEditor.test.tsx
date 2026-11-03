@@ -8,7 +8,9 @@ import { useSessionValue } from "../SessionProvider";
 vi.mock("../SessionProvider", () => ({ useSessionValue: vi.fn() }));
 vi.mock("../EditingWorkspace", () => ({
   useEditingWorkspace: () => ({ confirm: async () => true }),
-  useUnsavedEditor: vi.fn(),
+  useUnsavedEditor: vi.fn((_dirty: boolean, editor: { save: () => Promise<boolean> }) => ({
+    review: () => editor.save(),
+  })),
 }));
 vi.mock("../HomePage", () => ({
   default: ({ banner }: { banner: { title: string } }) => (

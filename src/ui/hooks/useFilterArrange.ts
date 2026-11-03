@@ -13,12 +13,15 @@ export type FilterDrop = {
 };
 
 const THRESHOLD = 5;
+// How close to a container's edge a drop goes beside it rather than inside it.
+const EDGE = 16;
 
 /**
  * Drag the filter bar's pieces and containers in the Gallery preview itself. Each node
  * carries `data-filter-node` (and containers `data-filter-group`); a drag shows where
- * the node would land (a line before or after a piece, or inside a container) and the
- * drop moves it there in the tree. Moves that break the tree's limits are refused.
+ * the node would land (a line before or after a piece or, at a container's edge, the
+ * container; or inside a container) and the drop moves it there in the tree. Moves
+ * that break the tree's limits are refused.
  */
 export function useFilterArrange(
   layout: FilterGroup | undefined,
@@ -41,6 +44,24 @@ export function useFilterArrange(
     const id = hit.dataset.filterNode!;
     const found = findFilterNode(layout, id);
     if (!found) return null;
+    if (found.node.type === "group" && found.parent) {
+      // Near a container's edge (along its parent's direction), the drop lands beside
+      // it in the parent: the only way to place a piece under or after a container
+      // that fills its parent.
+      const box = hit.getBoundingClientRect();
+      const row = found.parent.direction === "row";
+      const size = row ? box.width : box.height;
+      const band = Math.min(EDGE, size / 4);
+      const fromStart = row ? x - box.left : y - box.top;
+      const fromEnd = row ? box.right - x : box.bottom - y;
+      if (fromEnd < band || fromStart < band)
+        return {
+          targetId: id,
+          mode: fromEnd < band ? "after" : "before",
+          groupId: found.parent.id,
+          index: found.index + (fromEnd < band ? 1 : 0),
+        };
+    }
     if (found.node.type === "group") {
       // Inside a container: before the first child whose middle is past the pointer.
       const row = found.node.direction === "row";

@@ -24,6 +24,23 @@ import { galleryDepartments } from "./galleryCategoryGroups";
  * preview, by dragging them (into or out of a container). A department switched on
  * shows its categories in the bar instead of in the Filters panel.
  */
+// Pointing at a piece in the list (or focusing it) lights the same piece in the
+// preview beside it, so each switch can be told by what it shows.
+function spotlight(key: string, on: boolean) {
+  document
+    .querySelectorAll<HTMLElement>(`[data-filter-piece="${CSS.escape(key)}"]`)
+    .forEach((element) => {
+      if (on) element.setAttribute("data-spotlight", "");
+      else element.removeAttribute("data-spotlight");
+    });
+}
+const spotlightProps = (key: string) => ({
+  onPointerEnter: () => spotlight(key, true),
+  onPointerLeave: () => spotlight(key, false),
+  onFocus: () => spotlight(key, true),
+  onBlur: () => spotlight(key, false),
+});
+
 export function GalleryFilterPieces({
   categories,
   settings,
@@ -95,7 +112,7 @@ export function GalleryFilterPieces({
       </p>
       <ul className="filter-pieces__list">
         {pieces.map(({ key, label, leaf }) => (
-          <li key={key}>
+          <li key={key} {...spotlightProps(key)}>
             <label>
               <input
                 type="checkbox"
@@ -110,7 +127,7 @@ export function GalleryFilterPieces({
       {containers.length > 0 && (
         <ul className="filter-pieces__containers">
           {containers.map((group, index) => (
-            <li key={group.id}>
+            <li key={group.id} {...spotlightProps(`container:${group.id}`)}>
               <span>{group.label || `Container ${index + 1}`}</span>
               <button
                 type="button"

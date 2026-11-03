@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import SessionMenu from "./SessionMenu";
+import { CuratorShortcut } from "./CuratorPill";
 import { useSessionValue } from "./SessionProvider";
 import { useCuratorNotifications } from "./CuratorNotifications";
 import { useSiteSettings } from "./SiteSettingsProvider";
@@ -188,6 +189,11 @@ export default function MainHeader() {
       {/* The account and the fold control, always in the top-right corner: in the
           header's row while it shows, floating once it is gone. */}
       <div className="site-header__corner" ref={setCorner}>
+        {/* The administrator always has Curator folded at hand; inside Curator its
+            own pill, lit, takes over. */}
+        {canPublish && !pathname?.startsWith("/curator") && (
+          <CuratorShortcut pending={pending} />
+        )}
         <SessionMenu />
         <button
           ref={toggleButton}
