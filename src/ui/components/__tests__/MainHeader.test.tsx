@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { User, UserRole } from "@/src/domain/entities/User";
@@ -77,6 +78,22 @@ describe("MainHeader", () => {
         "href",
         "/curator",
       ),
+    );
+  });
+
+  it("keeps Curator folded at hand for the administrator, off outside Curator", async () => {
+    getCurrentUser.mockResolvedValue(accountOf("ADMIN"));
+
+    renderHeader();
+
+    const pill = await screen.findByRole("button", {
+      name: "Curator sections: Curator, Dashboard",
+    });
+    expect(pill.closest(".curator-pill")).not.toHaveAttribute("data-lit");
+    await userEvent.click(pill);
+    expect(screen.getByRole("link", { name: "Variants" })).toHaveAttribute(
+      "href",
+      "/curator?section=Variants",
     );
   });
 

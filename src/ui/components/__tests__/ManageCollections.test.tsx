@@ -56,7 +56,13 @@ async function startNewCollection(user: ReturnType<typeof userEvent.setup>) {
 }
 async function saveAndAccept(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Save collection" }));
-  await user.click(await screen.findByRole("button", { name: "Accept" }));
+  // The review lists the collection's changes; accept them all. Without changes it
+  // saves at once.
+  const review = await screen
+    .findByRole("dialog", { name: "Review changes" }, { timeout: 600 })
+    .catch(() => null);
+  if (review)
+    await user.click(within(review).getByRole("button", { name: "Save all" }));
 }
 
 // The size a cell bar shows: the name of its chosen cell.

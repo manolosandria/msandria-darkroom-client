@@ -23,8 +23,9 @@ function writeHidden(hidden: boolean) {
 }
 
 /**
- * Save and Cancel for every editor with unsaved changes: a small card floating in the
- * bottom corner of Curator, so it is always in reach and never takes a row of a panel.
+ * Save, Undo and Cancel for every editor with unsaved changes: a small card floating in
+ * the bottom corner of Curator, so it is always in reach and never takes a row of a
+ * panel. Save opens the review of every change; Undo takes back the last one.
  * Folded, it is a single round button in that corner with the count; the choice is
  * remembered per visitor.
  */
@@ -61,6 +62,21 @@ export function CancelIcon() {
     <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <path
         d="M7.5 5.5 4 9l3.5 3.5M4.5 9h7a4 4 0 0 1 0 8h-2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function UndoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M8 5 4.5 8.5 8 12M5 8.5h6.5a4 4 0 0 1 0 8H9"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.9"
@@ -135,9 +151,25 @@ export function CuratorSaveBar({
           title={labels.length === 1 ? "Save" : "Save all"}
           aria-busy={pending.saving || undefined}
           disabled={pending.saving}
-          onClick={() => void pending.saveAll()}
+          onClick={() => void pending.review()}
         >
           <SaveIcon />
+        </button>
+        <button
+          type="button"
+          className="curator-icon-button curator-icon-button--undo"
+          aria-label={
+            pending.undoLabel ? `Undo the last change in ${pending.undoLabel}` : "Undo"
+          }
+          title={
+            pending.undoLabel
+              ? `Undo the last change in ${pending.undoLabel} (Ctrl+Z)`
+              : "Nothing to undo"
+          }
+          disabled={pending.saving || !pending.undoLabel}
+          onClick={() => pending.undo()}
+        >
+          <UndoIcon />
         </button>
         <button
           type="button"

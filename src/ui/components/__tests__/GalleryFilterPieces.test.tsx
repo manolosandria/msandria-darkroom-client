@@ -33,6 +33,35 @@ describe("GalleryFilterPieces", () => {
   });
 });
 
+describe("GalleryFilterPieces beside the preview", () => {
+  it("lights the piece pointed at in the list where the preview shows it", () => {
+    render(
+      <>
+        <GalleryFilterPieces
+          categories={categories}
+          settings={defaultGallerySettings}
+          onChange={() => {}}
+        />
+        <GalleryFilters
+          categories={categories}
+          settings={defaultGallerySettings}
+          selected={[]}
+          onChange={() => {}}
+          search={<input aria-label="Search" />}
+          count={<span>3 photographs</span>}
+          onArrange={() => {}}
+        />
+      </>,
+    );
+    const item = screen.getByRole("checkbox", { name: "Search" }).closest("li")!;
+    const piece = document.querySelector('[data-filter-piece="search"]')!;
+    fireEvent.pointerEnter(item);
+    expect(piece).toHaveAttribute("data-spotlight");
+    fireEvent.pointerLeave(item);
+    expect(piece).not.toHaveAttribute("data-spotlight");
+  });
+});
+
 describe("GalleryFilters arranged in the preview", () => {
   it("gives every piece and container a grip, starting from the usual bar", () => {
     render(

@@ -22,6 +22,10 @@ import {
 // Both editors keep the same settings document: each tells the other what it saved.
 export const GALLERY_SETTINGS_SAVED = "curator:gallery-settings-saved";
 
+// The palettes by id, so a review names each palette's changes on their own.
+const byId = (palettes: GalleryPalette[]) =>
+  Object.fromEntries(palettes.map((palette) => [palette.id, palette]));
+
 export default function PaletteManager() {
   const { user } = useSessionValue();
   return user?.isAdmin() ? (
@@ -97,10 +101,17 @@ function Manager() {
       setBusy(false);
     }
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: "Palettes",
     save,
     discard: () => setPalettes(savedPalettes),
+    // Keyed by palette, so each palette's changes are reviewed on their own.
+    document: {
+      original: byId(savedPalettes),
+      draft: byId(palettes),
+      restore: (value) =>
+        setPalettes(Object.values(value as Record<string, GalleryPalette>)),
+    },
   });
   const shown =
     palettes.find((palette) => palette.id === preview) ?? palettes[0];
@@ -173,7 +184,7 @@ function Manager() {
             ref={form}
             onSubmit={async (event) => {
               event.preventDefault();
-              await save();
+              await review();
             }}
           >
             <GalleryPaletteLibrary

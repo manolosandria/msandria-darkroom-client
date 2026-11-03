@@ -58,6 +58,20 @@ const ports = {
   signIn: vi.fn(),
   signOut: vi.fn(),
 };
+// Saving asks to confirm a new file first, then reviews the changes: accept them all.
+// Without changes it saves at once, with nothing to confirm.
+async function confirmSave() {
+  const first = await screen
+    .findByRole("button", { name: /^(Accept|Save all)$/ }, { timeout: 600 })
+    .catch(() => null);
+  if (!first) return;
+  const replacing = first.textContent === "Accept";
+  await userEvent.click(first);
+  if (replacing)
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save all" }),
+    );
+}
 function show() {
   render(
     <SessionProvider ports={ports}>
@@ -170,9 +184,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This photo changed while you were editing it. Reload its state before saving.",
     );
@@ -202,9 +214,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     expect(vi.mocked(savePhoto.execute).mock.lastCall?.[0].getVersion()).toBe(
       2,
@@ -246,9 +256,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     await userEvent.click(screen.getByRole("button", { name: "Other photo" }));
     await screen.findByLabelText("Description");
@@ -260,9 +268,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     expect(
       vi.mocked(savePhoto.execute).mock.lastCall?.[0].getClassification(),
@@ -314,9 +320,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("No photos need optimization.");
     expect(replacePhoto.execute).toHaveBeenCalledWith(
       expect.any(Photo),
@@ -341,18 +345,14 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByRole("alert");
     expect(screen.getByLabelText("Description")).toHaveValue("Preserved story");
     expect((input as HTMLInputElement).files?.[0]).toBe(file);
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     expect(replacePhoto.execute).toHaveBeenCalledTimes(2);
   });
 
@@ -372,9 +372,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     expect(await screen.findByText("Changes saved.")).toBeInTheDocument();
     const saved = vi.mocked(savePhoto.execute).mock.calls[0][0];
     expect(saved.getTitle()).toBe("Coastal light");
@@ -406,9 +404,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getDescription()).toBe(
       "A story only in the detail",
@@ -437,9 +433,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     expect(
       vi.mocked(savePhoto.execute).mock.calls[0][0].getTitlePosition(),
@@ -477,9 +471,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     const saved = vi.mocked(savePhoto.execute).mock.calls[0][0];
     expect(saved.getTitlePosition()).toBe("BOTTOM_RIGHT");
@@ -564,9 +556,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await screen.findByText("Changes saved.");
     expect(vi.mocked(savePhoto.execute).mock.calls[0][0].getFrame()).toEqual({
       color: "#ffffff",
@@ -601,9 +591,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Accept" }),
-    );
+    await confirmSave();
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(
         "Could not reach the API",

@@ -116,7 +116,7 @@ describe("Curator", () => {
         screen.getByRole("button", { name }),
       ),
     ).toHaveLength(4);
-    expect(group("Sections")).toHaveAttribute("aria-expanded", "false");
+    expect(group("Curator")).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(screen.getByRole("button", { name: "Photos" }));
     expect(screen.getByText("Photo library")).toBeVisible();
@@ -124,7 +124,7 @@ describe("Curator", () => {
     await userEvent.click(screen.getByRole("button", { name: "Categories" }));
     expect(screen.getByText("Categories editor")).toBeVisible();
 
-    await userEvent.click(screen.getByRole("button", { name: "Sections" }));
+    await userEvent.click(screen.getByRole("button", { name: "Curator" }));
     expect(screen.getByText("General studio")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Collections" }));
     expect(screen.getByText("Collections editor")).toBeVisible();

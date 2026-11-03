@@ -23,7 +23,9 @@ import { Photo } from "@/src/domain/entities/Photo";
 import { defaultHomeBanner } from "@/src/domain/entities/HomeBanner";
 vi.mock("../EditingWorkspace", () => ({
   useEditingWorkspace: () => ({ confirm: async () => true }),
-  useUnsavedEditor: vi.fn(),
+  useUnsavedEditor: vi.fn((_dirty: boolean, editor: { save: () => Promise<boolean> }) => ({
+    review: () => editor.save(),
+  })),
 }));
 describe("Banner photo settings", () => {
   it("saves photo highlights separately from the banner and refreshes the version", async () => {

@@ -120,12 +120,19 @@ function Editor() {
       setBusy(false);
     }
   }
-  useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty, {
     label: "Gallery design",
     save,
     discard: () => {
       if (saved) setDraft(saved);
     },
+    document: saved
+      ? {
+          original: saved,
+          draft,
+          restore: (value) => setDraft(value as GallerySettings),
+        }
+      : undefined,
   });
   const category = draft.categories.find((item) => item.categoryId === target);
   const appearance = category?.customize
@@ -250,7 +257,7 @@ function Editor() {
             className="banner-editor__properties"
             onSubmit={async (event) => {
               event.preventDefault();
-              await save();
+              await review();
             }}
           >
             <PropertyTabs

@@ -239,3 +239,11 @@ export function pruneFilterLayout(
     ),
   }));
 }
+
+/** The key a piece of the bar goes by in Curator's list and in the preview. */
+export const filterPieceKey = (node: FilterNode) =>
+  node.type === "group"
+    ? `container:${node.id}`
+    : node.type === "department"
+      ? `department:${node.departmentId}`
+      : node.type;

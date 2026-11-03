@@ -549,3 +549,6 @@
 .gallery-browse [data-direction="column"] > [data-drop="before"]::before { left: 0; right: 0; top: -6px; height: 3px; }
 .gallery-browse [data-direction="column"] > [data-drop="after"]::after { left: 0; right: 0; bottom: -6px; height: 3px; }
 .gallery-browse [data-drop="inside"] { outline: 2px solid #6f8f4a !important; background: #6f8f4a14; }
+/* A piece pointed at in Curator's list of pieces lights up here, to tell which is which. */
+.gallery-browse [data-spotlight] { outline: 3px solid #e4b86a !important; outline-offset: 3px; background-color: #e4b86a1f; border-radius: .6rem; box-shadow: 0 0 0 7px #e4b86a2e; transition: outline-color .15s, box-shadow .15s, background-color .15s; }
+.gallery-browse [data-spotlight] > .gallery-browse__grip { background: #b07d18; color: #fff; }
