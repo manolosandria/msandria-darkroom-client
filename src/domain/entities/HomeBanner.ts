@@ -102,6 +102,8 @@ export type HomeBanner = {
   mobileCrop?: string;
   navigation?: string;
   controlsPosition?: string;
+  /** A click anywhere on the photograph opens the slide's destination (off: only the title). */
+  photoLink?: boolean;
   bannerHeight?: number;
   overlayOpacity?: number;
   welcome?: WelcomePanel;

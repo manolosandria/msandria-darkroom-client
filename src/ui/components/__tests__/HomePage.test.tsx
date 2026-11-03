@@ -333,6 +333,50 @@ describe("HomePage", () => {
     });
     expect(screen.getByText("Second")).toBeInTheDocument();
   });
+  it("swipes over the title laid on the photograph as over the photograph", async () => {
+    render(
+      <HomePage
+        banner={{ ...defaultHomeBanner, layout: "text-overlay" }}
+        getAllPhotos={{
+          execute: vi
+            .fn()
+            .mockResolvedValue([makePhoto("a", "First"), makePhoto("b", "Second")]),
+        }}
+      />,
+    );
+    await screen.findByText("First");
+    const title = document.querySelector(".home-gallery__intro")!;
+    fireEvent.touchStart(title, { touches: [{ clientX: 220, clientY: 100 }] });
+    fireEvent.touchEnd(title, { changedTouches: [{ clientX: 120, clientY: 105 }] });
+    expect(screen.getByText("Second")).toBeInTheDocument();
+  });
+  it("opens the slide's link from anywhere on the photograph only when asked", async () => {
+    const photos = { execute: vi.fn().mockResolvedValue([makePhoto("a", "First")]) };
+    const { unmount } = render(
+      <HomePage banner={defaultHomeBanner} getAllPhotos={photos} />,
+    );
+    await screen.findByText("First");
+    const clicks = vi.fn((event: MouseEvent) => event.preventDefault());
+    document.addEventListener("click", clicks);
+    fireEvent.click(document.querySelector(".home-carousel__image")!);
+    expect(clicks).toHaveBeenCalledTimes(1);
+    unmount();
+
+    render(
+      <HomePage
+        banner={{ ...defaultHomeBanner, photoLink: true }}
+        getAllPhotos={photos}
+      />,
+    );
+    await screen.findByText("First");
+    fireEvent.click(document.querySelector(".home-carousel__image")!);
+    // The photograph's click, then the title link's own.
+    expect(clicks).toHaveBeenCalledTimes(3);
+    expect(
+      clicks.mock.calls.some(([event]) => (event.target as Element).closest("a")),
+    ).toBe(true);
+    document.removeEventListener("click", clicks);
+  });
   it("uses approved highlights and honors an explicit full-photo mobile choice", async () => {
     const photo = new Photo({
       id: "crop",

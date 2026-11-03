@@ -17,6 +17,7 @@ import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { GalleryVisitorControls } from "./GalleryVisitorControls";
 import { GalleryTiles } from "./GalleryTiles";
 import { GalleryFilters } from "./GalleryFilters";
+import type { FilterGroup } from "@/src/domain/galleryFilterLayout";
 import { galleryDepartments } from "./galleryCategoryGroups";
 import {
   defaultGallerySettings,
@@ -38,9 +39,12 @@ import "./publicCatalog.css";
 export default function Gallery({
   browsePhotos = defaultBrowsePhotos,
   settings: previewSettings,
+  onArrangeFilters,
 }: {
   browsePhotos?: Pick<BrowsePhotos, "execute">;
   settings?: GallerySettings;
+  /** Curator's preview: the filter bar is arranged by dragging in place. */
+  onArrangeFilters?: (layout: FilterGroup) => void;
 }) {
   const [storedSettings, setStoredSettings] = useState(defaultGallerySettings);
   // The first page waits for the saved settings, whose layout shapes the request, so a
@@ -181,6 +185,10 @@ export default function Gallery({
     "Photos could not be loaded. Please wait a moment before retrying.",
     ready,
     true,
+    // Coming back from a photo shows the same page at once while it is checked again.
+    previewSettings
+      ? undefined
+      : `gallery:${JSON.stringify([page, seed, categoriesParam, settledSearch, layout, crops])}`,
   );
   const count = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));
@@ -249,6 +257,7 @@ export default function Gallery({
         settings={settings}
         selected={categoryIds}
         layout={settings.filterLayout}
+        onArrange={onArrangeFilters}
         anchor={paired && filtersFirst ? "start" : "end"}
         onChange={(ids) => {
           setCategoryIds(ids);

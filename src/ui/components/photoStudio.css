@@ -1494,3 +1494,21 @@ button[aria-pressed="true"] .collection-choice__check {
 
 /* The empty state brings its own drawing; the frame is the dashed card alone. */
 .photo-browser__empty { padding: 0; }
+
+/* Collections: room between texts and the edges of their boxes. */
+.collection-develop .photo-picker { padding: 1rem 1.15rem; }
+.collection-develop__stage { padding: 1.15rem 1.25rem; }
+.collection-develop__stage .collection-develop__hint { padding: 0 .15rem; }
+.collection-develop .inspector-section__body { padding: .9rem 1.1rem 1.1rem; }
+.collection-develop .inspector-section > summary { padding-left: 1.1rem; padding-right: 1.1rem; }
+/* The section shown alone is marked; View all shows them all again. */
+.collection-develop__inspector .photo-develop__tabs button[aria-pressed="true"] { background: #384e2b; color: #fff; }
+@media (max-width: 899px) {
+  .collection-develop__layout { grid-template-columns: minmax(0, 1fr); }
+  .collection-develop__inspector { position: static; }
+}
+/* Where a piece starts on wide screens: Auto follows the piece before. */
+.studio-start { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+.studio-start button { min-width: 2rem; padding: .3rem .5rem; border: 1px solid #d6dacd; border-radius: .45rem; background: #fff; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.studio-start button[aria-checked="true"] { background: #384e2b; border-color: #384e2b; color: #fff; }
+.studio-start button:disabled { opacity: .35; cursor: not-allowed; }

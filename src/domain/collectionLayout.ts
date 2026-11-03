@@ -51,12 +51,23 @@ export function spanIn(size: MosaicSize, layout: MosaicLayout) {
 export function spanStyle(size: MosaicSize): Record<string, number> {
   const wide = spanIn(size, "desktop");
   const phone = mobileSpan(size);
+  const column = fitColumn(size);
   return {
     "--span-columns": wide.columns,
     "--span-rows": wide.rows,
     "--span-mobile-columns": phone.columns,
     "--span-mobile-rows": phone.rows,
+    ...(column ? { "--start-column": column } : {}),
   };
+}
+
+/**
+ * The start column a piece keeps, pulled in so it never leaves the eight columns
+ * (a piece widened after choosing it moves left); null when it follows the flow.
+ */
+export function fitColumn(size: MosaicSize): number | null {
+  if (!size.column) return null;
+  return Math.max(1, Math.min(size.column, MOSAIC_COLUMNS - size.columns + 1));
 }
 
 export type PhotoBlock = CollectionEntry & { kind: "photo"; key: string };
@@ -87,8 +98,16 @@ export function mergeBlocks(
   const blocks: CollectionBlock[] = [];
   const takeTexts = (until: number) => {
     while (queue.length && queue[0].position <= until) {
-      const { text, style, align, columns, rows, mobileColumns, mobileRows } =
-        queue.shift()!;
+      const {
+        text,
+        style,
+        align,
+        columns,
+        rows,
+        mobileColumns,
+        mobileRows,
+        column,
+      } = queue.shift()!;
       blocks.push({
         kind: "text",
         key: newTextKey(),
@@ -99,6 +118,7 @@ export function mergeBlocks(
         rows,
         mobileColumns,
         mobileRows,
+        column,
       });
     }
   };
@@ -129,6 +149,8 @@ export function splitBlocks(
         rows: block.rows,
         mobileColumns: block.mobileColumns ?? null,
         mobileRows: block.mobileRows ?? null,
+        // Saved only when set: the API rewrites every piece, so leaving it out clears it.
+        ...(fitColumn(block) ? { column: fitColumn(block) } : {}),
         showTitle: block.showTitle ?? true,
         caption: block.caption?.trim() || null,
       });
@@ -142,6 +164,8 @@ export function splitBlocks(
         rows: block.rows,
         mobileColumns: block.mobileColumns ?? null,
         mobileRows: block.mobileRows ?? null,
+        // Saved only when set: the API rewrites every piece, so leaving it out clears it.
+        ...(fitColumn(block) ? { column: fitColumn(block) } : {}),
       });
   }
   return { entries, texts };

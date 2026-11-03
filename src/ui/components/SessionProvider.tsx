@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
+import { forgetAllReads } from "@/src/ui/recentReads";
 import {
   getCurrentUser,
   signIn,
@@ -30,6 +31,14 @@ type Props = {
 // while the answers were in flight.
 export function SessionProvider({ children, ports = defaultPorts }: Props) {
   const session = useSession(ports);
+  // What one account read is never shown to another: a private photo the
+  // administrator opened must not linger after signing out.
+  const userId = session.user?.getId() ?? null;
+  const previous = useRef(userId);
+  useEffect(() => {
+    if (previous.current !== userId) forgetAllReads();
+    previous.current = userId;
+  }, [userId]);
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
 }
 

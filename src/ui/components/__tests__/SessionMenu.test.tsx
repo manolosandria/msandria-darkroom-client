@@ -23,6 +23,11 @@ vi.mock("@/src/infrastructure/googleIdentity", () => ({
   disableGoogleAutoSelect: () => disableGoogleAutoSelect(),
 }));
 
+const mine = vi.fn();
+vi.mock("@/src/infrastructure/profileServices", () => ({
+  manageProfile: { mine: () => mine() },
+}));
+
 const { default: SessionMenu } = await import("../SessionMenu");
 const { SessionProvider } = await import("../SessionProvider");
 
@@ -51,6 +56,7 @@ const viewer = new User({
 });
 
 beforeEach(() => {
+  mine.mockRejectedValue(new Error("offline"));
   getCurrentUser.mockResolvedValue(null);
   signIn.mockResolvedValue(viewer);
   signOut.mockResolvedValue(undefined);
@@ -74,9 +80,23 @@ describe("SessionMenu", () => {
 
     renderMenu();
 
-    expect(await screen.findByText("Visitante")).toBeInTheDocument();
+    expect((await screen.findAllByText("Visitante"))[0]).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Your account"));
-    expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute("href", "/account");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/account");
+  });
+
+  it("shows the initial and links to the visitor's public profile", async () => {
+    getCurrentUser.mockResolvedValue(viewer);
+
+    renderMenu();
+
+    await userEvent.click(await screen.findByLabelText("Your account"));
+    expect(mine).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("V").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute(
+      "href",
+      "/profile/usr_viewer",
+    );
   });
 
   it("marks the administrator", async () => {
@@ -93,7 +113,7 @@ describe("SessionMenu", () => {
 
     renderMenu();
 
-    await screen.findByText("Visitante");
+    await screen.findAllByText("Visitante");
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
   });
 
@@ -131,7 +151,7 @@ describe("SessionMenu", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
 
-    expect(await screen.findByText("Visitante")).toBeInTheDocument();
+    expect((await screen.findAllByText("Visitante"))[0]).toBeInTheDocument();
   });
 
   // Flashing a sign-in button at someone who is already signed in reads as having

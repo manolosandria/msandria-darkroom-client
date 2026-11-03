@@ -155,6 +155,17 @@ export function removeFilterNode(root: FilterGroup, id: string): FilterGroup {
   }));
 }
 
+/** Removes the container `id` and leaves its pieces where it was, in its parent. */
+export function dissolveFilterGroup(root: FilterGroup, id: string): FilterGroup {
+  if (root.id === id) return root;
+  return mapGroups(root, (group) => ({
+    ...group,
+    children: group.children.flatMap((child) =>
+      child.id === id && child.type === "group" ? child.children : [child],
+    ),
+  }));
+}
+
 const contains = (node: FilterNode, id: string): boolean =>
   walkFilterLayout(node).some((entry) => entry.node.id === id);
 

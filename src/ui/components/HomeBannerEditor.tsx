@@ -101,7 +101,7 @@ function Editor() {
       setBusy(false);
     }
   }
-  function change(key: keyof HomeBanner, value: string | number) {
+  function change(key: keyof HomeBanner, value: string | number | boolean) {
     setDraft((previous) => ({ ...previous, [key]: value }));
     setNotice("");
   }
@@ -481,6 +481,16 @@ function Editor() {
                   },
                 ]}
               />
+              <label className="studio-check">
+                <input
+                  type="checkbox"
+                  checked={draft.photoLink === true}
+                  onChange={(event) =>
+                    change("photoLink", event.target.checked)
+                  }
+                />
+                Open the slide&apos;s link from anywhere on the photograph
+              </label>
               <label>
                 Banner height · {draft.bannerHeight ?? 620}px
                 <input

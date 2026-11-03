@@ -19,6 +19,7 @@ vi.mock("../ManageCollections", () => ({
   ),
 }));
 vi.mock("../HomeBannerEditor", () => ({ default: () => <p>Home studio</p> }));
+vi.mock("../SiteGeneralEditor", () => ({ default: () => <p>General studio</p> }));
 vi.mock("../CuratorDashboard", () => ({
   default: ({ onOpen }: { onOpen: (section: string) => void }) => (
     <button type="button" onClick={() => onOpen("Inbox")}>
@@ -124,7 +125,7 @@ describe("Curator", () => {
     expect(screen.getByText("Categories editor")).toBeVisible();
 
     await userEvent.click(screen.getByRole("button", { name: "Sections" }));
-    expect(screen.getByText("Home studio")).toBeVisible();
+    expect(screen.getByText("General studio")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Collections" }));
     expect(screen.getByText("Collections editor")).toBeVisible();
     // A visited section keeps its state while hidden.

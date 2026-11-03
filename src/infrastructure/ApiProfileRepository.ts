@@ -46,6 +46,8 @@ export class ApiProfileRepository implements ProfileRepository {
         id: entry.id,
         publicName: entry.publicName,
         profilePublic: false,
+        avatar: entry.avatar ? this.toPhoto(entry.avatar) : null,
+        cover: entry.cover ? this.toPhoto(entry.cover) : null,
       };
     return {
       ...this.toCard(entry),

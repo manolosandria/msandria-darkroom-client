@@ -587,3 +587,6 @@
   to { background-position: -150% 0, 0 0; }
 }
 @media (prefers-reduced-motion: reduce) { .home-carousel__photo { animation: none; } }
+
+/* With the banner's photo link on, the whole photograph says it opens. */
+.home-carousel__image[data-link] { cursor: pointer; }

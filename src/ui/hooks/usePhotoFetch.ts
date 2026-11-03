@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { forgetRead, recentRead, rememberRead } from "@/src/ui/recentReads";
 
 type FetchState<T> = {
   data: T | null;
@@ -27,27 +28,49 @@ export function usePhotoFetch<T>(
   // Keeps the last result on screen while the next one loads, so paging or filtering
   // does not blank the page and shift the layout.
   keepPrevious = false,
+  // With a key, what was read a moment ago under it shows at once (opening a photo
+  // again, coming back to Gallery) while the API is asked again; its answer, such as
+  // a photo that is no longer visible, replaces it.
+  cacheKey?: string,
 ) {
-  const [state, setState] = useState<FetchState<T>>(INITIAL_STATE);
+  const cachedState = (): FetchState<T> => {
+    const cached = cacheKey ? recentRead<T>(cacheKey) : undefined;
+    return cached === undefined
+      ? INITIAL_STATE
+      : { data: cached, loading: false, error: null };
+  };
+  const [state, setState] = useState<FetchState<T>>(cachedState);
   const request = useRef(0);
   const invalidate = useCallback(() => { request.current++; }, []);
 
   const fetch = useCallback(async () => {
     const current = ++request.current;
-    setState((previous) => ({
-      data: keepPrevious ? previous.data : null,
-      loading: true,
-      error: null,
-    }));
+    const cached = cacheKey ? recentRead<T>(cacheKey) : undefined;
+    setState((previous) =>
+      cached !== undefined
+        ? // Shown at once; the answer below confirms or replaces it.
+          { data: cached, loading: false, error: null }
+        : {
+            data: keepPrevious ? previous.data : null,
+            loading: true,
+            error: null,
+          },
+    );
     try {
       const result = await fetchPhotos();
-      if (current === request.current)
-        setState(toSettledState(result, emptyMessage));
+      if (current !== request.current) return;
+      const settled = toSettledState(result, emptyMessage);
+      if (cacheKey) {
+        if (settled.data !== null) rememberRead(cacheKey, settled.data);
+        else forgetRead(cacheKey);
+      }
+      setState(settled);
     } catch {
+      if (cacheKey) forgetRead(cacheKey);
       if (current === request.current)
         setState({ data: null, loading: false, error: failureMessage });
     }
-  }, [fetchPhotos, emptyMessage, failureMessage, keepPrevious]);
+  }, [fetchPhotos, emptyMessage, failureMessage, keepPrevious, cacheKey]);
 
   useEffect(() => {
     // Deferred to a microtask so the initial setState doesn't run

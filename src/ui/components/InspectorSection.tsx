@@ -10,6 +10,7 @@ export function InspectorSection({
   open,
   lazy = false,
   onToggle,
+  hidden,
   children,
 }: {
   id: string;
@@ -18,6 +19,8 @@ export function InspectorSection({
   open: boolean;
   lazy?: boolean;
   onToggle: (open: boolean) => void;
+  /** Left out while the inspector shows a single other section. */
+  hidden?: boolean;
   children: React.ReactNode;
 }) {
   // A lazy section mounts on first opening and then stays, keeping what it loaded.
@@ -28,6 +31,7 @@ export function InspectorSection({
       id={id}
       className="inspector-section"
       open={open}
+      hidden={hidden}
       onToggle={(event) => {
         if (event.currentTarget.open !== open)
           onToggle(event.currentTarget.open);

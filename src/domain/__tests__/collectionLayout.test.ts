@@ -129,3 +129,23 @@ describe("collection layout", () => {
     ]);
   });
 });
+
+describe("start columns", () => {
+  it("keeps a start column inside the grid and in the saved composition", async () => {
+    const { fitColumn, spanStyle, splitBlocks, mergeBlocks } = await import(
+      "../collectionLayout"
+    );
+    expect(fitColumn({ columns: 4, rows: 2, column: 7 })).toBe(5);
+    expect(fitColumn({ columns: 2, rows: 2 })).toBeNull();
+    expect(spanStyle({ columns: 2, rows: 2, column: 3 })).toMatchObject({
+      "--start-column": 3,
+    });
+    const blocks = mergeBlocks(
+      [{ photoId: "a", columns: 4, rows: 4, column: 1 }],
+      [{ position: 1, text: "Under it", columns: 4, rows: 1, column: 1 }],
+    );
+    const { entries, texts } = splitBlocks(blocks);
+    expect(entries[0].column).toBe(1);
+    expect(texts[0].column).toBe(1);
+  });
+});

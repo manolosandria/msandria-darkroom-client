@@ -19,10 +19,22 @@
   }
 }
 
+/* The site's palette and fonts come from Curator → Sections → General
+   (SiteSettingsProvider); until they load, the original look holds. */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--site-background, var(--background));
+  color: var(--site-text, var(--foreground));
+  font-family: var(--site-body-font, Arial, Helvetica, sans-serif);
+}
+/* Nothing may widen the page past the window: on a phone, one wide editor would make
+   the browser zoom out, and that zoom stays after moving to another page. `clip`
+   (not `hidden`) keeps sticky headers working. */
+html,
+body {
+  overflow-x: clip;
+}
+:where(h1, h2, h3) {
+  font-family: var(--site-heading-font, inherit);
 }
 
 /* Gallery in justified rows. Each tile asks for `ratio × row height` of width
@@ -401,7 +413,8 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
    custom properties, so one composition serves both; the editor forces one layout. */
 .collection-canvas { container-type: inline-size; }
 .collection-mosaic { --mosaic-columns: 8; --mosaic-gap: clamp(3px, .8cqw, 14px); display: grid; grid-template-columns: repeat(var(--mosaic-columns), minmax(0, 1fr)); grid-auto-rows: calc((100cqw - (var(--mosaic-columns) - 1) * var(--mosaic-gap)) / var(--mosaic-columns)); gap: var(--mosaic-gap); }
-.collection-mosaic > li { grid-column: span var(--span-columns, 2); grid-row: span var(--span-rows, 2); }
+/* A piece with its own start column sits there; the same column as the piece before puts it underneath. */
+.collection-mosaic > li { grid-column: var(--start-column, auto) / span var(--span-columns, 2); grid-row: span var(--span-rows, 2); }
 .collection-mosaic[data-layout=mobile] { --mosaic-columns: 4; }
 .collection-mosaic[data-layout=mobile] > li { grid-column: span var(--span-mobile-columns, 2); grid-row: span var(--span-mobile-rows, 2); }
 @container (max-width: 640px) {

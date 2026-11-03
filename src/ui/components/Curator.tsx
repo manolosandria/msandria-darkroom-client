@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import GalleryEditor from "./GalleryEditor";
 import PaletteManager from "./PaletteManager";
+import SiteGeneralEditor from "./SiteGeneralEditor";
 import HomeBannerEditor from "./HomeBannerEditor";
 import UploadPanel from "./UploadPanel";
 import ManagePhotos from "./ManagePhotos";
@@ -19,10 +20,10 @@ import { CuratorBackdropPicker, useCuratorBackdrop } from "./CuratorBackdrop";
 import "./curatorLayout.css";
 import "./curatorTheme.css";
 
-// The menu, by what each part is for: the public sections of the site, the palette
+// The menu, by what each part is for: the site as a whole and its public sections, the palette
 // library, the photographs and what is done with them, and the administration.
 export const curatorGroups = [
-  { name: "Sections", sections: ["Home", "Gallery", "Collections"] },
+  { name: "Sections", sections: ["General", "Home", "Gallery", "Collections"] },
   { name: "Palettes", sections: ["Palettes"] },
   { name: "Photos", sections: ["Photos", "Upload", "Categories", "Variants"] },
   { name: "Admin", sections: ["Dashboard", "Comments", "Inbox"] },
@@ -61,7 +62,9 @@ export default function Curator() {
   };
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("curatorSection") ?? "";
+      // A link may name the tab (`/curator?section=Dashboard`); otherwise the last one.
+      const asked = new URLSearchParams(window.location.search).get("section");
+      const stored = asked ?? sessionStorage.getItem("curatorSection") ?? "";
       const remembered = renamed[stored] ?? stored;
       if (sections.includes(remembered as Section))
         queueMicrotask(() => show(remembered as Section, false));
@@ -84,6 +87,13 @@ export default function Curator() {
     );
   const current = groupOf(section);
   const backdrop = useCuratorBackdrop();
+  // The tabs show and hide from one button. Wide screens start with them shown in a
+  // row; narrow ones start folded and open them as a centered column.
+  const [menuShown, setMenuShown] = useState(true);
+  useEffect(() => {
+    if (window.matchMedia?.("(max-width: 899px)").matches)
+      queueMicrotask(() => setMenuShown(false));
+  }, []);
   // The group whose menu was opened by a press (touch has no hover); pointing at a
   // group or tabbing into it opens its menu too.
   const [open, setOpen] = useState<string | null>(null);
@@ -130,10 +140,31 @@ export default function Curator() {
     <EditingBoundary>
       <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>
         <div className="curator-workspace" data-backdrop={backdrop.value}>
+          <button
+            type="button"
+            className="curator-menu-toggle"
+            aria-expanded={menuShown}
+            aria-controls="curator-tabs"
+            onClick={() => setMenuShown(!menuShown)}
+          >
+            <span aria-hidden="true">{menuShown ? "✕" : "☰"}</span>
+            <span className="curator-menu-toggle__group">{current.name}</span>
+            <span className="curator-menu-toggle__tab">{section}</span>
+          </button>
           <nav
             ref={setNav}
+            id="curator-tabs"
             aria-label="Curator sections"
             className="curator-tabs"
+            hidden={!menuShown}
+            onClick={(event) => {
+              // On narrow screens, choosing a tab folds the menu again.
+              if (
+                (event.target as Element).closest(".curator-tabs__menu button, .curator-tabs__trigger[aria-current]") &&
+                window.matchMedia?.("(max-width: 899px)").matches
+              )
+                setMenuShown(false);
+            }}
           >
             {curatorGroups.map((group) => {
               const active = group === current;
@@ -207,7 +238,7 @@ export default function Curator() {
             })}
             <CuratorBackdropPicker state={backdrop} />
           </nav>
-          {away && (
+          {away && menuShown && (
             <div className="curator-bubble">
               <span className="curator-bubble__face" tabIndex={0}>
                 <span aria-hidden="true">☰</span>
@@ -234,6 +265,7 @@ export default function Curator() {
           {panel("Collections", <ManageCollections only="Collections" />)}
           {panel("Categories", <ManageCollections only="Categories" />)}
           {panel("Variants", <ManageCollections variants />)}
+          {panel("General", <SiteGeneralEditor />)}
           {panel("Home", <HomeBannerEditor />)}
           {panel("Palettes", <PaletteManager />)}
           {panel("Gallery", <GalleryEditor />)}

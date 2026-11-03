@@ -1,13 +1,15 @@
 "use client";
 
 import "./navigation.css";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import SessionMenu from "./SessionMenu";
 import { useSessionValue } from "./SessionProvider";
 import { useCuratorNotifications } from "./CuratorNotifications";
+import { useSiteSettings } from "./SiteSettingsProvider";
+import { MenuButton, MenuIcon, MenuSheet } from "./MobileMenu";
 import { useHeaderVisibility } from "@/src/ui/hooks/useHeaderVisibility";
 
 function Chevron({ direction }: { direction: "up" | "down" }) {
@@ -25,9 +27,27 @@ function Chevron({ direction }: { direction: "up" | "down" }) {
   );
 }
 
+/** Whether the page has scrolled past the given element's height. */
+function useScrolledPast(element: HTMLElement | null, enabled: boolean) {
+  const [past, setPast] = useState(false);
+  useEffect(() => {
+    if (!enabled || !element) return;
+    const check = () => setPast(window.scrollY > element.offsetHeight);
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [element, enabled]);
+  return enabled && past;
+}
+
 export default function MainHeader() {
   const pathname = usePathname();
   const { user } = useSessionValue();
+  const { settings } = useSiteSettings();
   const notifications = useCuratorNotifications();
   const pending = (notifications?.comments ?? 0) + (notifications?.inbox ?? 0);
   // Offered to the administrator only, and only as a shortcut: the API turns down a
@@ -39,22 +59,60 @@ export default function MainHeader() {
   // toggle animates.
   const [animated, setAnimated] = useState(false);
   const panelId = useId();
-  const hideButton = useRef<HTMLButtonElement>(null);
-  const revealButton = useRef<HTMLButtonElement>(null);
-  const moveFocus = useRef(false);
+  const toggleButton = useRef<HTMLButtonElement>(null);
+  const [fold, setFold] = useState<HTMLDivElement | null>(null);
+  const [corner, setCorner] = useState<HTMLDivElement | null>(null);
+  const [cornerWidth, setCornerWidth] = useState(0);
+  const scrolled = useScrolledPast(
+    fold,
+    settings.header.hideOnScroll && !hidden,
+  );
+  // Folded by hand or scrolled out of view: the logo floats with the menu on the left
+  // and the account stays in the top-right corner.
+  const docked = hidden || scrolled;
+  // Phones open the links from a sheet: the header's three bars or the floating button.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Where the three bars sat when the header left, so the floating button flies from
+  // there and the visitor sees where the menu went.
+  const burger = useRef<HTMLButtonElement>(null);
+  const [burgerAt, setBurgerAt] = useState<DOMRect | null>(null);
+  const wasDocked = useRef(docked);
+  useLayoutEffect(() => {
+    if (docked && !wasDocked.current) {
+      // Measured now, before the header moves away; handed over right after.
+      const box = burger.current?.getBoundingClientRect() ?? null;
+      queueMicrotask(() => setBurgerAt(box && box.width ? box : null));
+    }
+    wasDocked.current = docked;
+  }, [docked]);
 
-  // The control just pressed disappears, so focus follows to its counterpart once the
-  // other one can take it.
+  // The corner floats over the header's row, which leaves it room.
   useEffect(() => {
-    if (!moveFocus.current) return;
-    moveFocus.current = false;
-    (hidden ? revealButton : hideButton).current?.focus();
-  }, [hidden]);
+    if (!corner || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      setCornerWidth(corner.offsetWidth);
+      // Curator's menu row, outside the header, leaves the same room.
+      document.documentElement.style.setProperty(
+        "--site-corner-width",
+        `${corner.offsetWidth}px`,
+      );
+    });
+    observer.observe(corner);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--site-corner-width");
+    };
+  }, [corner]);
 
-  function toggle(next: boolean) {
-    moveFocus.current = true;
+  function toggle() {
     setAnimated(true);
-    setHidden(next);
+    if (docked) {
+      setHidden(false);
+      if (scrolled) window.scrollTo({ top: 0, behavior: "smooth" });
+    } else setHidden(true);
+    // The same control stays where it was; a keyboard press keeps focus on it.
+    if (document.activeElement !== toggleButton.current)
+      toggleButton.current?.focus();
   }
 
   const links: [string, string][] = [
@@ -86,11 +144,18 @@ export default function MainHeader() {
     <div
       className="site-header"
       data-hidden={hidden ? "true" : "false"}
+      data-docked={docked ? "true" : undefined}
+      data-sticky={settings.header.hideOnScroll ? undefined : "true"}
+      data-style={settings.header.style}
       data-animated={animated ? "true" : undefined}
+      style={{ "--corner-width": `${cornerWidth}px` } as React.CSSProperties}
     >
-      <div className="site-header__fold" id={panelId} inert={hidden}>
+      <div className="site-header__fold" id={panelId} inert={hidden} ref={setFold}>
         <div className="site-header__fold-inner">
-          <header className="main-header">
+          <header
+            className="main-header"
+            data-align={settings.header.navAlign}
+          >
             <Link
               href="/"
               aria-label="Manolo Sandria — home"
@@ -104,71 +169,69 @@ export default function MainHeader() {
                 className="w-64 max-w-full xl:w-96 h-auto py-2 md:py-0"
               />
             </Link>
-            <div className="main-header__actions">
-              <nav aria-label="Main navigation" className="main-header__nav">
-                {navLinks}
-              </nav>
-              <div className="main-header__tools">
-                <SessionMenu />
-                <button
-                  ref={hideButton}
-                  type="button"
-                  className="main-header__hide"
-                  aria-label="Hide header"
-                  aria-controls={panelId}
-                  aria-expanded={!hidden}
-                  title="Hide header"
-                  onClick={() => toggle(true)}
-                >
-                  <Chevron direction="up" />
-                </button>
-              </div>
-            </div>
+            <nav aria-label="Main navigation" className="main-header__nav">
+              {navLinks}
+            </nav>
+            <button
+              ref={burger}
+              type="button"
+              className="main-header__burger"
+              aria-label="Open the menu"
+              aria-expanded={sheetOpen}
+              onClick={() => setSheetOpen(true)}
+            >
+              <MenuIcon />
+            </button>
           </header>
         </div>
       </div>
-      {/* Folded, the header is only its logo, floating translucent in the corner; the
-          menu opens under it on hover or keyboard focus, and the chevron pins the
-          header back. Nothing of it takes a row of the page. */}
-      <div className="site-header__dock" inert={!hidden}>
-        {hidden && (
+      {/* The account and the fold control, always in the top-right corner: in the
+          header's row while it shows, floating once it is gone. */}
+      <div className="site-header__corner" ref={setCorner}>
+        <SessionMenu />
+        <button
+          ref={toggleButton}
+          type="button"
+          className="main-header__hide"
+          aria-label={
+            docked
+              ? canPublish && pending > 0
+                ? `Show header, ${pending} pending notifications`
+                : "Show header"
+              : "Hide header"
+          }
+          aria-controls={panelId}
+          aria-expanded={!docked}
+          title={docked ? "Show the header" : "Hide header"}
+          onClick={toggle}
+        >
+          <Chevron direction={docked ? "down" : "up"} />
+          {docked && canPublish && pending > 0 && (
+            <span className="site-header__reveal-dot" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+      {/* Docked, the header is only its logo, floating translucent in the top-left
+          corner; the menu opens under it on hover or keyboard focus. */}
+      <div className="site-header__dock" inert={!docked}>
+        {docked && (
           <>
-            <div className="site-header__dock-pill">
-              <Link
-                href="/"
-                aria-label="Manolo Sandria — home"
+            <Link
+              href="/"
+              aria-label="Manolo Sandria — home"
+              className="site-header__dock-pill"
+            >
+              <Image
+                src="/images/branding/manolo-logo-black.svg"
+                alt=""
+                width={384}
+                height={96}
                 className="site-header__dock-logo"
-              >
-                <Image
-                  src="/images/branding/manolo-logo-black.svg"
-                  alt=""
-                  width={384}
-                  height={96}
-                />
-              </Link>
-              <button
-                ref={revealButton}
-                type="button"
-                className="site-header__reveal"
-                aria-label={
-                  canPublish && pending > 0
-                    ? `Show header, ${pending} pending notifications`
-                    : "Show header"
-                }
-                aria-controls={panelId}
-                aria-expanded={!hidden}
-                title="Show the header"
-                onClick={() => toggle(false)}
-              >
+              />
+              <span className="site-header__dock-hint" aria-hidden="true">
                 <Chevron direction="down" />
-                {canPublish && pending > 0 && (
-                  <span
-                    className="site-header__reveal-dot"
-                    aria-hidden="true"
-                  />
-                )}
-              </button>
-            </div>
+              </span>
+            </Link>
             <nav
               aria-label="Main navigation"
               className="site-header__dock-menu"
@@ -178,6 +241,16 @@ export default function MainHeader() {
           </>
         )}
       </div>
+      {docked && (
+        <MenuButton
+          from={burgerAt}
+          onOpen={() => setSheetOpen(true)}
+          badge={canPublish && pending > 0}
+        />
+      )}
+      <MenuSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
+        {navLinks}
+      </MenuSheet>
     </div>
   );
 }

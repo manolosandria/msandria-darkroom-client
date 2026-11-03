@@ -102,6 +102,30 @@ describe("MainHeader", () => {
     expect(screen.queryByRole("link", { name: "Curator" })).not.toBeInTheDocument();
   });
 
+  it("keeps the account in the corner and docks the logo once scrolled", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    renderHeader();
+    expect(
+      screen.queryByRole("link", { name: "Manolo Sandria — home", hidden: false }),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".site-header__dock-pill")).toBeNull();
+
+    act(() => {
+      Object.defineProperty(window, "scrollY", { value: 400, configurable: true });
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(document.querySelector(".site-header__dock-pill")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Show header" })).toBeInTheDocument();
+    // Only scrolled: the header keeps its place in the page.
+    expect(document.querySelector(".site-header__fold")).not.toHaveAttribute("inert");
+    act(() => {
+      Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(document.querySelector(".site-header__dock-pill")).toBeNull();
+  });
+
   describe("folding away", () => {
     function fold() {
       return document.querySelector(".site-header__fold");

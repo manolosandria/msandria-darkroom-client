@@ -11,10 +11,13 @@ import {
 import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import { GallerySettings } from "@/src/domain/entities/GallerySettings";
 import {
+  defaultFilterLayout,
+  filterElementLabels,
   FilterGroup,
   FilterNode,
   placedPieces,
 } from "@/src/domain/galleryFilterLayout";
+import { useFilterArrange } from "@/src/ui/hooks/useFilterArrange";
 import { galleryDepartments } from "./galleryCategoryGroups";
 
 /**
@@ -33,7 +36,8 @@ export function GalleryFilters({
   count,
   display,
   anchor = "end",
-  layout,
+  layout: savedLayout,
+  onArrange,
 }: {
   categories: CatalogCategory[];
   settings: Pick<GallerySettings, "departments" | "categories">;
@@ -52,7 +56,15 @@ export function GalleryFilters({
    * first line and the chosen filters and count the second.
    */
   layout?: FilterGroup;
+  /**
+   * In Curator's preview: the pieces and containers carry grips and can be dragged
+   * into place; the new tree comes back here.
+   */
+  onArrange?: (layout: FilterGroup) => void;
 }) {
+  // Arranging starts from the usual bar when there is no tree yet.
+  const layout = savedLayout ?? (onArrange ? defaultFilterLayout() : undefined);
+  const arrange = useFilterArrange(layout, onArrange);
   const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLElement>(null);
@@ -235,12 +247,35 @@ export function GalleryFilters({
       </div>
     );
   };
+  // While arranging, every node says where a drop would land.
+  const arrangeProps = (node: FilterNode) =>
+    arrange.active
+      ? {
+          "data-filter-node": node.id,
+          "data-drop":
+            arrange.drop?.targetId === node.id ? arrange.drop.mode : undefined,
+          "data-dragged": arrange.dragging === node.id || undefined,
+        }
+      : {};
+  const grip = (node: FilterNode, label: string) =>
+    arrange.active &&
+    node.id !== layout?.id && (
+      <span
+        className="gallery-browse__grip"
+        data-filter-grip={node.id}
+        title={`Drag ${label}`}
+        aria-hidden="true"
+      >
+        ⠿ {label}
+      </span>
+    );
   const nodeEl = (node: FilterNode): ReactNode => {
     const grow = node.grow ? " is-grow" : "";
     if (node.type === "group")
       return (
         <div
           key={node.id}
+          {...arrangeProps(node)}
           className={`gallery-browse__group${node.surface === "card" ? " is-card" : ""}${grow}`}
           data-direction={node.direction}
           style={{
@@ -259,6 +294,7 @@ export function GalleryFilters({
             flexWrap: node.wrap ? "wrap" : "nowrap",
           }}
         >
+          {grip(node, node.label || "Container")}
           {node.label && (
             <span className="gallery-browse__group-label">{node.label}</span>
           )}
@@ -286,8 +322,18 @@ export function GalleryFilters({
             view,
           }[node.type];
     if (!content) return null;
+    const label =
+      node.type === "department"
+        ? (allDepartments.find((item) => item.id === node.departmentId)
+            ?.label ?? "Department")
+        : filterElementLabels[node.type];
     return (
-      <div key={node.id} className={`gallery-browse__piece${grow}`}>
+      <div
+        key={node.id}
+        {...arrangeProps(node)}
+        className={`gallery-browse__piece${grow}`}
+      >
+        {grip(node, label)}
         {content}
       </div>
     );
@@ -295,7 +341,9 @@ export function GalleryFilters({
   return (
     <section
       ref={root}
-      className={`gallery-browse${layout ? " gallery-browse--arranged" : ""}`}
+      className={`gallery-browse${layout ? " gallery-browse--arranged" : ""}${arrange.active ? " is-arranging" : ""}`}
+      data-dragging={arrange.dragging ? "true" : undefined}
+      {...arrange.handlers}
       aria-label="Gallery filters"
       data-open={open || undefined}
       data-anchor={anchor}

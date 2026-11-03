@@ -9,6 +9,8 @@ import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { manageProfile } from "@/src/infrastructure/profileServices";
 import { rateLimitMessage } from "@/src/ui/rateLimitMessage";
 import { useSessionValue } from "./SessionProvider";
+import { Photo } from "@/src/domain/entities/Photo";
+import { UseAsProfilePhoto } from "./UseAsProfilePhoto";
 import "./profiles.css";
 
 export type ReactionPorts = Pick<typeof manageProfile, "reactions" | "react">;
@@ -20,9 +22,12 @@ export type ReactionPorts = Pick<typeof manageProfile, "reactions" | "react">;
  */
 export function PhotoReactions({
   photoId,
+  photo,
   ports = manageProfile,
 }: {
   photoId: string;
+  // With the photo, a signed-in visitor can also use it as profile photo or cover.
+  photo?: Photo;
   ports?: ReactionPorts;
 }) {
   const { user } = useSessionValue();
@@ -82,6 +87,7 @@ export function PhotoReactions({
         <span aria-hidden="true">{counts.favorited ? "★" : "☆"}</span>
         {counts.favorited ? "Saved" : "Save"}
       </button>
+      {photo && !signedOut && <UseAsProfilePhoto photo={photo} />}
       {error && (
         <span role="alert" className="text-xs text-red-700">
           {error}
