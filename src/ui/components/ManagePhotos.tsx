@@ -10,8 +10,14 @@ import {
   PublishedPhoto,
   PhotoUploadError,
 } from "@/src/domain/repositories/PhotoRepository";
-import { PhotoOptimizationIssue } from "@/src/domain/entities/PhotoOptimizationIssue";
-import { OptimizationIssueList } from "./OptimizationIssueList";
+import {
+  PhotoOptimizationIssue,
+  PhotoOptimizationIssueKind,
+} from "@/src/domain/entities/PhotoOptimizationIssue";
+import {
+  OptimizationIssueList,
+  optimizationIssueLabel,
+} from "./OptimizationIssueList";
 import { Photo, PhotoVisibility } from "@/src/domain/entities/Photo";
 import {
   Highlight,
@@ -39,8 +45,10 @@ import { HighlightEditor } from "./HighlightEditor";
 import { FrameFields } from "./FrameFields";
 import { PhotoImage } from "./PhotoImage";
 import {
+  automaticVariantCorner,
   PHOTO_TITLE_POSITIONS,
   PhotoTitlePosition,
+  PhotoVariantPosition,
 } from "@/src/domain/entities/PhotoTitlePosition";
 import { useSessionValue } from "./SessionProvider";
 import { VariantAssignment } from "./VariantAssignment";
@@ -59,6 +67,7 @@ import {
   PhotoVisibilityField,
 } from "./PhotoClassificationFields";
 import { EmptyState } from "./EmptyState";
+import { highlightViews, missingHighlights } from "@/src/ui/highlightViews";
 import {
   EditingBoundary,
   useEditingWorkspace,
@@ -124,17 +133,30 @@ function PhotoLibrary({
   pendingOnly: boolean;
   onPendingOnly: (value: boolean) => void;
 }) {
-  const loadPhotos = useCallback(
-    async () => ({
-      entries: pendingOnly
-        ? await getUnoptimizedPhotos.execute()
-        : ((await getManagedPhotos.execute()) ?? []).map((photo) => ({
-            photo,
-            optimizationIssues: [],
-          })),
-    }),
-    [pendingOnly],
-  );
+  // Every photo, with the file issues of those that have any: what needs attention is
+  // counted whether or not the list is narrowed to it.
+  const loadPhotos = useCallback(async () => {
+    // The issues only add warnings: without them the library still opens.
+    const [photos, unoptimized] = await Promise.all([
+      getManagedPhotos.execute(),
+      Promise.resolve()
+        .then(() => getUnoptimizedPhotos.execute())
+        .then((entries) => entries ?? [])
+        .catch(() => [] as PublishedPhoto[]),
+    ]);
+    const issues = new Map(
+      unoptimized.map((entry) => [
+        entry.photo.getId(),
+        entry.optimizationIssues,
+      ]),
+    );
+    return {
+      entries: (photos ?? []).map((photo) => ({
+        photo,
+        optimizationIssues: issues.get(photo.getId()) ?? [],
+      })),
+    };
+  }, []);
   const { data, loading, error, retry } = usePhotoFetch(
     loadPhotos,
     "No photos published yet.",
@@ -153,13 +175,21 @@ function PhotoLibrary({
     // Categories only narrow the list; without them the other filters still work.
     manageCatalog.load().then(setCatalog, () => setCatalog(null));
   }, []);
-  const listed = (data?.entries ?? [])
-    .map((entry) => revisions[entry.photo.getId()] ?? entry)
-    .filter(
-      (entry) =>
-        !pendingOnly ||
-        entry.optimizationIssues.some((issue) => issue.isPending()),
-    );
+  // Alert kinds left out of the list; none, so every alert shows at first.
+  const [hiddenAlerts, setHiddenAlerts] = useState<string[]>([]);
+  const all = (data?.entries ?? []).map(
+    (entry) => revisions[entry.photo.getId()] ?? entry,
+  );
+  const needing = all.filter((entry) => attentionOf(entry).length > 0);
+  const alertCounts = new Map<string, number>();
+  for (const entry of needing)
+    for (const kind of attentionOf(entry))
+      alertCounts.set(kind, (alertCounts.get(kind) ?? 0) + 1);
+  const listed = pendingOnly
+    ? needing.filter((entry) =>
+        attentionOf(entry).some((kind) => !hiddenAlerts.includes(kind)),
+      )
+    : all;
   const shown = new Set(
     filterPhotos(
       listed.map((entry) => entry.photo),
@@ -168,7 +198,7 @@ function PhotoLibrary({
     ),
   );
   const entries = listed.filter((entry) => shown.has(entry.photo));
-  const photos = listed.map((entry) => entry.photo);
+  const photos = all.map((entry) => entry.photo);
   function open(entry: PublishedPhoto) {
     const { photo, optimizationIssues } = entry;
     setSelected(photo);
@@ -202,7 +232,10 @@ function PhotoLibrary({
             onChange={setFilter}
             withCamera
           />
-          <label className="photo-studio__pending">
+          <label
+            className="photo-studio__pending"
+            data-alert={needing.length ? "" : undefined}
+          >
             <input
               type="checkbox"
               aria-label="Only photos needing optimization"
@@ -210,6 +243,14 @@ function PhotoLibrary({
               onChange={(event) => onPendingOnly(event.target.checked)}
             />
             <span aria-hidden="true">⚠</span> Needs optimization
+            {needing.length > 0 && (
+              <span
+                className="photo-studio__pending-count"
+                title={`${needing.length} ${needing.length === 1 ? "photo needs" : "photos need"} attention`}
+              >
+                {needing.length}
+              </span>
+            )}
           </label>
           {!selected && (
             <>
@@ -282,6 +323,47 @@ function PhotoLibrary({
             {listed.length === 1 ? "photo" : "photos"}
           </p>
         </div>
+        {needing.length > 0 && !pendingOnly && !selected && (
+          <p className="photo-studio__alert" role="status">
+            <span aria-hidden="true">⚠</span>
+            <span>
+              <strong>
+                {needing.length}{" "}
+                {needing.length === 1 ? "photo needs" : "photos need"} attention
+              </strong>{" "}
+              — {describeAlerts(alertCounts)}.
+            </span>
+            <button type="button" onClick={() => onPendingOnly(true)}>
+              Review them
+            </button>
+          </p>
+        )}
+        {pendingOnly && alertCounts.size > 0 && (
+          <fieldset className="photo-studio__alerts">
+            <legend>Show alerts for</legend>
+            {[...alertCounts].map(([kind, count]) => (
+              <label key={kind}>
+                <input
+                  type="checkbox"
+                  checked={!hiddenAlerts.includes(kind)}
+                  onChange={(event) =>
+                    setHiddenAlerts((previous) =>
+                      event.target.checked
+                        ? previous.filter((item) => item !== kind)
+                        : [...previous, kind],
+                    )
+                  }
+                />
+                {alertLabel(kind)} <small>{count}</small>
+              </label>
+            ))}
+            {hiddenAlerts.length > 0 && (
+              <button type="button" onClick={() => setHiddenAlerts([])}>
+                Show all
+              </button>
+            )}
+          </fieldset>
+        )}
         <nav
           className={`photo-browser photo-browser--${mode}`}
           aria-label="Published photos"
@@ -293,6 +375,8 @@ function PhotoLibrary({
             <div className="photo-browser__empty">
               {listed.length ? (
                 <EmptyState picture="search" title="No photos match these filters." quiet />
+              ) : pendingOnly && needing.length ? (
+                <EmptyState picture="search" title="No photos have the alerts chosen." quiet />
               ) : pendingOnly ? (
                 <EmptyState picture="done" title="No photos need optimization." quiet />
               ) : (
@@ -385,6 +469,26 @@ function LibraryIcon({ view }: { view: LibraryView }) {
   );
 }
 
+// What a photo still asks of the curator: its file's pending issues by kind, and
+// HIGHLIGHTS while any of the three main crops is missing.
+const HIGHLIGHTS_ALERT = "HIGHLIGHTS";
+function attentionOf({ photo, optimizationIssues }: PublishedPhoto): string[] {
+  const kinds = optimizationIssues
+    .filter((issue) => issue.isPending())
+    .map((issue) => issue.getKind() as string);
+  if (missingHighlights(photo.getHighlights()).length)
+    kinds.push(HIGHLIGHTS_ALERT);
+  return [...new Set(kinds)];
+}
+const alertLabel = (kind: string) =>
+  kind === HIGHLIGHTS_ALERT
+    ? "Missing highlights"
+    : optimizationIssueLabel(kind as PhotoOptimizationIssueKind);
+const describeAlerts = (counts: Map<string, number>) =>
+  [...counts]
+    .map(([kind, count]) => `${alertLabel(kind).toLowerCase()} (${count})`)
+    .join(", ");
+
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -404,9 +508,8 @@ function LibraryItem({
   onOpen: () => void;
 }) {
   const visibility = photo.getClassification().visibility;
-  const pending = optimizationIssues.filter((issue) =>
-    issue.isPending(),
-  ).length;
+  const alerts = attentionOf({ photo, optimizationIssues });
+  const pending = alerts.length;
   const badges = (
     <span className="photo-browser__badges" aria-hidden="true">
       {visibility !== "PUBLIC" && (
@@ -422,7 +525,10 @@ function LibraryItem({
         </span>
       )}
       {pending > 0 && (
-        <span data-warning title={`${pending} pending optimization`}>
+        <span
+          data-warning
+          title={alerts.map(alertLabel).join(", ")}
+        >
           ⚠
         </span>
       )}
@@ -579,6 +685,9 @@ function PhotoEditor({
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
   const [titlePosition, setTitlePosition] = useState(photo.getTitlePosition());
+  const [variantPosition, setVariantPosition] = useState(
+    photo.getVariantPosition(),
+  );
   const [frame, setFrame] = useState(photo.getFrame());
   const [classification, setClassification] = useState(
     photo.getClassification(),
@@ -608,6 +717,7 @@ function PhotoEditor({
     title !== photo.getTitle() ||
     description !== (photo.getDescription() ?? "") ||
     titlePosition !== photo.getTitlePosition() ||
+    variantPosition !== photo.getVariantPosition() ||
     JSON.stringify(frame) !== JSON.stringify(photo.getFrame()) ||
     JSON.stringify(highlights) !== JSON.stringify(photo.getHighlights()) ||
     JSON.stringify(classification) !==
@@ -617,6 +727,7 @@ function PhotoEditor({
     setDescription(photo.getDescription() ?? "");
     setHighlights(photo.getHighlights());
     setTitlePosition(photo.getTitlePosition());
+    setVariantPosition(photo.getVariantPosition());
     setFrame(photo.getFrame());
     setClassification(photo.getClassification());
     setFile(null);
@@ -644,6 +755,7 @@ function PhotoEditor({
         description,
         highlights,
         titlePosition,
+        variantPosition,
         frame,
         width: photo.getWidth(),
         height: photo.getHeight(),
@@ -803,6 +915,7 @@ function PhotoEditor({
         title={title}
         highlights={highlights}
         titlePosition={titlePosition}
+        variantPosition={variantPosition}
         visibility={classification.visibility}
       />
       <div className="photo-develop__inspector">
@@ -871,14 +984,27 @@ function PhotoEditor({
                   }}
                 />
               </label>
-              <TitleCorner
-                photo={photo}
-                value={titlePosition}
-                onChange={(next) => {
-                  setTitlePosition(next);
-                  changed();
-                }}
-              />
+              <div className="corner-pickers">
+                <TitleCorner
+                  photo={photo}
+                  value={titlePosition}
+                  onChange={(next) => {
+                    setTitlePosition(next);
+                    // The variants never share the title's corner: they step aside.
+                    if (next === variantPosition) setVariantPosition(null);
+                    changed();
+                  }}
+                />
+                <VariantCorner
+                  photo={photo}
+                  title={titlePosition}
+                  value={variantPosition}
+                  onChange={(next) => {
+                    setVariantPosition(next);
+                    changed();
+                  }}
+                />
+              </div>
             </div>,
           )}
           {section(
@@ -957,7 +1083,7 @@ function PhotoEditor({
               onActiveChange={(key) => setStageView(key ?? "original")}
               disabled={saving}
             />,
-            { summary: String(highlightViews(highlights).length - 1) },
+            { summary: String(highlightViews(highlights).length) },
           )}
           {section(
             "file",
@@ -1041,22 +1167,8 @@ function PhotoEditor({
 
 type StageView = { key: string; label: string; crop?: Highlight };
 
-function highlightViews(highlights: PhotoHighlights): StageView[] {
-  return [
-    { key: "original", label: "Original" },
-    ...(["square", "landscape", "portrait"] as const)
-      .filter((kind) => highlights[kind])
-      .map((kind) => ({
-        key: kind,
-        label: kind[0].toUpperCase() + kind.slice(1),
-        crop: highlights[kind],
-      })),
-    ...(highlights.custom ?? []).map((item) => ({
-      key: `custom:${item.id}`,
-      label: item.name,
-      crop: item.crop,
-    })),
-  ];
+function stageViews(highlights: PhotoHighlights): StageView[] {
+  return [{ key: "original", label: "Original" }, ...highlightViews(highlights)];
 }
 
 // The large preview: the whole photo, or any of its highlights shown big.
@@ -1067,6 +1179,7 @@ function PhotoStage({
   title,
   highlights,
   titlePosition,
+  variantPosition,
   visibility,
 }: {
   chosen: string;
@@ -1075,9 +1188,10 @@ function PhotoStage({
   title: string;
   highlights: PhotoHighlights;
   titlePosition: PhotoTitlePosition;
+  variantPosition: PhotoVariantPosition;
   visibility: PhotoVisibility;
 }) {
-  const views = highlightViews(highlights);
+  const views = stageViews(highlights);
   const view = views.find((item) => item.key === chosen) ?? views[0];
   const ratio = view.crop
     ? (photo.getAspectRatio() * view.crop.width) / view.crop.height
@@ -1131,6 +1245,20 @@ function PhotoStage({
               className={`photo-stage__title photo-stage__title--${titlePosition.toLowerCase().replace("_", "-")}`}
             >
               {title}
+            </span>
+          )}
+          {!view.crop && (
+            <span
+              className="photo-stage__variants"
+              data-corner={cornerName(
+                variantPosition ?? automaticVariantCorner(titlePosition),
+              )}
+              title="Variant thumbnails in the viewer"
+              aria-hidden="true"
+            >
+              <i />
+              <i />
+              <i />
             </span>
           )}
         </div>
@@ -1210,6 +1338,82 @@ function TitleCorner({
           </label>
         ))}
       </div>
+    </fieldset>
+  );
+}
+
+// The corner's name in class and data attributes: "bottom-left".
+const cornerName = (position: PhotoTitlePosition) =>
+  position.toLowerCase().replace("_", "-");
+
+// Where the viewer shows the variant thumbnails: any corner but the title's, or
+// Automatic, the other end of the title's edge.
+function VariantCorner({
+  photo,
+  title,
+  value,
+  onChange,
+}: {
+  photo: Photo;
+  title: PhotoTitlePosition;
+  value: PhotoVariantPosition;
+  onChange: (value: PhotoVariantPosition) => void;
+}) {
+  const name = useId();
+  const automatic = automaticVariantCorner(title);
+  return (
+    <fieldset
+      className="title-corner"
+      role="radiogroup"
+      aria-label="Variant thumbnails in the viewer"
+    >
+      <legend>Variant thumbnails in the viewer</legend>
+      <div
+        className="title-corner__photo"
+        style={{ aspectRatio: `${photo.getAspectRatio()}` }}
+      >
+        <PhotoImage
+          photo={photo}
+          maxWidth={320}
+          fallbackSizes="180px"
+          className="object-cover"
+        />
+        {PHOTO_TITLE_POSITIONS.map((position) => {
+          const taken = position === title;
+          const label = TITLE_POSITION_LABELS[position];
+          return (
+            <label
+              key={position}
+              className={`title-corner__spot title-corner__spot--variants title-corner__spot--${cornerName(position)}`}
+              data-taken={taken ? "" : undefined}
+              data-automatic={!value && position === automatic ? "" : undefined}
+              title={taken ? `${label}: the title is here` : label}
+            >
+              <input
+                type="radio"
+                name={name}
+                value={position}
+                aria-label={taken ? `${label} (taken by the title)` : label}
+                checked={value === position}
+                disabled={taken}
+                onChange={() => onChange(position)}
+              />
+              <span aria-hidden="true">{taken ? "Aa" : "▪▪▪"}</span>
+            </label>
+          );
+        })}
+      </div>
+      <label className="title-corner__automatic">
+        <input
+          type="radio"
+          name={name}
+          value=""
+          checked={value === null}
+          onChange={() => onChange(null)}
+        />
+        Automatic
+        <small>{TITLE_POSITION_LABELS[automatic].toLowerCase()}, across from the title</small>
+      </label>
     </fieldset>
   );
 }

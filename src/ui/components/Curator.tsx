@@ -34,6 +34,8 @@ const sections: readonly Section[] = curatorGroups.flatMap(
 );
 // Earlier names, so a remembered tab still opens.
 const renamed: Record<string, Section> = { Moderation: "Comments" };
+// The folded menu's pill, opened by a press like a group's menu.
+const DOCK = "__dock";
 const groupOf = (section: Section) =>
   curatorGroups.find((group) =>
     (group.sections as readonly Section[]).includes(section),
@@ -112,7 +114,11 @@ export default function Curator() {
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
-      if (!(event.target as Element).closest?.(".curator-tabs__group"))
+      if (
+        !(event.target as Element).closest?.(
+          ".curator-tabs__group, .curator-dock__nav",
+        )
+      )
         setOpen(null);
     };
     document.addEventListener("pointerdown", close);
@@ -140,17 +146,91 @@ export default function Curator() {
     <EditingBoundary>
       <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>
         <div className="curator-workspace" data-backdrop={backdrop.value}>
-          <button
-            type="button"
-            className="curator-menu-toggle"
-            aria-expanded={menuShown}
-            aria-controls="curator-tabs"
-            onClick={() => setMenuShown(!menuShown)}
-          >
-            <span aria-hidden="true">{menuShown ? "✕" : "☰"}</span>
-            <span className="curator-menu-toggle__group">{current.name}</span>
-            <span className="curator-menu-toggle__tab">{section}</span>
-          </button>
+          {menuShown ? (
+            <button
+              type="button"
+              className="curator-menu-toggle"
+              aria-expanded
+              aria-controls="curator-tabs"
+              aria-label="Hide the tabs"
+              title="Hide the tabs"
+              onClick={() => setMenuShown(false)}
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          ) : (
+            // Folded, the menu is one floating pill naming the open tab, like the site's
+            // docked logo: pointing at it, tabbing into it or pressing it opens every
+            // group under it. The backdrop swatches stay beside it.
+            <div className="curator-dock">
+              <div
+                className={`curator-dock__nav${open === DOCK ? " is-open" : ""}`}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse") setOpen(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setOpen(null);
+                }}
+              >
+                <button
+                  type="button"
+                  className="curator-dock__pill"
+                  aria-haspopup="true"
+                  aria-expanded={open === DOCK}
+                  aria-label={`Curator sections: ${current.name}, ${section}`}
+                  onClick={() => setOpen(open === DOCK ? null : DOCK)}
+                >
+                  <span className="curator-dock__group">{current.name}</span>
+                  <span className="curator-dock__tab">{section}</span>
+                  {!!pendingIn(current) && (
+                    <span className="curator-badge">{pendingIn(current)}</span>
+                  )}
+                  <svg
+                    className="curator-dock__hint"
+                    viewBox="0 0 12 12"
+                    width="10"
+                    height="10"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M2.5 4.5 6 8l3.5-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                <div
+                  className="curator-dock__menu"
+                  role="navigation"
+                  aria-label="Curator sections"
+                >
+                  {curatorGroups.map((group) => (
+                    <div key={group.name} className="curator-dock__group-list">
+                      <span className="curator-bubble__label">{group.name}</span>
+                      {group.sections.map(item)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="curator-dock__unfold"
+                aria-expanded={false}
+                aria-controls="curator-tabs"
+                aria-label="Show the tabs"
+                title="Show the tabs"
+                onClick={() => {
+                  setOpen(null);
+                  setMenuShown(true);
+                }}
+              >
+                <span aria-hidden="true">☰</span>
+              </button>
+              <CuratorBackdropPicker state={backdrop} />
+            </div>
+          )}
           <nav
             ref={setNav}
             id="curator-tabs"

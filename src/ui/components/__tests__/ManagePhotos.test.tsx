@@ -70,6 +70,7 @@ beforeEach(() => {
   // Most of these tests read the sections in one scroll; the tabs have their own.
   writeInspectorView("scroll");
   vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo]);
+  vi.mocked(getUnoptimizedPhotos.execute).mockResolvedValue([]);
   vi.mocked(savePhoto.execute).mockImplementation(async (updated) => {
     vi.mocked(getPhotoById.execute).mockResolvedValue(updated);
   });
@@ -287,6 +288,12 @@ describe("ManagePhotos", () => {
       width: 2400,
       height: 1600,
       renditions: [{ width: 640, url: "https://cdn/new.jpg" }],
+      // With every main highlight, nothing else keeps it in the pending list.
+      highlights: {
+        square: { x: 0, y: 0, width: 0.5, height: 0.5 },
+        landscape: { x: 0, y: 0, width: 1, height: 0.5 },
+        portrait: { x: 0, y: 0, width: 0.4, height: 1 },
+      },
     });
     vi.mocked(replacePhoto.execute).mockResolvedValue({
       photo: replacement,
@@ -301,7 +308,7 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
-    expect(await screen.findByText("GPS location")).toBeInTheDocument();
+    expect((await screen.findAllByText("GPS location")).length).toBeGreaterThan(0);
     const file = new File(["image"], "new.jpg", { type: "image/jpeg" });
     await userEvent.upload(screen.getByLabelText("Replacement file"), file);
     await userEvent.click(
@@ -422,8 +429,11 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
-    expect(await screen.findByRole("radio", { name: "Top left" })).toBeChecked();
-    await userEvent.click(screen.getByRole("radio", { name: "Bottom right" }));
+    const corners = await screen.findByRole("radiogroup", {
+      name: "Title corner in the viewer",
+    });
+    expect(within(corners).getByRole("radio", { name: "Top left" })).toBeChecked();
+    await userEvent.click(within(corners).getByRole("radio", { name: "Bottom right" }));
     await userEvent.click(
       screen.getAllByRole("button", { name: "Save changes" })[0],
     );
@@ -434,6 +444,99 @@ describe("ManagePhotos", () => {
     expect(
       vi.mocked(savePhoto.execute).mock.calls[0][0].getTitlePosition(),
     ).toBe("BOTTOM_RIGHT");
+  });
+
+  it("places the variant thumbnails in any corner but the title's", async () => {
+    vi.mocked(getPhotoById.execute).mockResolvedValue(
+      new Photo({
+        id: "photo",
+        title: "The coast",
+        width: 1800,
+        height: 1200,
+        titlePosition: "TOP_LEFT",
+        variantPosition: "BOTTOM_RIGHT",
+        renditions: [{ width: 1800, url: "https://cdn/detail.jpg" }],
+      }),
+    );
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "The coast" }),
+    );
+    const variants = await screen.findByRole("radiogroup", {
+      name: "Variant thumbnails in the viewer",
+    });
+    expect(within(variants).getByRole("radio", { name: "Bottom right" })).toBeChecked();
+    expect(
+      within(variants).getByRole("radio", { name: "Top left (taken by the title)" }),
+    ).toBeDisabled();
+    // Moving the title onto the variants' corner leaves them on Automatic.
+    const title = screen.getByRole("radiogroup", { name: "Title corner in the viewer" });
+    await userEvent.click(within(title).getByRole("radio", { name: "Bottom right" }));
+    expect(within(variants).getByRole("radio", { name: /^Automatic/ })).toBeChecked();
+    await userEvent.click(within(variants).getByRole("radio", { name: "Top right" }));
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Save changes" })[0],
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Accept" }),
+    );
+    await screen.findByText("Changes saved.");
+    const saved = vi.mocked(savePhoto.execute).mock.calls[0][0];
+    expect(saved.getTitlePosition()).toBe("BOTTOM_RIGHT");
+    expect(saved.getVariantPosition()).toBe("TOP_RIGHT");
+  });
+
+  it("warns about photos that need attention and filters them by alert", async () => {
+    const complete = new Photo({
+      id: "complete",
+      title: "Complete",
+      width: 640,
+      height: 480,
+      renditions: [{ width: 640, url: "https://cdn/complete.jpg" }],
+      highlights: {
+        square: { x: 0, y: 0, width: 0.5, height: 0.5 },
+        landscape: { x: 0, y: 0, width: 1, height: 0.5 },
+        portrait: { x: 0, y: 0, width: 0.4, height: 1 },
+      },
+    });
+    const located = new Photo({
+      id: "located",
+      title: "Located",
+      width: 640,
+      height: 480,
+      renditions: [{ width: 640, url: "https://cdn/located.jpg" }],
+      highlights: complete.getHighlights(),
+    });
+    vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo, complete, located]);
+    vi.mocked(getUnoptimizedPhotos.execute).mockResolvedValue([
+      {
+        photo: located,
+        optimizationIssues: [
+          new PhotoOptimizationIssue({
+            kind: "LOCATION",
+            resolution: "NEEDS_REUPLOAD",
+            unit: "TAG_COUNT",
+            currentValue: "2",
+            recommendedValue: "0",
+          }),
+        ],
+      },
+    ]);
+    show();
+    const alert = await screen.findByText(/2 photos need attention/);
+    expect(alert.closest("p")).toHaveTextContent("missing highlights (1)");
+    expect(alert.closest("p")).toHaveTextContent("gps location (1)");
+    await userEvent.click(screen.getByRole("button", { name: "Review them" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Only photos needing optimization" }),
+    ).toBeChecked();
+    expect(screen.getByRole("button", { name: "The coast" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Located" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Complete" })).not.toBeInTheDocument();
+    const alerts = screen.getByRole("group", { name: "Show alerts for" });
+    await userEvent.click(within(alerts).getByRole("checkbox", { name: /Missing highlights/ }));
+    expect(screen.queryByRole("button", { name: "The coast" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Located" })).toBeInTheDocument();
   });
 
   it("saves the frame, starting from the photo's own", async () => {

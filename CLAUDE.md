@@ -254,6 +254,17 @@ bottom right, top left or top right) so it does not get lost over a bright or bu
 area. It is set in `/manage` under **Title corner in the viewer**, by choosing a corner on a small copy of the photo, and saved with the
 other edits.
 
+The variant thumbnails (`ViewerVariants`) sit over the photo in a corner of their own
+(`variantPosition`), chosen beside it under **Variant thumbnails in the viewer**: any
+corner but the title's, which the picker shows locked, or **Automatic**, the other end of
+the title's edge (`getVariantCorner`). Moving the title onto the variants' corner sends
+them back to Automatic, and the API refuses the two in one corner. The stage of Photos
+draws where they will go. Deploy the API's `20261104000000_photo_variant_position`
+migration before this client.
+
+The info panel also lists the photo's **Highlights**, each crop in its own shape; choosing
+one shows it large under the row, and choosing it again folds it.
+
 ## Responsive photo delivery
 
 `PhotoImage` uses a native `<img>` with the API's rendition URLs and their exact
@@ -292,9 +303,13 @@ are 10 sign-in attempts/minute per IP, 30 upload attempts/minute per admin accou
 
 ## Photo maintenance
 
-On `/manage`, **Only photos needing optimization** queries admin-only
-`GET /photos/unoptimized`. Pending issues require another upload or export;
-`FIXED_ON_UPLOAD` entries remain history rather than pending work. An empty result
+On `/manage`, the library loads the admin listing and admin-only
+`GET /photos/unoptimized` together. A photo needs attention while its file has pending
+issues (`FIXED_ON_UPLOAD` entries remain history rather than pending work) or it lacks any
+of the three main highlights. When any does, **Needs optimization** turns amber with the
+count, and a line above the library names the kinds with **Review them**. **Only photos
+needing optimization** narrows the library to them, with a checkbox per kind of alert
+(**Missing highlights** and each file issue) under **Show alerts for**. An empty result
 is shown as a completed queue.
 
 **Replace file…**, the last section of the editor, chooses a replacement; a warning says the current file
@@ -639,11 +654,20 @@ beside each chosen one (covers come from the `photos` passed in, else an initial
 `VariantAssignment` picks the related photo from thumbnails; `inline` shows it open and
 loads at once.
 
-**Variants** (`VariantStudio`) lists works on the left, shows the open work as a large
-drop zone and the library as a strip below. Photos join a work by dragging, by ticking
-them in the strip, or by dropping image files (or **Upload files…**), which are
-uploaded through `UploadPhoto` with the visibility of the work's first photo and added
-to the draft. The work is saved only with **Save variants**.
+**Variants** (`VariantStudio`) lists works on the left, shows the open work on a dark
+stage and the library below, searchable and shown as a grid, a list (with visibility and
+work) or a filmstrip. Photos join a work by dragging, by ticking them in the library, or
+through the plasma **+** at the end of the stage, which opens the file browser and takes
+dropped files and library photos (it lights and turns as the New collection card does),
+or **Upload files…**. Each file waits as a card (`VariantUploads`) with its title,
+description, visibility, categories, collections and highlights, starting from the
+visibility of the work's main photo; **Upload** or **Upload all** sends them through
+`UploadPhoto`, up to three at a time, each with an abort signal: **Cancel** (or **Cancel
+all**) stops a waiting or travelling file and keeps its edits to try again (a file the
+API had already finished stays published). Uploaded files join the draft. The work's
+photos reorder by dragging or with the arrow keys (`useLiveSort`), and the star makes
+one the main variant, the first one and the cover. The work is saved only with **Save
+variants**, which waits while uploads run.
 
 Gallery's visitor controls are segmented icon buttons (native radios), and the Gallery
 studio previews inside a monitor or a phone chosen with two device buttons. In Curator →
@@ -941,6 +965,12 @@ naming the current group and tab; narrow screens start with them hidden and open
 a centered column, every group with its tabs, and choosing one folds them again.
 `/curator?section=<tab>` opens that tab: the account menu's **Admin** label opens
 Dashboard.
+
+Folded, the tabs become one floating pill (`curator-dock`) like the docked site logo: it
+names the group and the open tab, and pointing at it, tabbing into it or pressing it
+opens every group under it. Beside it, **☰** shows the tabs again and the backdrop
+swatches stay in reach. While the tabs show, an icon (**Hide the tabs**) at the start of
+their row folds them.
 
 **Collections editor.** The inspector's section buttons show that section alone, with
 **View all** to show them all. Each piece can start at a chosen wide-screen column

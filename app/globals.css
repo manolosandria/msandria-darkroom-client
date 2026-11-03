@@ -268,6 +268,20 @@ body {
 .photo-viewer__details dt { color: #737373; }
 .photo-viewer__details dd { text-align: right; }
 
+/* Highlights: each crop in its own shape, at one height; the chosen one opens large. */
+.photo-viewer__highlights { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.photo-viewer__highlights button { display: grid; gap: 0.3rem; justify-items: start; padding: 0; border: 0; background: none; color: #525252; font-size: 0.72rem; text-align: left; cursor: pointer; }
+.photo-viewer__highlight-image { position: relative; display: block; height: 4.5rem; max-width: 9rem; overflow: hidden; border-radius: 6px; background: #f2f2f2; box-shadow: 0 0 0 1px #00000014; transition: box-shadow 0.15s, transform 0.15s; }
+.photo-viewer__highlights button:hover .photo-viewer__highlight-image,
+.photo-viewer__highlights button:focus-visible .photo-viewer__highlight-image { transform: translateY(-2px); box-shadow: 0 0 0 1px #0003, 0 6px 14px -8px #0006; }
+.photo-viewer__highlights button[aria-pressed="true"] .photo-viewer__highlight-image { box-shadow: 0 0 0 2px #171717; }
+.photo-viewer__highlights button[aria-pressed="true"] small { color: #171717; font-weight: 600; }
+.photo-viewer__highlights button:focus-visible { outline: none; }
+.photo-viewer__highlight-large { margin: 0.9rem 0 0; display: grid; gap: 0.35rem; }
+.photo-viewer__highlight-large > span { position: relative; display: block; width: 100%; max-height: 22rem; overflow: hidden; border-radius: 8px; background: #f2f2f2; }
+.photo-viewer__highlight-large figcaption { font-size: 0.75rem; color: #737373; }
+@media (prefers-reduced-motion: reduce) { .photo-viewer__highlight-image { transition: none; } }
+
 /* Comments: cards stacked oldest first, with the box docked at the bottom of the panel
    so it stays in reach however long the conversation gets. */
 .photo-viewer__panel { display: flex; flex-direction: column; }

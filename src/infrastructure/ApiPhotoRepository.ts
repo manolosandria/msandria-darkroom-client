@@ -11,7 +11,10 @@ import {
   PhotoVisibility,
 } from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
-import { PhotoTitlePosition } from "../domain/entities/PhotoTitlePosition";
+import {
+  PhotoTitlePosition,
+  PhotoVariantPosition,
+} from "../domain/entities/PhotoTitlePosition";
 import { PhotoHighlights } from "../domain/entities/PhotoHighlights";
 import {
   PhotoOptimizationIssue,
@@ -61,6 +64,7 @@ type ApiPhoto = ApiPhotoListItem & {
   origin?: string;
   camera?: PhotoCamera;
   titlePosition?: PhotoTitlePosition;
+  variantPosition?: PhotoVariantPosition;
 };
 
 type ApiOptimizationIssue = {
@@ -142,7 +146,8 @@ export class ApiPhotoRepository
   // The file goes up untouched as `multipart/form-data`. `Content-Type` is left for the
   // browser to write, because only it knows the boundary that separates the parts;
   // setting the header by hand produces a body the API cannot read.
-  async upload(draft: PhotoDraft): Promise<PublishedPhoto> {
+  // `signal` stops the request; a file the API had already finished stays published.
+  async upload(draft: PhotoDraft, signal?: AbortSignal): Promise<PublishedPhoto> {
     const form = new FormData();
     form.append("file", draft.file);
     form.append("title", draft.title);
@@ -160,7 +165,7 @@ export class ApiPhotoRepository
       form.append("frameTopBottom", String(draft.frame.topBottom));
     }
 
-    const response = await this.send("POST", "/photos", form);
+    const response = await this.send("POST", "/photos", form, signal);
     if (!response.ok) throw await this.toUploadError(response);
 
     const entry = (await response.json()) as ApiReviewedPhoto;
@@ -251,6 +256,7 @@ export class ApiPhotoRepository
       description: entry.getDescription()?.trim() || null,
       highlights: entry.getHighlights(),
       titlePosition: entry.getTitlePosition(),
+      variantPosition: entry.getVariantPosition(),
       frame: entry.getFrame(),
       ...entry.getClassification(),
     });
@@ -292,7 +298,12 @@ export class ApiPhotoRepository
   // `credentials: "include"` is what makes the browser attach the session cookie to a
   // cross-origin call. Reads do not need a session today, but the API decides that per
   // route and an anonymous request would simply be told no.
-  private send(method: string, path: string, body?: BodyInit) {
+  private send(
+    method: string,
+    path: string,
+    body?: BodyInit,
+    signal?: AbortSignal,
+  ) {
     if (!this.baseUrl) {
       throw new Error(
         "NEXT_PUBLIC_API_URL is not set: the gallery cannot reach the API.",
@@ -305,6 +316,7 @@ export class ApiPhotoRepository
         ? { headers: { "Content-Type": "application/json" } }
         : {}),
       ...(body === undefined ? {} : { body }),
+      ...(signal ? { signal } : {}),
     });
   }
 
@@ -407,6 +419,7 @@ export class ApiPhotoRepository
           ? entry.frame
           : null,
       titlePosition: detail?.titlePosition,
+      variantPosition: detail?.variantPosition,
       metadata: {
         format: detail?.format,
         capturedAt: detail?.capturedAt,

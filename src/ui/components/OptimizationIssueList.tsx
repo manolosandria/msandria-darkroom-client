@@ -67,6 +67,10 @@ function adviceFor(kind: PhotoOptimizationIssueKind): Advice {
   return ADVICE[kind] ?? { label: kind, advice: "", showsMeasure: true };
 }
 
+// The short name of an issue, for filters and badges.
+export const optimizationIssueLabel = (kind: PhotoOptimizationIssueKind) =>
+  adviceFor(kind).label;
+
 // The API sends a number and the unit it is in, never a sentence. A unit this build does
 // not know, or a value that is not the number its unit promises, is printed as it came:
 // wrong on screen is better than hidden.
