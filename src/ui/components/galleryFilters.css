@@ -472,6 +472,10 @@
   display: flex;
   min-width: 0;
 }
+/* The outermost group keeps clear of the bar's border, as the usual bar does. */
+.gallery-browse--arranged > .gallery-browse__group {
+  padding: 0.75rem 0.9rem;
+}
 .gallery-browse--arranged .gallery-browse__group.is-card {
   padding: 0.6rem 0.75rem;
   border: 1px solid color-mix(in srgb, currentColor 16%, transparent);

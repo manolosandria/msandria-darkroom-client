@@ -1,7 +1,7 @@
 "use client";
 
 import "./navigation.css";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +10,6 @@ import { CuratorShortcut } from "./CuratorPill";
 import { useSessionValue } from "./SessionProvider";
 import { useCuratorNotifications } from "./CuratorNotifications";
 import { useSiteSettings } from "./SiteSettingsProvider";
-import { MenuButton, MenuIcon, MenuSheet } from "./MobileMenu";
 import { useHeaderVisibility } from "@/src/ui/hooks/useHeaderVisibility";
 
 function Chevron({ direction }: { direction: "up" | "down" }) {
@@ -27,6 +26,9 @@ function Chevron({ direction }: { direction: "up" | "down" }) {
     </svg>
   );
 }
+
+// Where the header trades its links for the three bars (navigation.css).
+const NARROW = "(max-width: 1100px)";
 
 /** Whether the page has scrolled past the given element's height. */
 function useScrolledPast(element: HTMLElement | null, enabled: boolean) {
@@ -68,25 +70,14 @@ export default function MainHeader() {
     fold,
     settings.header.hideOnScroll && !hidden,
   );
+  // On narrow screens the chevron brings a scrolled-away header back over the page,
+  // pinned to the top, instead of carrying the visitor back to the top of the page.
+  const [pinned, setPinned] = useState(false);
+  // Back at the top, the header is in its place again and needs no pin.
+  if (pinned && !scrolled) setPinned(false);
   // Folded by hand or scrolled out of view: the logo floats with the menu on the left
   // and the account stays in the top-right corner.
-  const docked = hidden || scrolled;
-  // Phones open the links from a sheet: the header's three bars or the floating button.
-  const [sheetOpen, setSheetOpen] = useState(false);
-  // Where the three bars sat when the header left, so the floating button flies from
-  // there and the visitor sees where the menu went.
-  const burger = useRef<HTMLButtonElement>(null);
-  const [burgerAt, setBurgerAt] = useState<DOMRect | null>(null);
-  const wasDocked = useRef(docked);
-  useLayoutEffect(() => {
-    if (docked && !wasDocked.current) {
-      // Measured now, before the header moves away; handed over right after.
-      const box = burger.current?.getBoundingClientRect() ?? null;
-      queueMicrotask(() => setBurgerAt(box && box.width ? box : null));
-    }
-    wasDocked.current = docked;
-  }, [docked]);
-
+  const docked = hidden || (scrolled && !pinned);
   // The corner floats over the header's row, which leaves it room.
   useEffect(() => {
     if (!corner || typeof ResizeObserver === "undefined") return;
@@ -107,9 +98,13 @@ export default function MainHeader() {
 
   function toggle() {
     setAnimated(true);
-    if (docked) {
+    if (pinned) setPinned(false);
+    else if (docked) {
       setHidden(false);
-      if (scrolled) window.scrollTo({ top: 0, behavior: "smooth" });
+      if (scrolled) {
+        if (window.matchMedia?.(NARROW).matches) setPinned(true);
+        else window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } else setHidden(true);
     // The same control stays where it was; a keyboard press keeps focus on it.
     if (document.activeElement !== toggleButton.current)
@@ -120,7 +115,6 @@ export default function MainHeader() {
     ["/", "Home"],
     ["/gallery", "Gallery"],
     ["/collections", "Collections"],
-    ...(canPublish ? ([["/curator", "Curator"]] as [string, string][]) : []),
     ["/contact", "Contact"],
   ];
   const navLinks = links.map(([href, label]) => (
@@ -130,14 +124,6 @@ export default function MainHeader() {
       aria-current={pathname === href ? "page" : undefined}
     >
       {label}
-      {href === "/curator" && pending > 0 && (
-        <span
-          className="curator-badge"
-          aria-label={`${pending} pending notifications`}
-        >
-          {pending}
-        </span>
-      )}
     </Link>
   ));
 
@@ -146,8 +132,10 @@ export default function MainHeader() {
       className="site-header"
       data-hidden={hidden ? "true" : "false"}
       data-docked={docked ? "true" : undefined}
+      data-pinned={pinned ? "true" : undefined}
       data-sticky={settings.header.hideOnScroll ? undefined : "true"}
-      data-style={settings.header.style}
+      data-tone={settings.header.tone}
+      data-material={settings.header.material}
       data-animated={animated ? "true" : undefined}
       style={{ "--corner-width": `${cornerWidth}px` } as React.CSSProperties}
     >
@@ -173,27 +161,16 @@ export default function MainHeader() {
             <nav aria-label="Main navigation" className="main-header__nav">
               {navLinks}
             </nav>
-            <button
-              ref={burger}
-              type="button"
-              className="main-header__burger"
-              aria-label="Open the menu"
-              aria-expanded={sheetOpen}
-              onClick={() => setSheetOpen(true)}
-            >
-              <MenuIcon />
-            </button>
           </header>
         </div>
       </div>
       {/* The account and the fold control, always in the top-right corner: in the
           header's row while it shows, floating once it is gone. */}
       <div className="site-header__corner" ref={setCorner}>
-        {/* The administrator always has Curator folded at hand; inside Curator its
-            own pill, lit, takes over. */}
-        {canPublish && !pathname?.startsWith("/curator") && (
-          <CuratorShortcut pending={pending} />
-        )}
+        {/* The page menu beside the account names the page; it holds the site's
+            links on small screens or once the header is gone, and the
+            administrator's Curator, lit inside Curator, everywhere. */}
+        <CuratorShortcut pending={pending} admin={canPublish} />
         <SessionMenu />
         <button
           ref={toggleButton}
@@ -218,45 +195,24 @@ export default function MainHeader() {
         </button>
       </div>
       {/* Docked, the header is only its logo, floating translucent in the top-left
-          corner; the menu opens under it on hover or keyboard focus. */}
+          corner and leading home; the page menu beside the account holds the links. */}
       <div className="site-header__dock" inert={!docked}>
         {docked && (
-          <>
-            <Link
-              href="/"
-              aria-label="Manolo Sandria — home"
-              className="site-header__dock-pill"
-            >
-              <Image
-                src="/images/branding/manolo-logo-black.svg"
-                alt=""
-                width={384}
-                height={96}
-                className="site-header__dock-logo"
-              />
-              <span className="site-header__dock-hint" aria-hidden="true">
-                <Chevron direction="down" />
-              </span>
-            </Link>
-            <nav
-              aria-label="Main navigation"
-              className="site-header__dock-menu"
-            >
-              {navLinks}
-            </nav>
-          </>
+          <Link
+            href="/"
+            aria-label="Manolo Sandria — home"
+            className="site-header__dock-pill"
+          >
+            <Image
+              src="/images/branding/manolo-logo-black.svg"
+              alt=""
+              width={384}
+              height={96}
+              className="site-header__dock-logo"
+            />
+          </Link>
         )}
       </div>
-      {docked && (
-        <MenuButton
-          from={burgerAt}
-          onOpen={() => setSheetOpen(true)}
-          badge={canPublish && pending > 0}
-        />
-      )}
-      <MenuSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
-        {navLinks}
-      </MenuSheet>
     </div>
   );
 }

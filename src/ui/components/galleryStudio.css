@@ -56,6 +56,11 @@
   overflow: hidden;
   background: var(--gallery-surface);
 }
+/* The grid's cells take the visitor's proportion; the photograph covers them from
+   its centre (or from its own crop, when it has one in that proportion). */
+.gallery-tiles--uniform .gallery-tile {
+  aspect-ratio: var(--cell-ratio, 1);
+}
 .gallery-tiles--random {
   display: block;
   position: relative;

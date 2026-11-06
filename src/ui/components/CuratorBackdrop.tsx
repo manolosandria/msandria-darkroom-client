@@ -17,18 +17,28 @@ let remembered: CuratorBackdrop = "meadow";
 const isBackdrop = (value: unknown): value is CuratorBackdrop =>
   curatorBackdrops.some((backdrop) => backdrop.id === value);
 
+// Curator wears the backdrop; the account menu in the header chooses it. Every user
+// of the hook hears a choice made anywhere.
+const CHANGED = "curator:backdrop";
+
 /** The chosen backdrop, kept per visitor in localStorage (guarded, else in memory). */
 export function useCuratorBackdrop() {
   const [value, setValue] = useState<CuratorBackdrop>(remembered);
   useEffect(() => {
+    const changed = () => setValue(remembered);
+    window.addEventListener(CHANGED, changed);
     queueMicrotask(() => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (isBackdrop(stored)) setValue(stored);
+        if (isBackdrop(stored)) {
+          remembered = stored;
+          setValue(stored);
+        }
       } catch {
         /* Keep the one in memory. */
       }
     });
+    return () => window.removeEventListener(CHANGED, changed);
   }, []);
   const choose = (next: CuratorBackdrop) => {
     remembered = next;
@@ -38,11 +48,12 @@ export function useCuratorBackdrop() {
     } catch {
       /* Remembered in memory only. */
     }
+    window.dispatchEvent(new Event(CHANGED));
   };
   return { value, choose };
 }
 
-/** A swatch at the end of the menu; pointing at it offers the backdrops. */
+/** One swatch per backdrop, in the account menu while Curator is open. */
 export function CuratorBackdropPicker({
   state,
 }: {

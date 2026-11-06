@@ -23,7 +23,6 @@ export default function CommentModeration() {
     <main className="upload-workspace">
       <div className="upload-container">
         <div className="upload-heading">
-          <span className="upload-eyebrow">CURATOR / COMMENTS</span>
           <h1>Review comments.</h1>
           <p>Nothing visitors write appears until you approve it. Deleting rejects it.</p>
         </div>

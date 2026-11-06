@@ -11,9 +11,11 @@ export type GalleryPalette = {
   accent: string;
   surface: string;
 };
+// `crops` holds the proportions offered for the grid (`uniform`); the other layouts
+// show every photograph in its own proportion and offer no such choice.
 export const defaultVisitorOptions: GalleryVisitorOptions = {
   layouts: ["random", "uniform", "justified"],
-  crops: ["mixed", "square", "rectangular"],
+  crops: ["square", "portrait", "landscape"],
 };
 export const defaultGalleryPalettes: GalleryPalette[] = [
   {
@@ -42,16 +44,21 @@ export const defaultGalleryPalettes: GalleryPalette[] = [
   },
 ];
 export const galleryLayoutLabels: Record<string, string> = {
-  uniform: "Squares",
-  random: "Random emphasis",
-  justified: "Natural proportions",
+  random: "Random",
+  uniform: "Grid",
+  justified: "Original",
 };
+/** The grid's proportions, by the shape of their cells. */
 export const galleryCropLabels: Record<string, string> = {
-  mixed: "Combined views",
-  square: "Square views",
-  rectangular: "Rectangular views",
-  portrait: "Portrait views",
-  landscape: "Landscape views",
+  square: "Square 1:1",
+  portrait: "Portrait 2:3",
+  landscape: "Landscape 3:2",
+};
+/** Width over height of a grid cell in each proportion. */
+export const gridProportionRatios: Record<string, number> = {
+  square: 1,
+  portrait: 2 / 3,
+  landscape: 3 / 2,
 };
 export type GalleryAppearance = {
   font: string;

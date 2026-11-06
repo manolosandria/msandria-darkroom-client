@@ -11,6 +11,7 @@ import {
   GalleryViewContext,
 } from "@/src/domain/photoPresentation";
 import { PackedTile, packGallery } from "./galleryPacking";
+import { gridProportionRatios } from "@/src/domain/entities/GallerySettings";
 export { galleryPriorities } from "./galleryPacking";
 
 export function GalleryTiles({
@@ -24,9 +25,9 @@ export function GalleryTiles({
 }) {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const seed = listed.map((tile) => tile.key).join("|");
-  // A tile without a view for the current context is left out rather than
-  // packed: the previous page stays on screen while the next one loads, and
-  // its photos may have no view for a crop shape chosen meanwhile.
+  // A tile without a view for the current layout is left out rather than packed:
+  // the previous page stays on screen while the next one loads, and its photos may
+  // have no view for a layout chosen meanwhile.
   const shown = listed.flatMap((tile) => {
     const photo =
       tile.variants.find((variant) => variant.getId() === selected[tile.key]) ??
@@ -52,6 +53,8 @@ export function GalleryTiles({
         {
           "--desktop-rows": desktop.rows,
           "--mobile-rows": mobile.rows,
+          // Every cell of the grid takes the chosen proportion.
+          "--cell-ratio": gridProportionRatios[context?.proportion ?? ""] ?? 1,
         } as CSSProperties
       }
     >

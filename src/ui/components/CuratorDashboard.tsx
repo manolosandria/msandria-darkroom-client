@@ -94,7 +94,6 @@ export default function CuratorDashboard({
     <main className="upload-workspace curator-dashboard">
       <div className="upload-container">
         <div className="upload-heading">
-          <span className="upload-eyebrow">CURATOR / DASHBOARD</span>
           <h1>What needs you.</h1>
         </div>
         {error && <p role="alert">{error}</p>}

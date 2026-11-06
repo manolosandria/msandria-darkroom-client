@@ -1,6 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { User, UserRole } from "@/src/domain/entities/User";
 import { SessionPorts } from "@/src/ui/hooks/useSession";
 import MainHeader from "../MainHeader";
@@ -62,23 +69,33 @@ describe("MainHeader", () => {
 
     renderHeader();
 
-    expect(screen.getByRole("link", { name: "Gallery" })).toHaveAttribute(
-      "href",
-      "/gallery",
-    );
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Main navigation" }),
+      ).getByRole("link", { name: "Gallery" }),
+    ).toHaveAttribute("href", "/gallery");
+    // The page menu beside the account holds the same links for small screens, and
+    // the three bars that used to open them are gone.
+    expect(
+      within(screen.getByRole("navigation", { name: "Site pages" })).getByRole(
+        "link",
+        { name: "Gallery" },
+      ),
+    ).toHaveAttribute("href", "/gallery");
+    expect(screen.queryByRole("button", { name: "Open the menu" })).toBeNull();
   });
 
-  it("offers the upload page to the administrator", async () => {
+  it("leaves Curator to the pill instead of the header's links", async () => {
     getCurrentUser.mockResolvedValue(accountOf("ADMIN"));
 
     renderHeader();
 
-    await waitFor(() =>
-      expect(screen.getByRole("link", { name: "Curator" })).toHaveAttribute(
-        "href",
-        "/curator",
-      ),
-    );
+    await screen.findByRole("button", { name: /^Curator and site pages/ });
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Main navigation" }),
+      ).queryByRole("link", { name: "Curator" }),
+    ).toBeNull();
   });
 
   it("keeps Curator folded at hand for the administrator, off outside Curator", async () => {
@@ -86,14 +103,25 @@ describe("MainHeader", () => {
 
     renderHeader();
 
+    // Outside Curator it names the page on show and stays off.
     const pill = await screen.findByRole("button", {
-      name: "Curator sections: Curator, Dashboard",
+      name: "Curator and site pages: Home",
     });
     expect(pill.closest(".curator-pill")).not.toHaveAttribute("data-lit");
     await userEvent.click(pill);
-    expect(screen.getByRole("link", { name: "Variants" })).toHaveAttribute(
+    const menu = screen.getByRole("navigation", { name: "Curator sections" });
+    expect(within(menu).getByRole("link", { name: "Variants" })).toHaveAttribute(
       "href",
       "/curator?section=Variants",
+    );
+    // The site's own pages come first, so the pill stands in for a folded header.
+    expect(
+      within(within(menu).getByRole("group", { name: "Site" })).getByRole("link", {
+        name: "Gallery",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/gallery",
     );
   });
 
@@ -141,6 +169,74 @@ describe("MainHeader", () => {
       window.dispatchEvent(new Event("scroll"));
     });
     expect(document.querySelector(".site-header__dock-pill")).toBeNull();
+  });
+
+  describe("bringing a scrolled-away header back", () => {
+    function scrollTo(y: number) {
+      act(() => {
+        Object.defineProperty(window, "scrollY", { value: y, configurable: true });
+        window.dispatchEvent(new Event("scroll"));
+      });
+    }
+    function narrow(matches: boolean) {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches, media: query }));
+    }
+    const header = () => document.querySelector(".site-header");
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      scrollTo(0);
+    });
+
+    it("pins it over the page on a narrow screen, where the visitor is", () => {
+      getCurrentUser.mockResolvedValue(null);
+      narrow(true);
+      const scroll = vi.fn();
+      window.scrollTo = scroll as typeof window.scrollTo;
+      renderHeader();
+      scrollTo(400);
+
+      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
+
+      expect(scroll).not.toHaveBeenCalled();
+      expect(header()).toHaveAttribute("data-pinned", "true");
+      expect(header()).not.toHaveAttribute("data-docked");
+      expect(document.querySelector(".site-header__dock-pill")).toBeNull();
+
+      // The same chevron lets it go again.
+      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
+      expect(header()).not.toHaveAttribute("data-pinned");
+      expect(header()).toHaveAttribute("data-docked", "true");
+    });
+
+    it("drops the pin once the page is back at the top", () => {
+      getCurrentUser.mockResolvedValue(null);
+      narrow(true);
+      window.scrollTo = vi.fn() as typeof window.scrollTo;
+      renderHeader();
+      scrollTo(400);
+      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
+
+      scrollTo(0);
+      scrollTo(400);
+
+      expect(header()).not.toHaveAttribute("data-pinned");
+      expect(header()).toHaveAttribute("data-docked", "true");
+    });
+
+    it("returns to the top on a wide screen", () => {
+      getCurrentUser.mockResolvedValue(null);
+      narrow(false);
+      const scroll = vi.fn();
+      window.scrollTo = scroll as typeof window.scrollTo;
+      renderHeader();
+      scrollTo(400);
+
+      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
+
+      expect(scroll).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(header()).not.toHaveAttribute("data-pinned");
+    });
   });
 
   describe("folding away", () => {
@@ -207,7 +303,7 @@ describe("MainHeader", () => {
       getCurrentUser.mockResolvedValue(accountOf("ADMIN"));
       notifications.current = { comments: 2, inbox: 1 };
       renderHeader();
-      await screen.findByRole("link", { name: /Curator/ });
+      await screen.findByRole("button", { name: /^Curator and site pages/ });
 
       fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
 

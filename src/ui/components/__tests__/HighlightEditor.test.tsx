@@ -365,7 +365,7 @@ it("edits distribution and aspect cells without enabling other layouts", async (
   const details = screen.getAllByText("Distribution & aspect eligibility");
   await userEvent.click(details[1]);
   await userEvent.click(
-    screen.getByRole("checkbox", { name: "Square in Random emphasis square" }),
+    screen.getByRole("checkbox", { name: "Square in Random square" }),
   );
   const rules = onChange.mock.lastCall![0].presentation.galleryRules;
   expect(

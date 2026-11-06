@@ -1,14 +1,26 @@
 Feature: Phone menu, "Use as", instant returns and arranging filters
 
   Scenario: The menu on a phone
-    Given I browse on a phone
-    Then the header shows the logo, three bars and my account
-    When I press the three bars
-    Then the links open in a sheet from the bottom
+    Given I browse Gallery on a phone
+    Then the header shows the logo, a "Gallery" menu and my account, and no three bars
+    When I open the "Gallery" menu
+    Then it lists the site's pages
+    And as the administrator it also lists every Curator group
     When I scroll past the header
-    Then a round menu button floats on an edge of the window
-    When I drag it near another edge
-    Then it settles on that edge and stays there on the next page
+    Then the same menu stays in the corner, and no other menu button floats
+
+  Scenario: A studio's tabs on a phone
+    Given I edit Home in Curator on a phone
+    When I scroll past its property tabs
+    Then they wait folded on the left edge
+    When I unfold them and choose Palette
+    Then the Palette controls show and the page scrolls back to them
+
+  Scenario: Folded Curator tabs on a small monitor
+    Given I am in Curator at 980 px wide
+    Then Home's preview and properties sit side by side
+    When I hide the tabs
+    Then no empty row is left, and the pill beside my account offers "Show Curator's tabs"
 
   Scenario: Using a photograph as my profile photo
     Given I am signed in and viewing a public photograph's info

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import "./navigation.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnProfile } from "@/src/domain/entities/Profile";
@@ -12,11 +13,14 @@ import { disableGoogleAutoSelect } from "@/src/infrastructure/googleIdentity";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { useSessionValue } from "./SessionProvider";
 import { useOptionalEditingWorkspace } from "./EditingWorkspace";
+import { CuratorBackdropPicker, useCuratorBackdrop } from "./CuratorBackdrop";
 
 export default function SessionMenu() {
   const disclosure = useRef<HTMLDetailsElement>(null);
   const session = useSessionValue();
   const editing = useOptionalEditingWorkspace();
+  const pathname = usePathname();
+  const backdrop = useCuratorBackdrop();
   const userId = session.user?.getId() ?? null;
   // The profile's photo and cover, asked once per account; without them the button
   // shows the person's initial.
@@ -67,6 +71,33 @@ export default function SessionMenu() {
     disableGoogleAutoSelect();
   }, [session]);
 
+  // A mouse opens the card by pointing at the account and closes it on leaving; a
+  // press still toggles it, and touch and keyboard work as before. A press right
+  // after the pointer opened it keeps it open instead of folding it again.
+  const hoverOpened = useRef(0);
+  const hover = {
+    onPointerEnter: (event: React.PointerEvent<HTMLDetailsElement>) => {
+      if (event.pointerType !== "mouse" || event.currentTarget.open) return;
+      event.currentTarget.open = true;
+      hoverOpened.current = Date.now();
+    },
+    onPointerLeave: (event: React.PointerEvent<HTMLDetailsElement>) => {
+      if (event.pointerType !== "mouse") return;
+      // Not while a field inside it is in use (the email link's input, a picker).
+      if (event.currentTarget.contains(document.activeElement) &&
+          document.activeElement?.matches("input, select, textarea"))
+        return;
+      event.currentTarget.open = false;
+    },
+    onClickCapture: (event: React.MouseEvent<HTMLDetailsElement>) => {
+      if (
+        (event.target as Element).closest("summary") &&
+        Date.now() - hoverOpened.current < 600
+      )
+        event.preventDefault();
+    },
+  };
+
   const closeOnLeave = {
     onBlur: (event: React.FocusEvent<HTMLDetailsElement>) => {
       // Only when focus moves somewhere else, as with Tab; a press is handled above.
@@ -105,7 +136,12 @@ export default function SessionMenu() {
   // in a card under it.
   if (!session.user) {
     return (
-      <details ref={disclosure} className="session-menu" {...closeOnLeave}>
+      <details
+        ref={disclosure}
+        className="session-menu"
+        {...closeOnLeave}
+        {...hover}
+      >
         <summary aria-label="Sign in" title="Sign in">
           <span className="session-menu__avatar" aria-hidden="true">
             <svg
@@ -139,8 +175,15 @@ export default function SessionMenu() {
     );
   }
 
+  const admin = session.user.isAdmin();
   return (
-    <details ref={disclosure} className="session-menu" {...closeOnLeave}>
+    <details
+      ref={disclosure}
+      className="session-menu"
+      data-admin={admin ? "" : undefined}
+      {...closeOnLeave}
+      {...hover}
+    >
       <summary aria-label="Your account" title="Your account">
         <Avatar photo={own?.avatar ?? null} name={session.user.getDisplayName()} />
         <span className="session-menu__name">
@@ -176,6 +219,13 @@ export default function SessionMenu() {
             </Link>
           )}
         </div>
+        {/* Curator's backdrop is chosen here, out of the way of its tabs. */}
+        {admin && pathname?.startsWith("/curator") && (
+          <div className="session-menu__backdrop">
+            <small>Curator backdrop</small>
+            <CuratorBackdropPicker state={backdrop} />
+          </div>
+        )}
         <nav className="session-menu__links" aria-label="Account">
           <Link href={`/profile/${session.user.getId()}`}>Profile</Link>
           <Link href="/account">Settings</Link>

@@ -1,10 +1,12 @@
-// Curator's menu, by what each part is for: the site as a whole and its public sections,
-// the palette library, the photographs and what is done with them, and the
+// Curator's menu, by what each part is for: the site as a whole, its public sections
+// and the palette library they share, the photographs and what is done with them, and the
 // administration. Shared by Curator itself and the shortcut the header offers the
 // administrator everywhere else.
 export const curatorGroups = [
-  { name: "Curator", sections: ["General", "Home", "Gallery", "Collections"] },
-  { name: "Palettes", sections: ["Palettes"] },
+  {
+    name: "Curator",
+    sections: ["General", "Home", "Gallery", "Collections", "Palettes"],
+  },
   { name: "Photos", sections: ["Photos", "Upload", "Categories", "Variants"] },
   { name: "Admin", sections: ["Dashboard", "Comments", "Inbox"] },
 ] as const;

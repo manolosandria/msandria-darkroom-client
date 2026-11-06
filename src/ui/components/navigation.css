@@ -1,19 +1,47 @@
-/* Site header. Its colours follow the header style chosen in Curator → Sections →
-   General (`data-style`) and its accent the site palette. */
+/* Site header. Its tone and material are chosen in Curator → Sections → General
+   (`data-tone`, `data-material`); the colours of each tone come from the custom
+   properties `SiteSettingsProvider` derives from the palette (`--header-light-*`,
+   `--header-dark-*`), with the original look as fallback, and its accent is the site's. */
 .site-header {
   --fold-ease:cubic-bezier(.22,.8,.24,1); --fold-time:.38s;
-  --header-bg:#f6f5f1; --header-line:#dfdfd5; --header-text:#30382d; --header-hover:#e8ebdf;
+  --tone-bg:var(--header-light-bg,#f6f5f1); --tone-text:var(--header-light-text,#30382d);
+  --tone-line:var(--header-light-line,#dfdfd5); --tone-hover:var(--header-light-hover,#e8ebdf);
+  --tone-logo:var(--header-light-logo,none); --glass-share:40%;
+  --header-bg:var(--tone-bg); --header-line:var(--tone-line); --header-text:var(--tone-text); --header-hover:var(--tone-hover);
   --header-accent:var(--site-accent,#61744e);
   --header-gutter:clamp(1rem,4vw,4rem);
   position:relative; z-index:30;
 }
-.site-header[data-style="dark"] { --header-bg:#171b1f; --header-line:#2b3238; --header-text:#eceae3; --header-hover:#2a3137; }
-.site-header[data-style="glass"] { --header-bg:#f6f5f1b8; --header-line:#ffffff70; --header-hover:#ffffffa0; }
+.site-header[data-tone="dark"] {
+  --tone-bg:var(--header-dark-bg,#171b1f); --tone-text:var(--header-dark-text,#eceae3);
+  --tone-line:var(--header-dark-line,#2b3238); --tone-hover:var(--header-dark-hover,#2a3137);
+  --tone-logo:var(--header-dark-logo,invert(1)); --glass-share:62%;
+}
+/* Automatic: the visitor's system decides. */
+@media (prefers-color-scheme: dark) {
+  .site-header[data-tone="auto"] {
+    --tone-bg:var(--header-dark-bg,#171b1f); --tone-text:var(--header-dark-text,#eceae3);
+    --tone-line:var(--header-dark-line,#2b3238); --tone-hover:var(--header-dark-hover,#2a3137);
+    --tone-logo:var(--header-dark-logo,invert(1)); --glass-share:62%;
+  }
+}
+/* Solid is opaque; glass lets the page through, blurred and brightened, so it only
+   looks different where something passes behind it (a sticky header, a photo). */
+.site-header[data-material="glass"] {
+  --header-bg:color-mix(in srgb,var(--tone-bg) var(--glass-share),transparent);
+  --header-line:color-mix(in srgb,var(--tone-line) 55%,transparent);
+  --header-hover:color-mix(in srgb,var(--tone-text) 10%,transparent);
+}
 .site-header[data-sticky] { position:sticky; top:0; }
+/* Brought back by hand on a narrow screen while scrolled: it sticks over the page
+   where the visitor is reading, until the chevron or a return to the top lets it go. */
+.site-header[data-pinned] { position:sticky; top:0; z-index:65; }
+.site-header[data-pinned] .main-header { animation:header-pin-in .3s var(--fold-ease) both; box-shadow:0 10px 30px #1a20181f; }
+@keyframes header-pin-in { from { transform:translateY(-100%); } }
 
 .main-header { display:flex; align-items:center; gap:1rem 2rem; min-height:4.2rem; padding:.6rem var(--header-gutter); padding-right:calc(.75rem + var(--corner-width,0px) + 1.5rem); background:var(--header-bg); border-bottom:1px solid var(--header-line); color:var(--header-text); }
-.site-header[data-style="glass"] .main-header { backdrop-filter:blur(14px) saturate(1.3); box-shadow:0 10px 30px #1a201812; }
-.site-header[data-style="dark"] .main-header__brand img { filter:invert(1); }
+.site-header[data-material="glass"] .main-header { backdrop-filter:blur(20px) saturate(1.7) brightness(1.06); box-shadow:inset 0 1px 0 #ffffff4d,0 10px 30px #1a201814; }
+.main-header__brand img { filter:var(--tone-logo); }
 .main-header__brand { flex:0 1 240px; }
 .main-header__brand img { width:100%; }
 .main-header__nav { display:flex; align-items:center; flex-wrap:wrap; gap:.25rem; flex:1; }
@@ -50,8 +78,8 @@
 .main-header__hide:active { transform:scale(.94); }
 .site-header__reveal-dot { position:absolute; top:4px; right:4px; width:8px; height:8px; border-radius:50%; background:var(--header-accent); box-shadow:0 0 0 2px #f6f5f1; }
 
-/* Docked: the logo floats translucent in the top-left corner, over the page;
-   pointing at it or tabbing into it opens the menu under it. */
+/* Docked: the logo floats translucent in the top-left corner, over the page, and
+   leads home; the page menu beside the account holds the links. */
 .site-header__dock { position:fixed; top:.6rem; left:.75rem; z-index:70; display:none; }
 .site-header[data-docked] .site-header__dock { display:block; }
 .site-header[data-animated][data-docked] .site-header__dock,
@@ -60,15 +88,6 @@
 .site-header__dock-pill { display:flex; align-items:center; gap:.6rem; padding:0 1rem 0 1.1rem; transition:background .2s,box-shadow .2s; }
 .site-header__dock:hover .site-header__dock-pill,.site-header__dock:has(:focus-visible) .site-header__dock-pill { background:#f6f5f1f2; box-shadow:0 8px 26px #1a201826; }
 .site-header__dock-logo { display:block; width:118px; height:auto; }
-.site-header__dock-hint { display:grid; place-items:center; color:#5d6656; transition:transform .2s; }
-.site-header__dock:hover .site-header__dock-hint,.site-header__dock:has(:focus-visible) .site-header__dock-hint { transform:rotate(180deg); }
-.site-header__dock-menu { position:absolute; top:100%; left:0; display:grid; min-width:200px; margin-top:.4rem; padding:.35rem; border:1px solid #dce0d4; border-radius:14px; background:#fbfbf8f5; box-shadow:0 18px 40px #17211629; backdrop-filter:blur(10px); opacity:0; visibility:hidden; transform:translateY(-6px); transition:opacity .18s,transform .18s,visibility 0s .18s; }
-/* A bridge over the gap, so the pointer can travel from the logo to the menu. */
-.site-header__dock-menu::before { content:""; position:absolute; inset:-.5rem 0 100% 0; }
-.site-header__dock:hover .site-header__dock-menu,.site-header__dock:has(:focus-visible) .site-header__dock-menu { opacity:1; visibility:visible; transform:none; transition:opacity .18s,transform .18s,visibility 0s; }
-.site-header__dock-menu a { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.55rem .75rem; border-radius:9px; font-size:.88rem; font-weight:600; color:#30382d; transition:background .15s,color .15s,padding .15s; }
-.site-header__dock-menu a:hover,.site-header__dock-menu a:focus-visible { background:#e8ebdf; color:#253d22; padding-left:.95rem; }
-.site-header__dock-menu a[aria-current] { background:#dfe6d3; box-shadow:inset 3px 0 0 var(--header-accent); }
 
 /* A page under a header folded by hand moves down below the floating pills instead
    of running into them; a transparent border shows the page's own background. */
@@ -108,6 +127,17 @@
 .session-menu__identity { display:grid; justify-items:center; gap:.2rem; padding:0 1.2rem 1rem; text-align:center; }
 .session-menu__identity small { color:#72796c; }
 .session-menu__role { margin-top:.3rem; padding:.1rem .55rem; border-radius:999px; background:#30382d; color:#fff; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+/* Opened by pointing at it: a bridge over the gap keeps it open on the way down. */
+.session-menu[open]::before { content:""; position:absolute; left:0; right:0; top:100%; height:14px; }
+/* The administrator's account wears a thin moving ring of Curator's plasma and a
+   soft glow, so the role shows without a word. */
+.session-menu[data-admin] summary { box-shadow:0 0 14px -4px #6b55a366; }
+.session-menu[data-admin] summary::before { content:""; position:absolute; inset:0; padding:1.5px; border-radius:inherit; background:linear-gradient(90deg,#4d6b3a,#a9d77c,#2e7a72,#6b55a3,#e4b86a,#4d6b3a) 0 0/300% 100%; -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0); animation:admin-ring 9s linear infinite; pointer-events:none; }
+.session-menu[data-admin] summary:hover,.session-menu[data-admin][open] summary { box-shadow:0 0 18px -3px #6b55a380; }
+@keyframes admin-ring { to { background-position:300% 0; } }
+@media(prefers-reduced-motion:reduce) { .session-menu[data-admin] summary::before { animation:none; } }
+.session-menu__backdrop { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.55rem .9rem; border-top:1px solid #eceee6; }
+.session-menu__backdrop small { color:#72796c; font-size:.78rem; }
 .session-menu__links { display:grid; padding:.4rem; border-top:1px solid #eceee6; }
 .session-menu__links a,.session-menu__links button { padding:.6rem .8rem; border-radius:.5rem; text-align:left; font-size:.9rem; cursor:pointer; }
 .session-menu__links a:hover,.session-menu__links button:hover { background:#eef1e7; }
@@ -130,28 +160,10 @@
 .session-menu__panel--sign-in small { color:#72796c; }
 .session-menu__panel--sign-in .session-menu__sign-in { justify-content:flex-start; margin-top:.4rem; }
 
-/* Phones: the links open from a sheet, from the header's three bars or from a round
-   button that floats on an edge of the window and can be dragged to another. */
-.main-header__burger,.menu-button { display:none; }
-.main-header__burger { place-items:center; width:40px; height:40px; border-radius:50%; color:inherit; cursor:pointer; }
-.main-header__burger:hover { background:var(--header-hover); }
-.menu-button { position:fixed; z-index:75; place-items:center; width:52px; height:52px; border:1px solid #ffffff80; border-radius:50%; background:#f6f5f1e6; color:#30382d; box-shadow:0 8px 24px #1a201833; backdrop-filter:blur(12px) saturate(1.3); cursor:grab; touch-action:none; transition:left .25s var(--fold-ease),right .25s var(--fold-ease),top .25s var(--fold-ease),bottom .25s var(--fold-ease); }
-.menu-button.is-dragging { cursor:grabbing; transition:none; box-shadow:0 14px 34px #1a201844; }
-.menu-sheet { position:fixed; inset:0; z-index:90; display:flex; align-items:flex-end; background:#10140f55; backdrop-filter:blur(2px); animation:sheet-fade .2s ease both; }
-.menu-sheet__panel { display:grid; gap:.2rem; width:100%; max-height:80vh; overflow:auto; padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border-radius:1.2rem 1.2rem 0 0; background:#fbfbf8; box-shadow:0 -12px 40px #17211633; animation:sheet-up .28s var(--fold-ease,ease) both; }
-.menu-sheet__panel::before { content:""; justify-self:center; width:40px; height:4px; margin-bottom:.6rem; border-radius:4px; background:#cfd3c6; }
-.menu-sheet__panel a { display:flex; align-items:center; justify-content:space-between; padding:.9rem 1rem; border-radius:.8rem; font-size:1rem; font-weight:600; color:#30382d; }
-.menu-sheet__panel a:hover,.menu-sheet__panel a:focus-visible { background:#eef1e7; }
-.menu-sheet__panel a[aria-current] { background:#dfe6d3; box-shadow:inset 3px 0 0 var(--site-accent,#61744e); }
-@keyframes sheet-up { from { transform:translateY(100%); } }
-@keyframes sheet-fade { from { opacity:0; } }
+/* Small screens: the links leave the header for the page menu beside the account. */
 @media(max-width:1100px) {
   .main-header { flex-wrap:nowrap; min-height:4.2rem; padding-top:.6rem; padding-bottom:.6rem; }
   .main-header__nav { display:none; }
-  .main-header__burger { display:grid; margin-left:auto; }
-  .menu-button { display:grid; }
-  .site-header__dock-menu,.site-header__dock-hint { display:none; }
 }
-@media(prefers-reduced-motion:reduce) { .menu-sheet,.menu-sheet__panel,.menu-button { animation:none; transition:none; } }
 
 a.session-menu__role:hover,a.session-menu__role:focus-visible { background:var(--site-accent,#384e2b); }

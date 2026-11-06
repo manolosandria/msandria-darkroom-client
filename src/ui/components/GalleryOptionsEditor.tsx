@@ -20,11 +20,13 @@ export function GalleryOptionsEditor({
       <legend>Visitor controls</legend>
       <p>
         Light up what visitors can choose. At least one stays on in each group.
+        Proportions apply to the grid: a photograph without a crop in that
+        proportion is cut from its centre.
       </p>
       {(
         [
-          ["layouts", "Distributions", galleryLayoutLabels],
-          ["crops", "View shapes", galleryCropLabels],
+          ["layouts", "Layouts", galleryLayoutLabels],
+          ["crops", "Grid proportions", galleryCropLabels],
         ] as const
       ).map(([key, title, labels]) => (
         <fieldset key={key} className="gallery-option-tiles">

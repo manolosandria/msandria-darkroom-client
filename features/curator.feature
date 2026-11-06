@@ -1,14 +1,18 @@
 Feature: Curator workspace
   Scenario: One place for the administrator
     Given I am signed in as the administrator
-    Then the header offers "Curator" instead of "Upload"
+    Then the page menu beside my account offers Curator, and the header's links do not
     And it shows how many comments await moderation and how many messages are unread
     When I open Curator
-    Then the menu groups Sections, Palettes, Photos and Admin
+    Then its row of tabs starts folded and its screens head with their title alone
+    When I bring the row back from the page menu
+    Then the menu groups Curator (with Palettes), Photos and Admin
     When I point at a group
     Then its tabs open under it with the open one marked
-    When I scroll the menu out of view
-    Then a bubble in the corner names the open tab and lists every group
+    And the pill beside my account reads CURATOR with the open tab, lit
+    When I choose a tab from that pill
+    Then Curator shows it without leaving the page
+    And the pill's menu also lists the site's pages
     And Dashboard counts what waits and opens each tab
     And a section I visited keeps its unsaved state while I look at another
 
@@ -54,7 +58,7 @@ Feature: Curator workspace
 
   Scenario: A backdrop for Curator
     Given I am signed in as the administrator
-    When I choose a backdrop at the end of Curator's menu
+    When I choose a backdrop in my account card while Curator is open
     Then Curator wears that gradient, still when motion is reduced
     And the choice is remembered in this browser
 
@@ -72,3 +76,11 @@ Feature: Curator workspace
     Then the public gallery shows them in the bar instead of the Filters panel
     When I choose "Use the usual bar"
     Then the gallery keeps the bar it always had
+
+  Scenario: The pill outside Curator and the account card
+    Given I am signed in as the administrator
+    When I open Gallery
+    Then the pill beside my account reads CURATOR Gallery, unlit, and links into Curator
+    And my account wears a thin moving ring
+    When I point at my account with the mouse
+    Then its card opens, and it closes when the pointer leaves

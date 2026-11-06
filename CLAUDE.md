@@ -67,8 +67,8 @@ only on `domain` interfaces, and `infrastructure` supplies the implementations. 
 component reaches the API through a use case, never with its own `fetch`.
 
 `/curator` gathers the administrator's screens as tabs and is what the header offers
-the administrator, as **Curator** with a count of pending comments and unread
-messages; see "Curator" below. `/upload` publishes through the API's `POST /photos`.
+the administrator through the page menu beside the account, with a count of pending
+comments and unread messages; see "Curator" below. `/upload` publishes through the API's `POST /photos`.
 `/manage` edits what is already published, through `PATCH /photos/:id`, and is
 reached from a link on `/upload` or the Photos tab rather than from the header.
 
@@ -327,7 +327,7 @@ logo, navigation and session controls, including the Google sign-in button.
 The chevron in the top-right corner, beside the account, folds the header away
 (`MainHeader`). Folded, it takes no row of the page: only its logo floats, translucent,
 in the top-left corner, and
-pointing at it or tabbing into it opens the navigation under it; the same chevron, in the
+it leads home and the page menu beside the account holds the links; the same chevron, in the
 top-right corner (**Show header**), brings the header back. Focus follows to whichever control
 remains, the folded header is `inert`, and reduced motion drops the animation. The
 choice is kept in `localStorage` under `headerHidden` (`headerPreference`, guarded like
@@ -422,8 +422,7 @@ mosaic, and the collection's `description` appears above it in the gallery. The
 admin photo listing includes visibility for collection warnings, while the public compact listing does not. Contact's `noValidate` form
 checks validity and shows English errors itself; email ownership is still unverified.
 
-`/curator` (`Curator`) is the administrator's workspace, offered in the header as
-**Curator** with a badge counting comments awaiting moderation and unread contact
+`/curator` (`Curator`) is the administrator's workspace, offered in the page menu beside the account (`CuratorShortcut`), with a badge counting comments awaiting moderation and unread contact
 messages. `CuratorNotificationsProvider` (in `app/layout.tsx`, inside
 `SessionProvider`) asks `GET /curator/notifications` for the administrator only,
 every minute, when the window regains focus, and whenever a curator action dispatches
@@ -439,15 +438,15 @@ while the inspector scrolls. Every scrolling box is positioned, so absolute
 descendants such as screen-reader texts stay inside it instead of making the page
 scroll. Phones keep the flowing page.
 
-Its menu is grouped by purpose (`curatorGroups`): **Sections** (Home, Gallery,
-Collections), **Palettes**, **Photos** (Photos, Upload, Categories, Variants) and
+Its menu is grouped by purpose (`curatorGroups`): **Curator** (General, Home, Gallery,
+Collections, Palettes), **Photos** (Photos, Upload, Categories, Variants) and
 **Admin** (Dashboard, Comments, Inbox): the screens of `/upload`, `/manage`, the
 collection editor and `/moderate`, plus the contact inbox. Each group is a pill that
 opens its tabs in a menu under it on hover, keyboard focus or a press (touch), the
 current tab marked; the group in use wears the moving plasma of the **New collection**
-card and names its open tab. The menu is not sticky: once it scrolls out of view, a
-bubble in the top-right corner names the open tab and lists every group on hover.
-The swatches at the end of the menu choose Curator's backdrop (`CuratorBackdrop`):
+card and names its open tab. The lit pill beside the account (see "Curator pill and
+account card") names the open tab wherever the page is scrolled. The account card
+chooses Curator's backdrop (`CuratorBackdrop`) while Curator is open:
 still paper or a slow drifting gradient with fine grain (Meadow, Dusk, Tide,
 Darkroom), kept per visitor in `localStorage` under `curatorBackdrop` (guarded), and
 still under reduced motion. **Dashboard**
@@ -671,7 +670,7 @@ variants**, which waits while uploads run.
 
 Gallery's visitor controls are segmented icon buttons (native radios), and the Gallery
 studio previews inside a monitor or a phone chosen with two device buttons. In Curator →
-Gallery → Visitors, the distributions and view shapes offered are tiles with the same
+Gallery → Visitors, the layouts and grid proportions offered are tiles with the same
 drawings (`galleryOptionIcons`), lit when offered.
 
 ## Highlights, palettes and filters
@@ -840,7 +839,7 @@ message beside the form card; **Sign in by email** is one centered card; **Inbox
 quote, and colored Approve/Mark as read and Delete buttons, with an accent bar while
 waiting).
 
-Finishing touches across the site: Curator's screens all head with **CURATOR / …**;
+Finishing touches across the site: Curator's screens head with their title alone (the pill names the tab);
 Dashboard tiles carry a drawing, lift when they open a tab and show **Open →** on the
 ones waiting; Upload's three steps are a stepper; Variants follows Curator's green;
 Home's one-line words are inputs and every Home field lights on hover and focus; a
@@ -906,19 +905,37 @@ name, email, the Admin label, **Profile**, **Settings** (`/account`) and sign-ou
 profile comes from `GET /auth/me/profile`, once per account.
 
 When the settings hide the header on scroll, scrolling past it leaves the logo floating
-in the top-left corner with a small arrow and the menu under it (hover or focus), level
-with the account pill; **Show header** returns to the top. Otherwise the header sticks to the top. The
+in the top-left corner as a link home (the page menu beside the account holds the links), level
+with the account pill; **Show header** returns to the top on wide screens, and below
+1100 px pins the header over the page where the visitor is (`data-pinned`) until the
+chevron or a return to the top lets it go. Otherwise the header sticks to the top. The
 chevron still folds the header by hand, remembered as before (`headerHidden`).
 
 Curator → Sections → **General** (`SiteGeneralEditor`) edits `GET`/admin
-`PUT /site/settings`: header style (light, dark, frosted glass), where its links sit,
-hiding on scroll, heading and text fonts (local stacks) and the main palette, with a
-preview and explicit save (version checked, 409 keeps the draft).
+`PUT /site/settings`: the header's tone (light, dark, or automatic, which follows the
+visitor's system) and material (solid or frosted glass), each tone's colors, where its
+links sit (drawn as icons), hiding on scroll (a switch), heading and text fonts (local
+stacks) and the main palette, with a preview and explicit save (version checked, 409
+keeps the draft).
 `SiteSettingsProvider` (in `app/layout.tsx`) loads them once and sets `--site-background`,
 `--site-text`, `--site-accent`, `--site-surface`, `--site-heading-font` and
 `--site-body-font` on the root; `globals.css` reads them with the original look as
 fallback, and pages with a look of their own keep it. The API must serve
 `/site/settings` before this client is deployed.
+
+**Header tones.** Each tone of the header comes from the main palette unless it was
+picked by hand (`header.light`/`header.dark`, `{ background, text }`): light is the
+palette's surface with its text, dark is its text as the ground with its background as
+the words (`headerThemes` in the `SiteSettings` entity). A derived tone whose text falls
+under 4.5:1 contrast switches to black or white; a hand-picked one is kept and General
+warns under its card. Choosing a library palette drops hand-picked colors, since they
+belonged to the previous palette. `SiteSettingsProvider` also sets `--header-light-*`
+and `--header-dark-*` (ground, text, line, hover, logo filter) on the root, and
+`navigation.css` picks one by `data-tone` (`auto` through `prefers-color-scheme`);
+glass mixes the tone's ground (40 % light, 62 % dark) with a blur. Settings saved with the older
+`style` are read as their tone and material (`withSiteDefaults`). The header's Curator
+pill draws itself in the header's text color. The API must accept `tone`, `material`
+and the tone colors before this client saves them.
 
 **Profiles seen by their owner.** `/profile/[id]` asks who is signed in first: the owner
 sees everything (`GET /auth/me/profile`), email and both lists included, with a note on
@@ -929,11 +946,9 @@ shares. A photo opened from a profile's likes or favorites remembers that page
 and Escape go back to it, and its arrows follow that list. Gallery, collections and
 Home record their own page the same way.
 
-**Phones.** Below 640 px the header keeps the logo, three bars and the account; the
-bars open the links in a sheet from the bottom (`MenuSheet`, closed by Escape, a press
-outside or a link). Once the header is gone, a round menu button (`MenuButton`) floats
-on an edge of the window, bottom right at first: dragged, it settles on the nearest
-edge and remembers it (`menuButtonPlace` in `localStorage`, guarded).
+**Phones.** Below 1100 px the header keeps the logo and the corner: the page menu
+(the pill beside the account, see "Curator pill and account card") holds the site's
+links, so there are no three bars, no bottom sheet and no floating menu button.
 
 **Use as.** Beside Like and Save, a signed-in visitor can use the photograph as profile
 photo or cover (`UseAsProfilePhoto`): a dialog asks which, then shows the current one
@@ -958,19 +973,17 @@ break the tree's limits are refused. The tree editor with keyboard moves and con
 properties stays under **Containers and keyboard arrangement**, and the category groups
 (departments) are edited below it.
 
-**Narrow windows and Curator's menu.** Below 1100 px the header swaps its links for the
-three bars; when the header leaves, the floating menu button flies from where the bars
-were to its edge, so the move is visible. Curator's tabs show and hide from one button
-naming the current group and tab; narrow screens start with them hidden and open them as
+**Narrow windows and Curator's menu.** Below 1100 px the header's links move into the
+page menu beside the account. Curator's tabs show and hide from one button
+naming the current group and tab; every screen starts with them hidden (the pill's **Show Curator's tabs** opens them; narrow screens show them as
 a centered column, every group with its tabs, and choosing one folds them again.
 `/curator?section=<tab>` opens that tab: the account menu's **Admin** label opens
 Dashboard.
 
-Folded, the tabs become one floating pill (`curator-dock`) like the docked site logo: it
-names the group and the open tab, and pointing at it, tabbing into it or pressing it
-opens every group under it. Beside it, **☰** shows the tabs again and the backdrop
-swatches stay in reach. While the tabs show, an icon (**Hide the tabs**) at the start of
-their row folds them.
+Folded, the tabs leave nothing behind: the lit pill beside the account names the open
+tab, opens every group and ends with **Show Curator's tabs** to bring the row back.
+While the tabs show, an arrow (**Hide the tabs**) at the end of their row folds them.
+From 900 px Home's preview and properties sit side by side even below 1100 px.
 
 **Collections editor.** The inspector's section buttons show that section alone, with
 **View all** to show them all. Each piece can start at a chosen wide-screen column
@@ -990,11 +1003,11 @@ start of the tabs' row while they show, and names group and tab when folded.
 
 ## Curator: fold arrow, admin pill, undo and review
 
-Curator's first group is now **Curator** (General, Home, Gallery, Collections). The tabs'
-row ends with the backdrop swatches, always all in view, and an arrow that folds the row
-into the lit pill (`CuratorPill`); beside the pill, the swatches and an arrow bring the
-tabs back. On every other page the administrator has the same pill, off, in the header's
-corner (`CuratorShortcut`), with every section as a link (`/curator?section=…`).
+Curator's first group is now **Curator** (General, Home, Gallery, Collections,
+Palettes). The tabs'
+row ends with an arrow that folds it; folded, an arrow alone brings the tabs back. The
+pill beside the account (`CuratorShortcut`) is on every page: see "Curator pill and
+account card".
 
 An editor that passes its `document` (saved version, draft, restore) to
 `useUnsavedEditor` records each change as a step: **Undo** in the save bar or Ctrl+Z
@@ -1009,3 +1022,38 @@ In Curator → Gallery → Filters, pointing at or focusing a piece in the list 
 same piece in the preview (`data-filter-piece`, `data-spotlight`). In the preview, a piece
 dropped within 16 px of a container's edge lands beside the container instead of inside
 it, so it can go under the last container.
+
+## Curator pill and account card
+
+The page menu (`CuratorShortcut`, in `CuratorPill.tsx`) sits beside the account in the
+header's corner on every page, for everyone. It names the page on show (Home, Gallery,
+Photo…, or **Menu**) and, inside Curator, the open tab, preceded by **CURATOR** on wide
+screens only. A visitor's menu holds the site's pages alone and shows below 1100 px or
+once the header is gone; the administrator's adds every Curator group and always shows.
+On phones, once a studio's property tabs scroll out of view they wait folded on the
+left edge (`property-tabs-aside`): the handle unfolds them, and a choice switches the
+tab and scrolls back to the controls.
+Inside Curator it wears the moving plasma and its items switch tabs in place: Curator
+announces its tab and the pill asks for another through two window events
+(`curatorChannel.ts`). Elsewhere it is off and its items link to `/curator?section=…`.
+Its menu starts with the site's own pages (Home, Gallery, Collections, Contact), so it
+stands in for the header's links once the header is folded, then every Curator group;
+each list is a labelled group.
+
+The account card opens when the mouse points at it and closes on leaving (a press
+right after keeps it open; touch and keyboard toggle it as before). The administrator's
+account wears a thin moving ring of the same plasma and a soft glow. While Curator is
+open, the card offers **Curator backdrop**, the swatches that used to sit in the tabs'
+row; `useCuratorBackdrop` tells every user of the hook about a choice.
+
+Gallery's display options are **Layout** (Random, Grid, Original) and, only under Grid
+and when more than one is offered, **Proportion** (Square 1:1, Portrait 2:3, Landscape
+3:2). `GET /photos/browse` no longer takes `crops`: the proportion only shapes the grid's
+cells (`--cell-ratio`), preferring a view already in that proportion and otherwise
+cutting one from its centre, so no combination leaves the page empty. The API's gallery
+settings must accept the proportions before this client saves them.
+
+**Fewer menus.** The header's links no longer include **Curator**: the page menu beside
+the account is the way in, with the pending count. The docked logo is only a link home.
+Curator's row of tabs starts folded on every screen, and its screens head with their
+title alone. The account card's **Admin** label still opens Dashboard.

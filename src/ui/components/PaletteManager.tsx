@@ -128,7 +128,6 @@ function Manager() {
   return (
     <div className="palette-manager">
       <header>
-        <p className="banner-editor__eyebrow">CURATOR / PALETTES</p>
         <h1>Colors for the archive.</h1>
         <p>
           Keep the palettes that Gallery and its categories can apply. A palette

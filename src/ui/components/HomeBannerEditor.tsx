@@ -142,7 +142,6 @@ function Editor() {
   return (
     <div className="banner-editor">
       <header>
-        <p className="banner-editor__eyebrow">CURATOR / HOME</p>
         <h1>Make an entrance.</h1>
         <p>
           Shape the welcome to your gallery. Preview your changes, then save to
