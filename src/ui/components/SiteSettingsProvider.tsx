@@ -9,8 +9,10 @@ import {
 } from "react";
 import {
   defaultSiteSettings,
+  headerThemeProperties,
   SiteSettings,
   siteFonts,
+  withSiteDefaults,
 } from "@/src/domain/entities/SiteSettings";
 import { manageSiteSettings } from "@/src/infrastructure/siteSettingsServices";
 import type { ManageSiteSettings } from "@/src/application/use-cases/ManageSiteSettings";
@@ -26,7 +28,7 @@ const SiteSettingsContext = createContext<SiteSettingsValue>({
   adopt: () => {},
 });
 
-/** The site's palette and fonts as custom properties on the root element. */
+/** The site's palette, fonts and header tones as custom properties on the root element. */
 export function applySiteSettings(settings: SiteSettings, root: HTMLElement) {
   const { palette } = settings;
   root.style.setProperty("--site-background", palette.background);
@@ -35,6 +37,8 @@ export function applySiteSettings(settings: SiteSettings, root: HTMLElement) {
   root.style.setProperty("--site-surface", palette.surface);
   root.style.setProperty("--site-heading-font", siteFonts[settings.headingFont]);
   root.style.setProperty("--site-body-font", siteFonts[settings.bodyFont]);
+  for (const [name, value] of Object.entries(headerThemeProperties(settings)))
+    root.style.setProperty(name, value);
 }
 
 /**
@@ -55,7 +59,7 @@ export function SiteSettingsProvider({
     source
       .get()
       .then((loaded) => {
-        if (live) setSettings({ ...defaultSiteSettings, ...loaded });
+        if (live) setSettings(withSiteDefaults(loaded));
       })
       .catch(() => {
         /* The original look stays. */

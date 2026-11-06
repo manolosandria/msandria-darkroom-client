@@ -11,7 +11,6 @@ export type PhotoPageQuery = {
   search?: string;
   target?: "gallery" | "home" | "collection";
   layout?: string;
-  crops?: string;
 };
 export type PhotoPage = {
   page: number;

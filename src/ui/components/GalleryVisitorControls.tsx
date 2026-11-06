@@ -33,22 +33,10 @@ export const galleryOptionIcons: Record<string, React.ReactNode> = {
       <rect x="9" y="11" width="9" height="6" />
     </>
   ),
-  mixed: (
-    <>
-      <rect x="2" y="4" width="6" height="12" />
-      <rect x="10" y="4" width="8" height="5" />
-      <rect x="10" y="11" width="5" height="5" />
-    </>
-  ),
+  // The grid's proportions, drawn true to 1:1, 2:3 and 3:2.
   square: <rect x="4" y="4" width="12" height="12" />,
-  rectangular: (
-    <>
-      <rect x="2" y="6" width="9" height="8" />
-      <rect x="13" y="3" width="5" height="14" />
-    </>
-  ),
-  portrait: <rect x="6" y="2" width="8" height="16" />,
-  landscape: <rect x="2" y="5" width="16" height="10" />,
+  portrait: <rect x="5" y="2" width="10" height="15" />,
+  landscape: <rect x="2" y="5" width="16" height="10.7" />,
 };
 
 export function GalleryVisitorControls({
@@ -63,6 +51,9 @@ export function GalleryVisitorControls({
   onChange: (key: "layout" | "crops", value: string) => void;
 }) {
   const id = useId();
+  // Only the grid has cells of its own shape; with one proportion offered there is
+  // nothing to choose.
+  const proportions = layout === "uniform" && options.crops.length > 1;
   return (
     <div
       className="gallery-visitor-controls"
@@ -72,12 +63,22 @@ export function GalleryVisitorControls({
         [
           [
             "layout",
-            "Distribution",
+            "Layout",
             options.layouts,
             galleryLayoutLabels,
             layout,
           ],
-          ["crops", "View shapes", options.crops, galleryCropLabels, crops],
+          ...(proportions
+            ? ([
+                [
+                  "crops",
+                  "Proportion",
+                  options.crops,
+                  galleryCropLabels,
+                  crops,
+                ],
+              ] as const)
+            : []),
         ] as const
       ).map(([key, label, values, labels, value]) => (
         <fieldset

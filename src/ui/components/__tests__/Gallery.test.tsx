@@ -139,13 +139,23 @@ describe("Gallery server pagination", () => {
       screen.getByRole("button", { name: "Clear all filters" }),
     ).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /^Filters/ }));
-    await user.click(screen.getByRole("radio", { name: "Natural proportions" }));
-    expect(screen.getAllByText("Natural proportions").length).toBeGreaterThan(1);
+    await user.click(screen.getByRole("radio", { name: "Original" }));
+    expect(screen.getAllByText("Original").length).toBeGreaterThan(1);
     await waitFor(() =>
       expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({
         layout: "justified",
       }),
     );
+    // Proportions belong to the grid alone, and never narrow the request.
+    expect(screen.queryByRole("radiogroup", { name: "Proportion" })).toBeNull();
+    const calls = execute.mock.calls.length;
+    await user.click(screen.getByRole("radio", { name: "Grid" }));
+    await user.click(screen.getByRole("radio", { name: "Portrait 2:3" }));
+    await waitFor(() =>
+      expect(execute.mock.calls.at(-1)?.[0]).toMatchObject({ layout: "uniform" }),
+    );
+    expect(execute.mock.calls.length).toBe(calls + 1);
+    expect(execute.mock.calls.at(-1)?.[0]).not.toHaveProperty("crops");
   });
   it("aborts obsolete requests and retries failed reads manually", async () => {
     const user = userEvent.setup();
@@ -171,18 +181,15 @@ describe("Gallery server pagination", () => {
         browsePhotos={{ execute: vi.fn().mockResolvedValue(result(1, 0)) }}
         settings={{
           ...defaultGallerySettings,
-          visitorOptions: { layouts: ["justified"], crops: ["rectangular"] },
+          visitorOptions: { layouts: ["uniform"], crops: ["square"] },
         }}
       />,
     );
     await screen.findByText("No photos in this selection.");
     await user.click(screen.getByRole("button", { name: /^Filters/ }));
-    expect(
-      screen.getByRole("radio", { name: "Natural proportions" }),
-    ).toBeChecked();
-    expect(
-      within(screen.getByRole("radiogroup", { name: "View shapes" })).getAllByRole("radio"),
-    ).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: "Grid" })).toBeChecked();
+    // A single proportion leaves nothing to choose.
+    expect(screen.queryByRole("radiogroup", { name: "Proportion" })).toBeNull();
     expect(
       screen.queryByRole("navigation", { name: "Gallery pagination" }),
     ).not.toBeInTheDocument();

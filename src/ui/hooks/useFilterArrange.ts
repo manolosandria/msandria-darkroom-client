@@ -41,27 +41,34 @@ export function useFilterArrange(
           element && !element.closest(`[data-filter-node="${CSS.escape(draggedId)}"]`),
       );
     if (!hit) return null;
-    const id = hit.dataset.filterNode!;
-    const found = findFilterNode(layout, id);
-    if (!found) return null;
-    if (found.node.type === "group" && found.parent) {
-      // Near a container's edge (along its parent's direction), the drop lands beside
-      // it in the parent: the only way to place a piece under or after a container
-      // that fills its parent.
-      const box = hit.getBoundingClientRect();
-      const row = found.parent.direction === "row";
-      const size = row ? box.width : box.height;
-      const band = Math.min(EDGE, size / 4);
+    // Near a container's edge (along its parent's direction), the drop lands beside it
+    // in the parent: the only way to place a piece under or after a container that its
+    // pieces fill to the edge. The innermost container whose edge is under the pointer
+    // wins, starting from the piece hit.
+    for (
+      let element: HTMLElement | null = hit;
+      element;
+      element =
+        element.parentElement?.closest<HTMLElement>("[data-filter-node]") ?? null
+    ) {
+      const around = findFilterNode(layout, element.dataset.filterNode!);
+      if (around?.node.type !== "group" || !around.parent) continue;
+      const box = element.getBoundingClientRect();
+      const row = around.parent.direction === "row";
+      const band = Math.min(EDGE, (row ? box.width : box.height) / 4);
       const fromStart = row ? x - box.left : y - box.top;
       const fromEnd = row ? box.right - x : box.bottom - y;
       if (fromEnd < band || fromStart < band)
         return {
-          targetId: id,
+          targetId: around.node.id,
           mode: fromEnd < band ? "after" : "before",
-          groupId: found.parent.id,
-          index: found.index + (fromEnd < band ? 1 : 0),
+          groupId: around.parent.id,
+          index: around.index + (fromEnd < band ? 1 : 0),
         };
     }
+    const id = hit.dataset.filterNode!;
+    const found = findFilterNode(layout, id);
+    if (!found) return null;
     if (found.node.type === "group") {
       // Inside a container: before the first child whose middle is past the pointer.
       const row = found.node.direction === "row";

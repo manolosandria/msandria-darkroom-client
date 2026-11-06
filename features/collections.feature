@@ -150,10 +150,11 @@ Feature: Curated collections
     And an empty destination excludes the photo there
 
   Scenario: Offer only configured gallery choices
-    Given Curator enables selected distributions and view aspects
-    When a visitor changes the distribution or view aspect
-    Then only enabled original or crop views for that matrix cell are shown
-    And natural proportions preserve the chosen view's aspect ratio
+    Given Curator enables selected layouts and grid proportions
+    When a visitor changes the layout, or the proportion under Grid
+    Then only enabled original or crop views for that layout are shown
+    And Original preserves the chosen view's aspect ratio
+    And the proportion is offered under Grid only, and only when there is more than one
     And changing display controls resets pagination without reshuffling the photos
 
   Scenario: Edit a palette library
@@ -205,9 +206,10 @@ Feature: Curated collections
     Then it shows under the photo inside the same piece
     And hovering or focusing the piece outlines and lifts photo and text together
 
-  Scenario: Change the view shape while the next page loads
-    Given the gallery shows photos without a square view
-    When a visitor chooses Square views
-    Then the page keeps working while the new selection loads
-    And photos without a view for that shape are left out instead of breaking the grid
-    And an empty selection says that no photos match
+  Scenario: A grid proportion never empties the page
+    Given the gallery shows photos without a square crop
+    When a visitor chooses Grid and Square 1:1
+    Then every photo stays, in square cells
+    And a photo with a square crop enabled for Gallery uses it
+    And the others are cut from the centre of one of their views
+    And changing the proportion asks the API for nothing new

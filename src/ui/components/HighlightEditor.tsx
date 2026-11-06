@@ -831,9 +831,9 @@ export function HighlightEditor({
                     <tbody>
                       {(
                         [
-                          ["uniform", "Squares"],
-                          ["random", "Random emphasis"],
-                          ["justified", "Natural proportions"],
+                          ["random", "Random"],
+                          ["uniform", "Grid"],
+                          ["justified", "Original"],
                         ] as const
                       ).map(([layout, label]) => (
                         <tr key={layout}>

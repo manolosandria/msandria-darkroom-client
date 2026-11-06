@@ -7,6 +7,10 @@ import { SessionPorts } from "@/src/ui/hooks/useSession";
 import { SessionProvider } from "../SessionProvider";
 import Curator from "../Curator";
 import {
+  requestCuratorSection,
+  requestCuratorTabs,
+} from "@/src/ui/curatorChannel";
+import {
   CuratorNotificationsProvider,
   useCuratorNotifications,
 } from "../CuratorNotifications";
@@ -57,6 +61,9 @@ function show(user: User | null, children = <Curator />) {
       <CuratorNotificationsProvider>{children}</CuratorNotificationsProvider>
     </SessionProvider>,
   );
+  // The row of tabs starts folded; these tests work it as the pill's last line
+  // brings it back.
+  act(() => requestCuratorTabs());
 }
 
 function Counts() {
@@ -135,24 +142,41 @@ describe("Curator", () => {
     expect(screen.getByText("Categories editor")).toBeVisible();
   });
 
-  it("folds into one pill that names the open tab, keeps the backdrop and opens every group", async () => {
+  it("starts with its row of tabs folded, leaving the pill as its menu", async () => {
+    render(
+      <SessionProvider
+        ports={{
+          getCurrentUser: vi.fn().mockResolvedValue(admin),
+          signIn: vi.fn(),
+          signOut: vi.fn(),
+        }}
+      >
+        <Curator />
+      </SessionProvider>,
+    );
+    await screen.findByText("Upload workshop");
+    expect(screen.queryByRole("navigation", { name: "Curator sections" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hide the tabs" })).toBeNull();
+  });
+
+  it("folds the tabs away entirely and answers the header's pill", async () => {
+    const announced: (string | null)[] = [];
+    const listen = (event: Event) =>
+      announced.push((event as CustomEvent<string | null>).detail);
+    window.addEventListener("curator:section", listen);
     show(admin);
     await screen.findByRole("button", { name: "Admin3" });
     await userEvent.click(screen.getByRole("button", { name: "Hide the tabs" }));
-    const pill = screen.getByRole("button", {
-      name: "Curator sections: Photos, Upload",
-    });
-    expect(pill).toHaveAttribute("aria-expanded", "false");
-    // The backdrop is still one press away.
-    expect(screen.getByRole("radiogroup", { name: "Backdrop" })).toBeInTheDocument();
-    await userEvent.click(pill);
-    expect(pill).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(screen.getByRole("button", { name: "Variants" }));
+    // Folded, nothing of the row stays: the lit pill in the header's corner offers
+    // it back, and the backdrop is chosen from the account menu.
+    expect(screen.queryByRole("button", { name: "Show the tabs" })).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "Backdrop" })).toBeNull();
+    expect(announced.at(-1)).toBe("Upload");
+    act(() => requestCuratorSection("Variants"));
     expect(screen.getByText("Variant studio")).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Curator sections: Photos, Variants" }),
-    ).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(screen.getByRole("button", { name: "Show the tabs" }));
+    expect(announced.at(-1)).toBe("Variants");
+    window.removeEventListener("curator:section", listen);
+    act(() => requestCuratorTabs());
     expect(
       screen.getByRole("navigation", { name: "Curator sections" }),
     ).toBeVisible();

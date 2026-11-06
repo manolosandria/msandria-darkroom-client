@@ -37,7 +37,8 @@ export function photoViews(
     })),
   ];
 }
-export type GalleryViewContext = { layout: string; crops: string };
+/** The layout shown and, for the grid, the proportion of its cells. */
+export type GalleryViewContext = { layout: string; proportion?: string };
 export function viewAspect(ratio: number) {
   return Math.abs(ratio - 1) <= 0.05
     ? "square"
@@ -61,15 +62,7 @@ export function enabledPhotoViews(
             (rule) => rule.layout === context.layout && rule.aspect === aspect,
           )?.views ?? [])
         : enabled;
-    return (
-      enabled.includes(view.id) &&
-      allowed.includes(view.id) &&
-      (!context ||
-        context.crops === "mixed" ||
-        (context.crops === "rectangular"
-          ? aspect !== "square"
-          : aspect === context.crops))
-    );
+    return enabled.includes(view.id) && allowed.includes(view.id);
   });
 }
 export function cleanPresentation(
@@ -100,8 +93,14 @@ export function choosePhotoView(
   seed: string,
   context?: GalleryViewContext,
 ): PhotoView | undefined {
-  const views = enabledPhotoViews(photo, target, context);
-  if (!views.length) return undefined;
+  const enabled = enabledPhotoViews(photo, target, context);
+  if (!enabled.length) return undefined;
+  // The grid prefers a crop already in its cells' proportion; a photograph without
+  // one is still shown, cut from the centre of one of its views.
+  const fitting = context?.proportion
+    ? enabled.filter((view) => viewAspect(view.ratio) === context.proportion)
+    : [];
+  const views = fitting.length ? fitting : enabled;
   let hash = 0;
   for (const char of seed + photo.getId())
     hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;

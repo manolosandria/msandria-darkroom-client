@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { GalleryTiles, galleryPriorities } from "../GalleryTiles";
 
-describe("Gallery tiles without a view for the chosen crop", () => {
-  it("leaves those photos out instead of crashing", () => {
+describe("Grid proportions", () => {
+  it("keeps photos without a crop in that proportion, cut from a view, and prefers one that fits", () => {
     const tile = (id: string, square: boolean) => {
       const photo = new Photo({
         id,
@@ -25,11 +25,35 @@ describe("Gallery tiles without a view for the chosen crop", () => {
       <GalleryTiles
         tiles={[tile("a", false), tile("b", true)]}
         layout="uniform"
-        context={{ layout: "uniform", crops: "square" }}
+        context={{ layout: "uniform", proportion: "portrait" }}
       />,
     );
-    expect(screen.queryByText("Photo a")).toBeNull();
+    expect(screen.getByText("Photo a")).toBeTruthy();
     expect(screen.getByText("Photo b")).toBeTruthy();
+    expect(
+      screen.getByRole("list").style.getPropertyValue("--cell-ratio"),
+    ).toBe(String(2 / 3));
+    // Photo b has a portrait crop enabled for Gallery: the grid uses it.
+    const cropped = screen.getByRole("img", { name: "Photo b" });
+    expect(cropped.parentElement?.parentElement?.style.containerType).toBe("size");
+  });
+  it("leaves out photos with no view at all for the layout", () => {
+    const photo = new Photo({
+      id: "c",
+      title: "Photo c",
+      width: 1000,
+      height: 1000,
+      renditions: [{ width: 640, url: "https://cdn/c.jpg" }],
+      highlights: { presentation: { gallery: [], home: ["original"] } },
+    });
+    render(
+      <GalleryTiles
+        tiles={[{ key: "c", photo, variants: [photo] }]}
+        layout="uniform"
+        context={{ layout: "uniform", proportion: "square" }}
+      />,
+    );
+    expect(screen.queryByText("Photo c")).toBeNull();
   });
 });
 describe("Gallery emphasis", () => {

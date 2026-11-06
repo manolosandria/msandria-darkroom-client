@@ -67,6 +67,27 @@ describe("useFilterArrange", () => {
     expect(next?.children.map((child) => child.id)).toEqual(["box", "view"]);
   });
 
+  it("drops beside the container even when a piece fills it to its edge", () => {
+    const { root, grip } = preview();
+    const search = document.createElement("div");
+    search.dataset.filterNode = "search";
+    root.querySelector('[data-filter-node="box"]')!.prepend(search);
+    document.elementsFromPoint = vi.fn(() => [
+      search,
+      root.querySelector('[data-filter-node="box"]')!,
+      root,
+    ]);
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useFilterArrange(layout, onChange));
+    act(() => result.current.handlers.onPointerDown!(pointer(grip, 150, 60)));
+    act(() => result.current.handlers.onPointerMove!(pointer(grip, 150, 96)));
+    act(() => result.current.handlers.onPointerUp!());
+    root.remove();
+    expect(
+      (onChange.mock.lastCall?.[0] as FilterGroup).children.map((child) => child.id),
+    ).toEqual(["box", "view"]);
+  });
+
   it("drops a piece inside a container when let go in its middle", () => {
     const next = drag({ x: 150, y: 50 });
     const box = next?.children[0] as FilterGroup | undefined;

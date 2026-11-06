@@ -133,8 +133,12 @@ export default function Gallery({
         ? fallback
         : choices[0];
   const layout = allowed(display.layout, appearance.layout, options.layouts);
-  const crops = allowed(display.crops, "mixed", options.crops);
-  const context = { layout, crops };
+  // Only the grid has a proportion of its own: the others keep each photograph's.
+  const crops = allowed(display.crops, "square", options.crops);
+  const context = {
+    layout,
+    proportion: layout === "uniform" ? crops : undefined,
+  };
   useEffect(() => {
     if (ready && !previewSettings)
       writeGalleryState({
@@ -165,14 +169,13 @@ export default function Gallery({
           categories: categoriesParam,
           search: settledSearch,
           layout,
-          crops,
         },
         controller.signal,
       );
     } finally {
       if (abort.current === controller) pageLock.current = false;
     }
-  }, [browsePhotos, page, seed, categoriesParam, settledSearch, layout, crops]);
+  }, [browsePhotos, page, seed, categoriesParam, settledSearch, layout]);
   useEffect(() => () => abort.current?.abort(), []);
   const {
     data: result,
@@ -188,7 +191,7 @@ export default function Gallery({
     // Coming back from a photo shows the same page at once while it is checked again.
     previewSettings
       ? undefined
-      : `gallery:${JSON.stringify([page, seed, categoriesParam, settledSearch, layout, crops])}`,
+      : `gallery:${JSON.stringify([page, seed, categoriesParam, settledSearch, layout])}`,
   );
   const count = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));

@@ -186,7 +186,6 @@ function Editor() {
   return (
     <div className="banner-editor gallery-editor">
       <header>
-        <p className="banner-editor__eyebrow">CURATOR / GALLERY</p>
         <h1>Shape the archive.</h1>
         <p>
           Edit the introduction, category styles and photo arrangement. Save to
@@ -657,17 +656,17 @@ function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
         options={[
           {
             value: "justified",
-            label: "Natural proportions · justified rows",
+            label: "Original · justified rows",
             icon: arrangement("justified"),
           },
           {
             value: "uniform",
-            label: "Even grid",
+            label: "Grid · even cells",
             icon: arrangement("uniform"),
           },
           {
             value: "random",
-            label: "Random emphasis · up to two large photographs",
+            label: "Random · up to two large photographs",
             icon: arrangement("random"),
           },
         ]}
@@ -697,8 +696,9 @@ function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
         />
       </label>
       <p>
-        Random emphasis stays stable while browsing. Phone layouts use smaller
-        tiles. Grid thumbnails are cropped; open a photograph for the full
+        Random stays stable while browsing. Phone layouts use smaller tiles.
+        Grid cells take the proportion the visitor chooses, cut from the centre
+        when a photograph has no crop in it; open a photograph for the full
         composition.
       </p>
     </fieldset>

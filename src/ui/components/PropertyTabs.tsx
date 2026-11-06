@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import { propertyTabIcons } from "./propertyTabIcons";
 import "./curatorTheme.css";
 
@@ -32,46 +33,110 @@ export function PropertyTabs<T extends string>({
     onChange(next);
     document.getElementById(`${idPrefix}-tab-${next}`)?.focus();
   };
+  // On a phone the page flows, and once the tabs scroll out of view they wait folded
+  // on the left edge: pressing the handle unfolds them, and choosing one brings the
+  // controls back into view.
+  const list = useRef<HTMLDivElement>(null);
+  const [away, setAway] = useState(false);
+  const [unfolded, setUnfolded] = useState(false);
+  useEffect(() => {
+    const node = list.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const narrow = window.matchMedia?.("(max-width: 899px)");
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const gone = !entry.isIntersecting && Boolean(narrow?.matches);
+        setAway(gone);
+        if (!gone) setUnfolded(false);
+      },
+      // Below the floating logo and account.
+      { rootMargin: "-72px 0px 0px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const choose = (name: T) => {
+    onChange(name);
+    setUnfolded(false);
+    const top =
+      (list.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
+    window.scrollTo({ top: Math.max(0, top - 80), behavior: "smooth" });
+  };
   return (
-    <div
-      role="tablist"
-      aria-label={label}
-      className="property-tabs"
-      onKeyDown={(event) => {
-        const index = tabs.indexOf(value);
-        const target =
-          event.key === "ArrowRight"
-            ? tabs[(index + 1) % tabs.length]
-            : event.key === "ArrowLeft"
-              ? tabs[(index - 1 + tabs.length) % tabs.length]
-              : event.key === "Home"
-                ? tabs[0]
-                : event.key === "End"
-                  ? tabs[tabs.length - 1]
-                  : undefined;
-        if (!target) return;
-        event.preventDefault();
-        move(target);
-      }}
-    >
-      {tabs.map((name) => (
-        <button
-          key={name}
-          type="button"
-          role="tab"
-          id={`${idPrefix}-tab-${name}`}
-          aria-controls={`${idPrefix}-panel-${name}`}
-          aria-selected={value === name}
-          tabIndex={value === name ? 0 : -1}
-          aria-label={name}
-          title={name}
-          onClick={() => onChange(name)}
+    <>
+      {away && (
+        <nav
+          className={`property-tabs-aside${unfolded ? " is-open" : ""}`}
+          aria-label={`${label} (shortcut)`}
         >
-          {propertyTabIcons[name]}
-          <span aria-hidden="true">{shortNames[name] ?? name}</span>
-        </button>
-      ))}
-    </div>
+          <button
+            type="button"
+            className="property-tabs-aside__handle"
+            aria-expanded={unfolded}
+            aria-label={`${label}: ${value}`}
+            title={value}
+            onClick={() => setUnfolded(!unfolded)}
+          >
+            {propertyTabIcons[value]}
+          </button>
+          {unfolded && (
+            <div className="property-tabs-aside__list">
+              {tabs.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  aria-current={value === name ? "true" : undefined}
+                  onClick={() => choose(name)}
+                >
+                  {propertyTabIcons[name]}
+                  <span>{name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </nav>
+      )}
+      <div
+        ref={list}
+        role="tablist"
+        aria-label={label}
+        className="property-tabs"
+        onKeyDown={(event) => {
+          const index = tabs.indexOf(value);
+          const target =
+            event.key === "ArrowRight"
+              ? tabs[(index + 1) % tabs.length]
+              : event.key === "ArrowLeft"
+                ? tabs[(index - 1 + tabs.length) % tabs.length]
+                : event.key === "Home"
+                  ? tabs[0]
+                  : event.key === "End"
+                    ? tabs[tabs.length - 1]
+                    : undefined;
+          if (!target) return;
+          event.preventDefault();
+          move(target);
+        }}
+      >
+        {tabs.map((name) => (
+          <button
+            key={name}
+            type="button"
+            role="tab"
+            id={`${idPrefix}-tab-${name}`}
+            aria-controls={`${idPrefix}-panel-${name}`}
+            aria-selected={value === name}
+            tabIndex={value === name ? 0 : -1}
+            aria-label={name}
+            title={name}
+            onClick={() => onChange(name)}
+          >
+            {propertyTabIcons[name]}
+            <span aria-hidden="true">{shortNames[name] ?? name}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

@@ -292,16 +292,19 @@
   box-shadow: inset 3px 0 0 #61744e;
 }
 
-/* The backdrop swatches close the menu, all of them in view, before the fold arrow. */
+/* The backdrop swatches, in the account menu while Curator is open. */
 .curator-backdrop-picker {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  margin-left: auto;
   padding: 0.2rem;
   border-radius: 999px;
 }
-.curator-tabs .curator-backdrop-swatch {
+/* The fold arrow closes the tabs' row. */
+.curator-tabs > .curator-fold {
+  margin-left: auto;
+}
+.curator-backdrop-swatch {
   flex: none;
   width: 22px;
   height: 22px;
@@ -625,6 +628,16 @@
   box-shadow: 0 4px 14px #2931260f;
   backdrop-filter: blur(8px);
 }
+/* On a phone the page flows: once the header leaves (or comes back pinned over the
+   page), the tabs stick below its floating pills instead of under them. */
+@media (max-width: 899px) {
+  .curator-page:has(.site-header[data-docked]) .property-tabs,
+  .curator-page:has(.site-header[data-docked]) .banner-editor__tabs,
+  .curator-page:has(.site-header[data-pinned]) .property-tabs,
+  .curator-page:has(.site-header[data-pinned]) .banner-editor__tabs {
+    top: 4.3rem;
+  }
+}
 .property-tabs [role="tab"] {
   display: grid;
   justify-items: center;
@@ -695,7 +708,8 @@
   .curator-page:has(.site-header[data-docked])
     .curator-workspace
     > .curator-tabs {
-    margin-left: 13rem;
+    /* Padding, not margin: the row's own ground runs under the floating logo too. */
+    padding-left: 13rem;
   }
   .curator-page:has(.site-header[data-docked])
     .curator-workspace
@@ -717,6 +731,11 @@
 /* Narrow: the tabs open as one centered column, every group with its tabs in view,
    instead of a wrapping row of menus that open over one another. */
 @media (max-width: 899px) {
+  /* The menu's top margin (and the folded pill's) would otherwise collapse through
+     the workspace and leave a strip of bare page between the header and Curator. */
+  .curator-workspace {
+    display: flow-root;
+  }
   .curator-workspace > .curator-tabs {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -789,6 +808,11 @@
     background 0.18s,
     transform 0.18s,
     box-shadow 0.18s;
+}
+/* `.curator-tabs button` in globals.css would square it off and pad it out of round. */
+.curator-tabs .curator-fold {
+  padding: 0;
+  border-radius: 50%;
 }
 .curator-fold:hover,
 .curator-fold:focus-visible {
@@ -874,5 +898,85 @@
 @media (prefers-reduced-motion: reduce) {
   .curator-workspace > .curator-dock {
     animation: none !important;
+  }
+}
+
+/* ---------- A phone's property tabs, folded on the left edge once scrolled past ---------- */
+.property-tabs-aside {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transform: translateY(-50%);
+  animation: property-aside-in 0.25s ease both;
+}
+@keyframes property-aside-in {
+  from {
+    transform: translate(-100%, -50%);
+  }
+}
+.property-tabs-aside__handle {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 3rem;
+  padding: 0 0 0 0.2rem;
+  border: 1px solid #d2d9c7;
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+  background: #eef1e8f2;
+  color: #30382d;
+  box-shadow: 0 6px 18px #1a201826;
+  backdrop-filter: blur(10px);
+}
+.property-tabs-aside.is-open .property-tabs-aside__handle {
+  background: #293126;
+  color: #fff;
+}
+.property-tabs-aside__list {
+  display: grid;
+  gap: 2px;
+  padding: 0.3rem;
+  border: 1px solid #d2d9c7;
+  border-radius: 14px;
+  background: #fbfbf8f5;
+  box-shadow: 0 18px 40px #17211629;
+  animation: curator-menu-in 0.18s ease both;
+}
+.property-tabs-aside__list button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  color: #30382d;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+}
+.property-tabs-aside__list button:hover,
+.property-tabs-aside__list button:focus-visible {
+  background: #e8ebdf;
+}
+.property-tabs-aside__list button[aria-current] {
+  background: #dfe6d3;
+  box-shadow: inset 3px 0 0 #61744e;
+}
+.property-tabs-aside svg {
+  width: 20px;
+  height: 20px;
+}
+@media (min-width: 900px) {
+  .property-tabs-aside {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .property-tabs-aside,
+  .property-tabs-aside__list {
+    animation: none;
   }
 }

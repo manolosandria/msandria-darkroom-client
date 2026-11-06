@@ -612,7 +612,6 @@ function Shell({
     <main className="upload-workspace" {...rest}>
       <div className="upload-container">
         <div className="upload-heading">
-          <span className="upload-eyebrow">CURATOR / UPLOAD</span>
           <h1>A place for your next photographs.</h1>
           <p>Select, refine, and give every photograph its own frame.</p>
         </div>

@@ -16,10 +16,15 @@ import { useCuratorNotifications } from "./CuratorNotifications";
 import { EditingBoundary } from "./EditingWorkspace";
 import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
 import { useSessionValue } from "./SessionProvider";
-import { CuratorBackdropPicker, useCuratorBackdrop } from "./CuratorBackdrop";
+import { useCuratorBackdrop } from "./CuratorBackdrop";
 import "./curatorLayout.css";
 import "./curatorTheme.css";
-import { CuratorPill } from "./CuratorPill";
+import {
+  announceCuratorSection,
+  announceCuratorTabs,
+  useCuratorRequests,
+  useCuratorTabsRequests,
+} from "@/src/ui/curatorChannel";
 import {
   CURATOR_SECTION_KEY,
   curatorGroupOf,
@@ -44,6 +49,8 @@ export default function Curator() {
   const saveBar = useCuratorSaveBar();
   const show = (name: Section, remember = true) => {
     setSection(name);
+    // The pill in the header's corner names it.
+    announceCuratorSection(name);
     setLastIn((previous) => ({ ...previous, [groupOf(name).name]: name }));
     if (remember)
       try {
@@ -68,6 +75,16 @@ export default function Curator() {
     }
     // Only on the first render: afterwards the choice is the curator's.
   }, []);
+  // The pill in the header's corner opens the tabs too.
+  useCuratorRequests((name) => {
+    if (sections.includes(name)) show(name);
+  });
+  useEffect(() => {
+    announceCuratorSection(section);
+    return () => announceCuratorSection(null);
+    // Announced once on arrival; `show` announces every change after it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const countOf = (name: Section) =>
     name === "Comments"
       ? (counts?.comments ?? 0)
@@ -82,28 +99,16 @@ export default function Curator() {
     );
   const current = groupOf(section);
   const backdrop = useCuratorBackdrop();
-  // The tabs show and hide from one button. Wide screens start with them shown in a
-  // row; narrow ones start folded and open them as a centered column.
-  const [menuShown, setMenuShown] = useState(true);
-  useEffect(() => {
-    if (window.matchMedia?.("(max-width: 899px)").matches)
-      queueMicrotask(() => setMenuShown(false));
-  }, []);
+  // The pill beside the account is Curator's menu, so its own row of tabs starts
+  // folded everywhere; the pill's last line brings it back (a row on wide screens, a
+  // centered column on narrow ones), and its arrow folds it again.
+  const [menuShown, setMenuShown] = useState(false);
+  useEffect(() => announceCuratorTabs(menuShown), [menuShown]);
+  useEffect(() => () => announceCuratorTabs(true), []);
+  useCuratorTabsRequests(() => setMenuShown(true));
   // The group whose menu was opened by a press (touch has no hover); pointing at a
   // group or tabbing into it opens its menu too.
   const [open, setOpen] = useState<string | null>(null);
-  // Scrolled away from the menu, a bubble in the corner stands in for it. The menu is
-  // mounted again when the account changes, so it is watched through its ref.
-  const [nav, setNav] = useState<HTMLElement | null>(null);
-  const [away, setAway] = useState(false);
-  useEffect(() => {
-    if (!nav || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setAway(!entry.isIntersecting),
-    );
-    observer.observe(nav);
-    return () => observer.disconnect();
-  }, [nav]);
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
@@ -137,38 +142,7 @@ export default function Curator() {
     <EditingBoundary>
       <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>
         <div className="curator-workspace" data-backdrop={backdrop.value}>
-          {!menuShown && (
-            // Folded, the tabs are one lit pill naming the open tab; the backdrop
-            // swatches and the arrow that brings the tabs back stay beside it.
-            <div className="curator-dock">
-              <CuratorPill
-                lit
-                group={current.name}
-                tab={section}
-                badge={pendingIn(current)}
-                renderItem={(name, close) => (
-                  <button
-                    key={name}
-                    type="button"
-                    aria-current={section === name ? "page" : undefined}
-                    onClick={() => {
-                      show(name);
-                      close();
-                    }}
-                  >
-                    {name}
-                    {!!countOf(name) && (
-                      <span className="curator-badge">{countOf(name)}</span>
-                    )}
-                  </button>
-                )}
-              />
-              <CuratorBackdropPicker state={backdrop} />
-              <FoldArrow folded onClick={() => setMenuShown(true)} />
-            </div>
-          )}
           <nav
-            ref={setNav}
             id="curator-tabs"
             aria-label="Curator sections"
             className="curator-tabs"
@@ -185,18 +159,6 @@ export default function Curator() {
             {curatorGroups.map((group) => {
               const active = group === current;
               const pendingCount = pendingIn(group);
-              if (group.sections.length === 1)
-                return (
-                  <button
-                    key={group.name}
-                    type="button"
-                    className={`curator-tabs__trigger${active ? " is-active" : ""}`}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => show(group.sections[0])}
-                  >
-                    {group.name}
-                  </button>
-                );
               return (
                 <div
                   key={group.name}
@@ -252,29 +214,8 @@ export default function Curator() {
                 </div>
               );
             })}
-            <CuratorBackdropPicker state={backdrop} />
             <FoldArrow folded={false} onClick={() => setMenuShown(false)} />
           </nav>
-          {away && menuShown && (
-            <div className="curator-bubble">
-              <span className="curator-bubble__face" tabIndex={0}>
-                <span aria-hidden="true">☰</span>
-                {section}
-              </span>
-              <div
-                className="curator-bubble__menu"
-                role="navigation"
-                aria-label="Curator sections (shortcut)"
-              >
-                {curatorGroups.map((group) => (
-                  <div key={group.name} className="curator-bubble__group">
-                    <span className="curator-bubble__label">{group.name}</span>
-                    {group.sections.map(item)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <div className="curator-panel" hidden={section !== "Upload"}>
             <UploadPanel />
           </div>

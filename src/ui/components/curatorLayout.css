@@ -85,8 +85,11 @@
     align-content: start;
     padding-right: 0.35rem;
   }
+  /* Side by side from 900 px: the stacked areas Home uses below 1100 px on its own
+     page would leave the controls a row with no height in the workstation. */
   .curator-panel .banner-editor__workspace--home {
     grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas: "preview properties";
   }
   .curator-panel .banner-editor__preview,
   .curator-panel .gallery-editor .banner-editor__preview.device-preview {

@@ -129,14 +129,21 @@ it("adds, edits, applies and deletes palettes in the draft before saving", async
 });
 it("lets the administrator disable visitor options without allowing an empty group", async () => {
   render(<GalleryEditor />);
-  await screen.findByLabelText("Offer Squares");
-  fireEvent.click(screen.getByLabelText("Offer Squares"));
-  fireEvent.click(screen.getByLabelText("Offer Natural proportions"));
-  expect(screen.getByLabelText("Offer Random emphasis")).toBeDisabled();
+  await screen.findByLabelText("Offer Grid");
+  fireEvent.click(screen.getByLabelText("Offer Grid"));
+  fireEvent.click(screen.getByLabelText("Offer Original"));
+  expect(screen.getByLabelText("Offer Random")).toBeDisabled();
+  // The grid's proportions are offered on their own.
+  fireEvent.click(screen.getByLabelText("Offer Portrait 2:3"));
+  fireEvent.click(screen.getByLabelText("Offer Landscape 3:2"));
+  expect(screen.getByLabelText("Offer Square 1:1")).toBeDisabled();
   expect(
     JSON.parse(screen.getByTestId("preview").textContent!).visitorOptions
       .layouts,
   ).toEqual(["random"]);
+  expect(
+    JSON.parse(screen.getByTestId("preview").textContent!).visitorOptions.crops,
+  ).toEqual(["square"]);
 });
 it("previews the gallery inside a chosen monitor or phone", async () => {
   render(<GalleryEditor />);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { User } from "@/src/domain/entities/User";
 
@@ -22,6 +22,9 @@ vi.mock("@/src/infrastructure/googleIdentity", () => ({
   renderGoogleButton: vi.fn(),
   disableGoogleAutoSelect: () => disableGoogleAutoSelect(),
 }));
+
+const path = vi.hoisted(() => ({ current: "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => path.current }));
 
 const mine = vi.fn();
 vi.mock("@/src/infrastructure/profileServices", () => ({
@@ -64,6 +67,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  path.current = "/";
 });
 
 describe("SessionMenu", () => {
@@ -107,6 +111,50 @@ describe("SessionMenu", () => {
     expect(await screen.findByText("Admin")).toBeInTheDocument();
   });
 
+  it("rings the administrator's account and offers Curator's backdrop inside Curator", async () => {
+    getCurrentUser.mockResolvedValue(admin);
+    path.current = "/curator";
+
+    renderMenu();
+
+    const account = await screen.findByLabelText("Your account");
+    expect(account.closest("details")).toHaveAttribute("data-admin");
+    const backdrop = screen.getByRole("radiogroup", { name: "Backdrop" });
+    fireEvent.click(screen.getByRole("radio", { name: "Dusk backdrop" }));
+    expect(screen.getByRole("radio", { name: "Dusk backdrop" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(backdrop).toBeInTheDocument();
+  });
+
+  it("keeps the backdrop out of the menu outside Curator", async () => {
+    getCurrentUser.mockResolvedValue(admin);
+
+    renderMenu();
+
+    await screen.findByLabelText("Your account");
+    expect(screen.queryByRole("radiogroup", { name: "Backdrop" })).toBeNull();
+  });
+
+  it("opens when the mouse points at it, stays open on the press that follows and closes on leaving", async () => {
+    getCurrentUser.mockResolvedValue(viewer);
+
+    renderMenu();
+
+    const summary = await screen.findByLabelText("Your account");
+    const details = summary.closest("details")!;
+    fireEvent.pointerEnter(details, { pointerType: "mouse" });
+    expect(details.open).toBe(true);
+    fireEvent.click(summary);
+    expect(details.open).toBe(true);
+    fireEvent.pointerLeave(details, { pointerType: "mouse" });
+    expect(details.open).toBe(false);
+    // Touch keeps to presses.
+    fireEvent.pointerEnter(details, { pointerType: "touch" });
+    expect(details.open).toBe(false);
+  });
+
   // The badge only reflects what the API said; it grants nothing by itself.
   it("does not mark a registered visitor as administrator", async () => {
     getCurrentUser.mockResolvedValue(viewer);
@@ -115,6 +163,9 @@ describe("SessionMenu", () => {
 
     await screen.findAllByText("Visitante");
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Your account").closest("details"),
+    ).not.toHaveAttribute("data-admin");
   });
 
   it("signs out and tells Google not to sign the visitor back in", async () => {

@@ -188,15 +188,55 @@
   gap: 0.45rem;
   box-shadow: none;
   backdrop-filter: none;
-  background: #00000008;
-  border-color: #0000001a;
+  /* Drawn in the corner's own text color, so it reads on a light, glass or dark
+     header and on the docked pill alike. */
+  color: inherit;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-color: color-mix(in srgb, currentColor 18%, transparent);
+}
+.site-header__corner .curator-pill:not([data-lit]) .curator-pill__face {
+  color: inherit;
+}
+.site-header__corner .curator-pill:hover .curator-pill__face,
+.site-header__corner .curator-pill.is-open .curator-pill__face,
+.site-header__corner .curator-pill:has(:focus-visible) .curator-pill__face {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  box-shadow: none;
 }
 .site-header__corner .curator-pill__tab {
   font-size: 0.95rem;
 }
-@media (max-width: 640px) {
-  .site-header__corner .curator-pill__tab {
+/* The visitor's menu holds the site's pages alone. */
+.curator-pill.is-visitor .curator-pill__menu {
+  grid-template-columns: minmax(180px, 1fr);
+}
+.curator-pill__menu .curator-pill__footer {
+  grid-column: 1 / -1;
+  justify-content: center;
+  border-top: 1px solid #eceee6;
+  border-radius: 0 0 9px 9px;
+  color: #4f6638;
+  font-weight: 600;
+}
+/* While the header shows its links on a wide screen, the visitor needs no menu. */
+@media (min-width: 1101px) {
+  .site-header:not([data-docked]) .curator-pill.is-visitor {
     display: none;
+  }
+}
+/* Small screens name the tab alone: CURATOR is said by the plasma. */
+@media (max-width: 1100px) {
+  .site-header__corner .curator-pill__group {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .site-header__corner .curator-pill__face {
+    max-width: 9.5rem;
+  }
+  .site-header__corner .curator-pill__tab {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .curator-pill__menu {
     grid-template-columns: minmax(0, 1fr);
