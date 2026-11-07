@@ -5,6 +5,7 @@ import GalleryEditor from "./GalleryEditor";
 import PaletteManager from "./PaletteManager";
 import SiteGeneralEditor from "./SiteGeneralEditor";
 import HomeBannerEditor from "./HomeBannerEditor";
+import PostStudio from "./PostStudio";
 import UploadPanel from "./UploadPanel";
 import ManagePhotos from "./ManagePhotos";
 import ManageCollections from "./ManageCollections";
@@ -225,6 +226,7 @@ export default function Curator() {
           {panel("Variants", <ManageCollections variants />)}
           {panel("General", <SiteGeneralEditor />)}
           {panel("Home", <HomeBannerEditor />)}
+          {panel("Posts", <PostStudio />)}
           {panel("Palettes", <PaletteManager />)}
           {panel("Gallery", <GalleryEditor />)}
           {panel("Dashboard", <CuratorDashboard onOpen={show} />, false)}

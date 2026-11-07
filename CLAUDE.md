@@ -55,8 +55,8 @@ Linux shows up in the pull request.
 
 | Path | What it holds |
 |---|---|
-| `app/` | Routes: `/` (home), `/gallery`, `/photo/[id]`, `/curator`, `/upload`, `/manage`, `/moderate`, `/collections`, `/contact`, `/account`, `/profile/[id]`, `/sign-in/email` |
-| `src/domain/` | Entities (`Photo`, `User`, `PhotoComment`, `PublicName`, `Catalog`) and repository interfaces, `ContactRepository` included |
+| `app/` | Routes: `/` (home, with the journal of posts), `/post/[id]`, `/gallery`, `/photo/[id]`, `/curator`, `/upload`, `/manage`, `/moderate`, `/collections`, `/contact`, `/account`, `/profile/[id]`, `/sign-in/email` |
+| `src/domain/` | Entities (`Photo`, `Post`, `User`, `PhotoComment`, `PublicName`, `Catalog`) and repository interfaces, `ContactRepository` included |
 | `src/application/` | Use cases, one class each |
 | `src/infrastructure/` | Repository implementations, the HTTP client, service wiring |
 | `src/ui/` | Components and hooks |
@@ -438,8 +438,8 @@ while the inspector scrolls. Every scrolling box is positioned, so absolute
 descendants such as screen-reader texts stay inside it instead of making the page
 scroll. Phones keep the flowing page.
 
-Its menu is grouped by purpose (`curatorGroups`): **Curator** (General, Home, Gallery,
-Collections, Palettes), **Photos** (Photos, Upload, Categories, Variants) and
+Its menu is grouped by purpose (`curatorGroups`): **Curator** (General, Home, Posts,
+Gallery, Collections, Palettes), **Photos** (Photos, Upload, Categories, Variants) and
 **Admin** (Dashboard, Comments, Inbox): the screens of `/upload`, `/manage`, the
 collection editor and `/moderate`, plus the contact inbox. Each group is a pill that
 opens its tabs in a menu under it on hover, keyboard focus or a press (touch), the
@@ -479,7 +479,8 @@ does not lose unsaved edits. The older routes still work on their own.
   list has **Upload All (n)** above and below the cards.
 - **Classification** (`PhotoClassificationFields`), on each upload card and in the
   Photos editor: visibility (**Public** by default, **Private**, **Select** — reserved
-  for special accounts and, until they exist, private — and **Collections only**),
+  for special accounts and, until they exist, private — **Collections only** and
+  **Posts only**),
   categories typed by name with the existing ones suggested and a comma closing each
   one as a chip, and collections chosen from a list, each with the photo's position
   (from 1; new ones default to the end). It reads the full catalog from
@@ -1057,3 +1058,38 @@ settings must accept the proportions before this client saves them.
 the account is the way in, with the pending count. The docked logo is only a link home.
 Curator's row of tabs starts folded on every screen, and its screens head with their
 title alone. The account card's **Admin** label still opens Dashboard.
+
+## Posts on Home
+
+Home has a journal under the carousel (`HomePosts`, in `app/page.tsx` inside a
+`Suspense` boundary because it reads `?page=` and `?tag=`): published posts, newest
+first, five per page, from `GET /posts`. Nothing shows while there are no posts. Each
+post (`PostArticle`) has its title (a link to `/post/[id]`, `PostView`), its publication
+date, its blocks in order and its tags; a tag links to `/?tag=<tag>#posts`, which shows
+only those posts with **Show all** to return. Text blocks are plain text, never HTML:
+**Text** splits into paragraphs on blank lines, **Heading** and **Quote** are styled
+apart. A photo block shows the photo in its own proportion (a tall one narrowed to the
+window's height) with its optional caption. A photo that has its own detail view
+(`hasDetail`: it is in the gallery or a public collection) links to `/photo/[id]`, with
+the viewer's arrows following the post's photos; a **posts-only** photo has no link and
+no detail view.
+
+**Like** (with the public count) and **Save** sit under each post (`PostReactionsBar`,
+`PUT`/`DELETE /posts/:id/like` and `/posts/:id/save`); signed out they are disabled with
+a hint. `/account` lists the account's **Saved posts** (`SavedPosts`,
+`GET /auth/me/saved-posts`), visible only to its owner.
+
+Curator → **Posts** (`PostStudio`, in the Curator group after Home) lists every post,
+drafts and scheduled ones marked, beside the editor: title, **Draft**/**Published**,
+publication date (empty publishes at once, a later date schedules the post), tags
+(Enter or a comma closes one; stored without `#`, in lower case and once each, as
+`normalizeTag` and the API agree), and the body as blocks that reorder by dragging their
+⠿ grip (`useLiveSort`) or with ↑ ↓. **+ Text** adds a text block, **+ Photo from the
+library** offers the photos a post can show (public, collections-only and posts-only),
+and **Upload photos…** publishes files through `UploadPhoto`, either **Only in posts**
+(`POSTS_ONLY`, the default) or **To the gallery too** (`PUBLIC`), adding each to the
+post. **Preview** shows the post as Home will. **Save post** sends the whole post
+(`POST /posts`, or `PATCH /posts/:id` with its version; a 409 keeps the edits and offers
+**Reload posts**); unsaved posts register with the save bar. **Delete post** asks first;
+its photos stay in Photos. Photos' visibility adds **Posts only** to the classification
+cards. The API's `20261106000000_posts` migration must be applied before this client.

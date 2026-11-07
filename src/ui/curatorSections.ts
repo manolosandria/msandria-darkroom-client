@@ -5,7 +5,7 @@
 export const curatorGroups = [
   {
     name: "Curator",
-    sections: ["General", "Home", "Gallery", "Collections", "Palettes"],
+    sections: ["General", "Home", "Posts", "Gallery", "Collections", "Palettes"],
   },
   { name: "Photos", sections: ["Photos", "Upload", "Categories", "Variants"] },
   { name: "Admin", sections: ["Dashboard", "Comments", "Inbox"] },

@@ -859,7 +859,7 @@
 .photo-stage__variants[data-corner="top-left"] { top: 0.75rem; left: 0.75rem; }
 .photo-stage__variants[data-corner="top-right"] { top: 0.75rem; right: 0.75rem; }
 
-/* Visibility as four cards with a picture each. */
+/* Visibility as cards with a picture each. */
 .visibility-choice {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));

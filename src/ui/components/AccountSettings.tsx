@@ -12,6 +12,7 @@ import { usePhotoFetch } from "../hooks/usePhotoFetch";
 import { ErrorMessage } from "./ErrorMessage";
 import { PublicNameSettings } from "./PublicNameSettings";
 import { ProfileSettings } from "./ProfileSettings";
+import { SavedPosts } from "./SavedPosts";
 import { useSessionValue } from "./SessionProvider";
 
 const loadPreview = () => getAccountDeletionPreview.execute();
@@ -50,6 +51,7 @@ export default function AccountSettings() {
               />
             )}
             <ProfileSettings key={`profile:${session.user.getId()}`} />
+            <SavedPosts key={`saved-posts:${session.user.getId()}`} />
             <DeletionPanel
               key={`deletion:${session.user.getId()}`}
               onDeleted={() => {

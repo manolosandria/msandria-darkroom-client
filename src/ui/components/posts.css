@@ -1,0 +1,204 @@
+/* Home's journal: a single readable column of posts under the carousel, in the site's
+   general colors and fonts. */
+.home-posts,
+.post-page {
+  position: relative;
+  width: min(100% - 2rem, 44rem);
+  margin: 3rem auto 4rem;
+  color: var(--site-text, #1d211a);
+}
+.post-page {
+  margin-top: 6rem;
+}
+.home-posts__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  padding-bottom: 0.75rem;
+}
+.home-posts__head h2 {
+  margin: 0;
+  font-family: var(--site-heading-font, Georgia, serif);
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+}
+.home-posts__filter {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.home-posts__filter a,
+.post-page__back a {
+  color: var(--site-accent, #4d6b3a);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.home-posts__status {
+  margin: 2rem 0;
+  opacity: 0.75;
+}
+.post-page__back {
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+.post {
+  margin: 0 0 2.5rem;
+  padding: 1.75rem clamp(1rem, 4vw, 2rem);
+  border-radius: 0.9rem;
+  background: var(--site-surface, #fff);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.05);
+}
+.post__header {
+  margin-bottom: 1.25rem;
+}
+.post__title {
+  margin: 0;
+  font-family: var(--site-heading-font, Georgia, serif);
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  line-height: 1.2;
+}
+.post__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.post__title a:hover,
+.post__title a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.post__date {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.post__badge {
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  background: #f3e3b5;
+  color: #5c4710;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.post__body {
+  display: grid;
+  gap: 1.1rem;
+}
+.post__text p,
+.post__quote p {
+  margin: 0 0 0.8rem;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+.post__text p:last-child,
+.post__quote p:last-child {
+  margin-bottom: 0;
+}
+.post__heading {
+  margin: 0.5rem 0 0;
+  font-family: var(--site-heading-font, Georgia, serif);
+  font-size: 1.25rem;
+}
+.post__quote {
+  margin: 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid var(--site-accent, #4d6b3a);
+  font-family: var(--site-heading-font, Georgia, serif);
+  font-style: italic;
+  font-size: 1.08rem;
+}
+.post__figure {
+  margin: 0;
+}
+.post__photo-link {
+  display: block;
+  border-radius: 0.4rem;
+}
+.post__photo-link:focus-visible {
+  outline: 3px solid var(--site-accent, #4d6b3a);
+  outline-offset: 3px;
+}
+.post__frame {
+  position: relative;
+  display: block;
+  width: min(100%, calc(82vh * var(--ratio, 1.5)));
+  margin-inline: auto;
+  aspect-ratio: var(--ratio, 1.5);
+  overflow: hidden;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+.post__image {
+  object-fit: cover;
+}
+.post__photo-link .post__image {
+  transition: transform 0.25s ease;
+}
+.post__photo-link:hover .post__image {
+  transform: scale(1.012);
+}
+.post__figure figcaption {
+  margin-top: 0.45rem;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+.post__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+}
+.post__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.post__tags a,
+.post__tags span {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  background: color-mix(in srgb, var(--site-accent, #4d6b3a) 12%, transparent);
+  color: inherit;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+.post__tags a:hover,
+.post__tags a:focus-visible {
+  background: color-mix(in srgb, var(--site-accent, #4d6b3a) 24%, transparent);
+}
+.home-posts__pages {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+.home-posts__pages a {
+  color: var(--site-accent, #4d6b3a);
+  font-weight: 600;
+}
+.home-posts__pages a[rel="next"] {
+  justify-self: end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post__photo-link .post__image {
+    transition: none;
+  }
+}

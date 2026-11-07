@@ -38,7 +38,12 @@ export type PhotoRendition = {
 // Who may see a photo. Select is reserved for special accounts that do not exist yet,
 // so for now it behaves like private; collections-only photos appear in their
 // collections and nowhere else.
-export type PhotoVisibility = "PUBLIC" | "PRIVATE" | "SELECT" | "COLLECTIONS_ONLY";
+export type PhotoVisibility =
+  | "PUBLIC"
+  | "PRIVATE"
+  | "SELECT"
+  | "COLLECTIONS_ONLY"
+  | "POSTS_ONLY";
 
 // Where a photo sits in a collection, counting from 1.
 export type PhotoCollectionPlacement = { id: string; position: number };
