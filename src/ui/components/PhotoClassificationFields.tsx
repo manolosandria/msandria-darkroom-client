@@ -98,6 +98,17 @@ const VISIBILITY: {
     ),
   },
   {
+    value: "POSTS_ONLY",
+    label: "Posts only",
+    hint: "Inside Home posts",
+    icon: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="1.5" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </>
+    ),
+  },
+  {
     value: "PRIVATE",
     label: "Private",
     hint: "Administrator only",
@@ -151,6 +162,12 @@ function VisibilityChoice({ value, onChange }: Props) {
         <p className="upload-muted">
           Only the administrator can view this until special accounts are
           available.
+        </p>
+      )}
+      {value.visibility === "POSTS_ONLY" && (
+        <p className="upload-muted">
+          Shown only inside the Home posts that use it: no gallery, no detail
+          view and no comments.
         </p>
       )}
       {value.visibility === "COLLECTIONS_ONLY" && (

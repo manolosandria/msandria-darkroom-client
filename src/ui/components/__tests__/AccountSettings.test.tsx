@@ -21,6 +21,12 @@ vi.mock("@/src/infrastructure/sessionServices", () => ({
 vi.mock("@/src/infrastructure/profileServices", () => ({
   manageProfile: { mine: () => new Promise(() => {}) },
 }));
+// Saved posts have their own tests; here the list is empty.
+vi.mock("@/src/infrastructure/postServices", () => ({
+  browsePosts: {
+    saved: async () => ({ page: 1, limit: 20, total: 0, tag: null, posts: [] }),
+  },
+}));
 vi.mock("@/src/infrastructure/googleIdentity", () => ({
   disableGoogleAutoSelect: vi.fn(),
 }));

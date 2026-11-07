@@ -1,0 +1,306 @@
+/* Curator → Posts: the list of posts beside the editor of the chosen one. */
+.post-studio__layout {
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .post-studio__layout {
+    grid-template-columns: 1fr;
+  }
+}
+.post-studio__list {
+  position: relative;
+  display: grid;
+  gap: 0.6rem;
+}
+.post-studio__list ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.post-studio__list li button,
+.post-studio__new {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  border: 1px solid #d9ddd1;
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  color: #2f3a28;
+  text-align: left;
+}
+.post-studio__new {
+  border-style: dashed;
+  font-weight: 600;
+}
+.post-studio__list li button:hover,
+.post-studio__new:hover {
+  border-color: #65724a;
+}
+.post-studio__list button[aria-pressed="true"] {
+  border-color: #4d6b3a;
+  background: #eef3e6;
+  box-shadow: 0 0 0 2px #4d6b3a44;
+}
+.post-studio__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #6a705f;
+}
+.post-studio__state {
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.post-studio__state--draft {
+  background: #ececec;
+  color: #555;
+}
+.post-studio__state--scheduled {
+  background: #f3e3b5;
+  color: #5c4710;
+}
+.post-studio__state--published {
+  background: #dcebd2;
+  color: #2f4f2a;
+}
+
+.post-studio__editor {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #e1e4da;
+  border-radius: 0.9rem;
+  padding: 1.1rem;
+  background: #fbfcf8;
+}
+.post-studio__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.post-studio__actions button,
+.post-studio__add-row button,
+.post-studio__block-tools button {
+  border: 1px solid #cfd5c4;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  background: #fff;
+  color: #2f3a28;
+  font-size: 0.85rem;
+}
+.post-studio__actions button:disabled,
+.post-studio__add-row button:disabled,
+.post-studio__block-tools button:disabled {
+  opacity: 0.5;
+}
+.post-studio__actions .post-studio__save {
+  border-color: #3f6b33;
+  background: #4d7a3e;
+  color: #fff;
+  font-weight: 600;
+}
+.post-studio__actions .post-studio__delete {
+  margin-left: auto;
+  border-color: #e3b8b0;
+  color: #9a2f1f;
+}
+.post-studio__notice {
+  margin: 0;
+  color: #2f6b2a;
+}
+.post-studio__error {
+  margin: 0;
+  color: #9a2f1f;
+}
+.post-studio__field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.post-studio__field > span,
+.post-studio__field > label,
+.post-studio__status legend,
+.post-studio__destination legend {
+  font-weight: 600;
+}
+.post-studio__field small,
+.post-studio__hint {
+  color: #6a705f;
+  font-size: 0.75rem;
+}
+.post-studio__field input,
+.post-studio__text textarea,
+.post-studio__photo input {
+  width: 100%;
+  border: 1px solid #cfd5c4;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: #fff;
+  font: inherit;
+}
+.post-studio__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+.post-studio__status,
+.post-studio__destination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+.post-studio__status legend,
+.post-studio__destination legend {
+  margin-bottom: 0.3rem;
+}
+.post-studio__status label,
+.post-studio__destination label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.post-studio__destination small {
+  color: #6a705f;
+}
+.post-studio__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  border: 1px solid #cfd5c4;
+  border-radius: 0.5rem;
+  padding: 0.35rem;
+  background: #fff;
+}
+.post-studio__tags input {
+  flex: 1 1 8rem;
+  border: 0;
+  padding: 0.2rem;
+  outline: none;
+}
+.post-studio__tag {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  background: #e5eedc;
+  font-size: 0.8rem;
+}
+.post-studio__tag button {
+  border: 0;
+  border-radius: 999px;
+  width: 1.3rem;
+  height: 1.3rem;
+  background: transparent;
+  line-height: 1;
+}
+.post-studio__tag button:hover {
+  background: #cfdcc3;
+}
+
+.post-studio__blocks {
+  position: relative;
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.post-studio__block {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid #d9ddd1;
+  border-radius: 0.7rem;
+  padding: 0.65rem;
+  background: #fff;
+}
+.post-studio__block.is-dragged {
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+}
+.post-studio__block-tools {
+  display: flex;
+  gap: 0.3rem;
+}
+.post-studio__block-tools button {
+  padding: 0.15rem 0.55rem;
+}
+.post-studio__block-tools .post-studio__grip {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.post-studio__block-tools button:last-child {
+  margin-left: auto;
+}
+.post-studio__text {
+  display: grid;
+  gap: 0.4rem;
+}
+.post-studio__text textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.post-studio__photo {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+.post-studio__photo > div {
+  display: grid;
+  gap: 0.35rem;
+}
+.post-studio__thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  background: #e9ece4;
+}
+.post-studio__thumb img {
+  width: 100%;
+  height: 100%;
+}
+.post-studio__note {
+  color: #6a705f;
+  font-size: 0.75rem;
+}
+.post-studio__note--warn {
+  color: #9a2f1f;
+  font-weight: 600;
+}
+.post-studio__add {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid #e1e4da;
+  padding-top: 1rem;
+}
+.post-studio__add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.post-studio__preview {
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: var(--site-background, #f4f1ea);
+}

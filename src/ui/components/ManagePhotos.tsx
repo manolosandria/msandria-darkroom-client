@@ -84,6 +84,7 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
 const VISIBILITY_LABELS: Record<PhotoVisibility, string> = {
   PUBLIC: "Public",
   COLLECTIONS_ONLY: "Collections only",
+  POSTS_ONLY: "Posts only",
   PRIVATE: "Private",
   SELECT: "Select",
 };

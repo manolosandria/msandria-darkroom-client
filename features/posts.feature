@@ -1,0 +1,54 @@
+Feature: Posts on Home
+  As the photographer
+  I want to publish posts of text and photographs on Home, with tags and a date
+  So that I can tell stories around the photographs without every one joining the gallery
+
+  Scenario: Reading the journal under the carousel
+    Given there are published posts
+    When I open Home
+    Then the journal under the carousel shows five posts, newest first
+    And "Older →" and "← Newer" move between pages, kept as ?page= in the address
+    And Home shows no journal at all while nothing is published
+
+  Scenario: A photo of the gallery and a posts-only photo
+    Given a published post with a photo of the gallery and a posts-only photo
+    When I read it
+    Then clicking the gallery photo opens its detail view, with its information and comments
+    And the posts-only photo is shown without a link and has no detail view
+
+  Scenario: Following a tag
+    When I click "#trip" under a post
+    Then Home shows only the posts tagged "trip", with "Show all" to return
+
+  Scenario: A post at its own address
+    When I open the title of a post
+    Then it opens at /post/<id>
+    And a draft or a scheduled post is not found by visitors
+
+  Scenario: Liking and saving a post
+    Given I am signed in
+    When I like a post and save it
+    Then the like count goes up and the post appears under "Saved posts" on my account
+    But signed out, Like and Save are disabled with a hint to sign in
+
+  Scenario: Writing a post in Curator
+    Given I am the administrator in Curator → Posts
+    When I start a new post with a title, a text block, photos from the library and tags
+    And I reorder the blocks by dragging their grip or with the arrows
+    And I choose Published and save
+    Then the post appears on Home with its blocks in that order
+    And its tags are stored once each, without "#" and in lower case
+
+  Scenario: Uploading photos from the post editor
+    Given I am writing a post
+    When I upload photos with "Only in posts"
+    Then they join the post and stay out of the gallery
+    But with "To the gallery too" they also join the gallery with a detail view
+
+  Scenario: Drafts and scheduled posts
+    When I save a post as a draft, or published with a later date
+    Then only Curator shows it, marked Draft or Scheduled, until that date comes
+
+  Scenario: A post that cannot be published
+    When I try to publish a post without a title, without blocks or with a private photo
+    Then the editor or the API explains why and keeps my edits

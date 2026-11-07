@@ -217,6 +217,7 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
 const VISIBILITY: Record<PhotoClassification["visibility"], string> = {
   PUBLIC: "Public",
   COLLECTIONS_ONLY: "Collections only",
+  POSTS_ONLY: "Posts only",
   PRIVATE: "Private",
   SELECT: "Select",
 };
