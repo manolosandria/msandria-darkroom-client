@@ -119,6 +119,8 @@ describe("SessionMenu", () => {
 
     const account = await screen.findByLabelText("Your account");
     expect(account.closest("details")).toHaveAttribute("data-admin");
+    // Inside Curator the name folds away until pointed at, to free the editors.
+    expect(account.closest("details")).toHaveAttribute("data-compact");
     const backdrop = screen.getByRole("radiogroup", { name: "Backdrop" });
     fireEvent.click(screen.getByRole("radio", { name: "Dusk backdrop" }));
     expect(screen.getByRole("radio", { name: "Dusk backdrop" })).toHaveAttribute(
@@ -133,8 +135,9 @@ describe("SessionMenu", () => {
 
     renderMenu();
 
-    await screen.findByLabelText("Your account");
+    const account = await screen.findByLabelText("Your account");
     expect(screen.queryByRole("radiogroup", { name: "Backdrop" })).toBeNull();
+    expect(account.closest("details")).not.toHaveAttribute("data-compact");
   });
 
   it("opens when the mouse points at it, stays open on the press that follows and closes on leaving", async () => {

@@ -403,16 +403,15 @@ describe("HomePage", () => {
         getAllPhotos={{ execute: vi.fn().mockResolvedValue([photo]) }}
       />,
     );
+    // The highlight is handed to the stylesheet as the part that must show whole.
     const desktop = await screen.findByTestId("banner-crop-desktop");
-    expect(desktop.querySelector(".home-carousel__crop-source")).toHaveStyle({
-      width: "200%",
-      left: "-50%",
-    });
-    expect(
-      screen
-        .getByTestId("banner-crop-mobile")
-        .querySelector(".home-carousel__crop-source"),
-    ).toHaveStyle({ width: "100%", left: "0%" });
+    const mobile = screen.getByTestId("banner-crop-mobile");
+    const focus = (node: HTMLElement) =>
+      ["--focus-x", "--focus-width", "--image-ratio"].map((name) =>
+        Number(node.style.getPropertyValue(name)),
+      );
+    expect(focus(desktop)).toEqual([0.5, 0.5, photo.getAspectRatio()]);
+    expect(focus(mobile)).toEqual([0.5, 1, photo.getAspectRatio()]);
   });
   it("applies saved appearance and escaped text to public Home", async () => {
     const get = vi.spyOn(manageHomeBanner, "get").mockResolvedValue({

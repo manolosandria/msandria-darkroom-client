@@ -1,5 +1,72 @@
-/* Highlight editor: thumbnails of every crop, a green + to draw a new one, and a stage
-   where the selected crop moves with the pointer and resizes from its corners. */
+/* Highlight editor: a tab per size, thumbnails of that size's crops, a green + to draw a
+   new one, and a stage where the selected crop moves with the pointer and resizes from
+   its corners. */
+.highlight-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.6rem 0 0;
+  padding: 0.3rem;
+  border-radius: 0.8rem;
+  background: #eef3e6;
+}
+.highlight-editor .highlight-sizes button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: #3d4934;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.highlight-editor .highlight-sizes button:hover:not(:disabled):not([aria-selected="true"]) {
+  background: #ffffffb3;
+}
+.highlight-editor .highlight-sizes button[aria-selected="true"] {
+  border-color: #3f8f3a;
+  background: #fff;
+  color: #24481f;
+  font-weight: 700;
+  box-shadow: 0 2px 8px -3px #2f6b2b66;
+}
+.highlight-editor .highlight-sizes button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.highlight-sizes__count {
+  display: grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #3f8f3a;
+  color: #fff;
+  font-size: 0.62rem;
+}
+.highlight-thumb__uses {
+  display: flex;
+  gap: 0.2rem;
+  min-height: 0.9rem;
+}
+.highlight-thumb__uses i {
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: #e6efdc;
+  color: #36572c;
+  font-size: 0.55rem;
+  font-style: normal;
+  line-height: 0.9rem;
+}
 .highlight-bar {
   display: flex;
   align-items: flex-start;
@@ -41,10 +108,12 @@
   border-color: #4d6b3a;
   box-shadow: 0 0 0 2px #4d6b3a66;
 }
+/* Its width comes from its proportion, so a wide or tall crop fits 4.2rem of height
+   without stretching; a grid item with auto margins would otherwise shrink to nothing. */
 .highlight-thumb__image {
   position: relative;
   display: block;
-  max-height: 4.2rem;
+  width: min(100%, calc(4.2rem * var(--thumb-ratio, 1)));
   max-width: 100%;
   margin: 0 auto;
   overflow: hidden;
@@ -86,41 +155,14 @@
   background: #347a30;
   transform: scale(1.06);
 }
-.highlight-editor .highlight-add[aria-expanded="true"] {
-  transform: rotate(45deg);
+.highlight-editor .highlight-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 .highlight-editor .highlight-add svg {
   width: 22px;
   height: 22px;
-}
-.highlight-shapes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
-  padding: 0.5rem;
-  border-radius: 0.7rem;
-  background: #eef3e6;
-}
-.highlight-editor .highlight-shapes button {
-  display: grid;
-  justify-items: center;
-  gap: 0.15rem;
-  min-width: 4.4rem;
-  padding: 0.45rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.55rem;
-  background: #fff;
-  color: #2f4f2a;
-  font-size: 0.68rem;
-  cursor: pointer;
-}
-.highlight-editor .highlight-shapes button:hover:not(:disabled) {
-  border-color: #3f8f3a;
-}
-.highlight-editor .highlight-shapes button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 .highlight-stage[data-drawing] {
   cursor: crosshair;

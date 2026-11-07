@@ -36,3 +36,28 @@ Feature: An upload workspace with manual thumbnail crops
     Then its detail is loaded before opening the editor
     And saving preserves the description returned by the detail
     But a failed detail request offers retry without opening an incomplete editor
+
+  Scenario: Work on one size of highlight at a time
+    Given the highlight editor of a photograph
+    Then Original, Square, Landscape, Portrait and Free are tabs, each counting its highlights
+    When the administrator chooses a tab
+    Then only that size's highlights and where its chosen view can appear are shown
+    And the Photos stage shows the chosen highlight large
+
+  Scenario: Keep the sizes in view while drawing
+    Given the administrator presses + in the Square tab
+    Then every size stays on offer and Square is marked
+    When they choose Landscape before accepting
+    Then the drawing becomes a landscape where it was
+
+  Scenario: Several highlights of one size
+    Given a photograph with a main square
+    When the administrator draws another square
+    Then it is kept as "Square 2", a named square beside the main one
+    And it can be renamed, moved, resized, duplicated or removed
+    And "Make main" swaps it with the main square, whose Gallery and Home choices follow it
+
+  Scenario: Shaped highlights join the grids
+    When the administrator accepts a square, landscape or portrait highlight
+    Then Gallery's Grid and Random offer it in its own proportion
+    And Original keeps showing the photograph as it is

@@ -1121,6 +1121,7 @@ function PhotoEditor({
                 changed();
               }}
               onActiveChange={(key) => setStageView(key ?? "original")}
+              activeKey={stageView}
               disabled={saving}
             />,
             { summary: String(highlightViews(highlights).length) },

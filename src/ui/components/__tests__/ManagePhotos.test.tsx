@@ -361,6 +361,8 @@ describe("ManagePhotos", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "The coast" }),
     );
+    // Choosing the square over the stage opens it in the editor too.
+    await userEvent.click(await screen.findByRole("radio", { name: "Square" }));
     expect(
       await screen.findByAltText("square thumbnail preview"),
     ).toBeInTheDocument();

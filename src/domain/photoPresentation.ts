@@ -168,3 +168,50 @@ export function updateGalleryRule(
     },
   };
 }
+
+/** A new crop of a fixed shape joins Gallery's Grid and Random in its own proportion,
+ *  as the curator expects of a square, landscape or portrait highlight. Original keeps
+ *  showing the photograph as it is. */
+export function offerInGalleryGrid(
+  highlights: PhotoHighlights,
+  viewId: string,
+  ratio: number,
+): PhotoHighlights {
+  const view = photoViews(highlights, ratio).find((item) => item.id === viewId);
+  if (!view) return highlights;
+  const aspect = viewAspect(view.ratio);
+  return ["uniform", "random"].reduce(
+    (next, layout) =>
+      updateGalleryRule(next, viewId, true, ratio, layout, aspect),
+    highlights,
+  );
+}
+
+/** Exchanges two views in every list that names them, so the presentation follows a
+ *  crop that changes key (a named crop made the main one of its shape). */
+export function swapViewReferences(
+  highlights: PhotoHighlights,
+  a: string,
+  b: string,
+): PhotoHighlights {
+  const presentation = highlights.presentation;
+  if (!presentation) return highlights;
+  const swap = (ids: string[]) =>
+    ids.map((id) => (id === a ? b : id === b ? a : id));
+  return {
+    ...highlights,
+    presentation: {
+      ...presentation,
+      gallery: swap(presentation.gallery),
+      home: swap(presentation.home),
+      ...(presentation.galleryRules
+        ? {
+            galleryRules: presentation.galleryRules.map((rule) => ({
+              ...rule,
+              views: swap(rule.views),
+            })),
+          }
+        : {}),
+    },
+  };
+}

@@ -5,6 +5,7 @@ import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import { rememberViewerSequence } from "@/src/ui/viewerSequence";
 import { ArrangeTarget, BannerHandle, useBannerArrange } from "./BannerArrange";
 import { ResolutionBadge } from "./ResolutionBadge";
+import { bannerWindow } from "@/src/ui/bannerFocus";
 import { useWelcomePlacement } from "./welcomePlacement";
 import Link from "next/link";
 import { GetAllPhotos } from "@/src/application/use-cases/GetAllPhotos";
@@ -601,8 +602,15 @@ export function CroppedSlide({
       const width =
         photo.getRenditions().find((item) => item.url === image?.currentSrc)
           ?.width ?? 0;
-      const w = width * crop.width,
-        h = (width / photo.getAspectRatio()) * crop.height;
+      // What actually shows: the highlight and, when the banner's proportion differs,
+      // the photo around it.
+      const shown = bannerWindow(
+        photo.getAspectRatio(),
+        crop,
+        host.clientWidth / (host.clientHeight || 1),
+      );
+      const w = width * shown.width,
+        h = (width / photo.getAspectRatio()) * shown.height;
       const scale =
         Math.max(host.clientWidth / w, host.clientHeight / h) *
         (window.devicePixelRatio || 1);
@@ -619,14 +627,24 @@ export function CroppedSlide({
       observer.disconnect();
       host.removeEventListener("load", update, true);
     };
-  }, [photo, crop.width, crop.height, quality]);
-  const aspect = (photo.getAspectRatio() * crop.width) / crop.height;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the crop's numbers, not its identity
+  }, [photo, crop.x, crop.y, crop.width, crop.height, quality]);
   return (
     <div
       className={`home-carousel__crop home-carousel__crop--${device}`}
       ref={node}
       data-testid={`banner-crop-${device}`}
-      style={{ "--crop-aspect": aspect } as CSSProperties}
+      // The highlight is the part that always shows whole; homeCarousel.css widens the
+      // view around it to the banner's proportion (see bannerWindow).
+      style={
+        {
+          "--image-ratio": photo.getAspectRatio(),
+          "--focus-x": crop.x + crop.width / 2,
+          "--focus-y": crop.y + crop.height / 2,
+          "--focus-width": crop.width,
+          "--focus-height": crop.height,
+        } as CSSProperties
+      }
     >
       {quality && (
         // A small chip in the corner, so the composition stays in view; the
@@ -646,15 +664,7 @@ export function CroppedSlide({
         </span>
       )}
       <div className="home-carousel__crop-window">
-        <div
-          className="home-carousel__crop-source"
-          style={{
-            width: `${100 / crop.width}%`,
-            height: `${100 / crop.height}%`,
-            left: `${(-100 * crop.x) / crop.width}%`,
-            top: `${(-100 * crop.y) / crop.height}%`,
-          }}
-        >
+        <div className="home-carousel__crop-source">
           <PhotoImage photo={photo} fallbackSizes="100vw" />
         </div>
       </div>
