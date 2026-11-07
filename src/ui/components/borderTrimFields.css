@@ -1,0 +1,24 @@
+.border-trim { display:grid; gap:12px; min-width:0; border:1px solid #e1e4da; border-radius:8px; padding:14px 16px 16px; }
+.border-trim legend { padding:0 6px; font-size:12px; font-weight:600; }
+.border-trim__toggle { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+/* The upload form styles every input as a text box; give the switch back the shared checkbox look. */
+.upload-fields .border-trim__toggle input { display:inline-grid; width:1.15rem; height:1.15rem; margin:0; padding:0; border:1.5px solid #9eaa92; border-radius:.32rem; background:#fff; }
+.upload-fields .border-trim__toggle input:checked { border-color:var(--control-accent, #4f7d3f); background:var(--control-accent, #4f7d3f); }
+.border-trim__stage { position:relative; width:min(100%, 360px); justify-self:center; overflow:hidden; background:#e9ebe3; touch-action:none; user-select:none; }
+.border-trim__stage img { display:block; width:100%; height:100%; object-fit:fill; }
+.border-trim__kept { position:absolute; outline:2px dashed #465b34; box-shadow:0 0 0 999px #17211699; pointer-events:none; }
+.border-trim__handle { position:absolute; pointer-events:auto; background:#fdfefb; border:1px solid #465b34; border-radius:4px; }
+.border-trim__handle--top, .border-trim__handle--bottom { left:50%; width:36px; height:10px; margin-left:-18px; cursor:ns-resize; }
+.border-trim__handle--top { top:0; }
+.border-trim__handle--bottom { bottom:0; }
+.border-trim__handle--left, .border-trim__handle--right { top:50%; width:10px; height:36px; margin-top:-18px; cursor:ew-resize; }
+.border-trim__handle--left { left:0; }
+.border-trim__handle--right { right:0; }
+.border-trim__sides { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+.border-trim__sides label { display:grid; gap:4px; font-size:12px; }
+.border-trim__sides label > span { display:flex; align-items:center; gap:4px; color:#5d6457; }
+.upload-fields .border-trim__sides input, .border-trim__sides input { width:100%; min-width:0; margin:0; padding:4px 6px; font-variant-numeric:tabular-nums; }
+.border-trim__footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#5d6457; }
+.border-trim__note { margin:0; font-size:12px; color:#5d6457; }
+.border-trim__note:empty { display:none; }
+@media (max-width: 480px) { .border-trim__sides { grid-template-columns:repeat(2, minmax(0, 1fr)); } }

@@ -67,6 +67,8 @@ import {
   PhotoVisibilityField,
 } from "./PhotoClassificationFields";
 import { EmptyState } from "./EmptyState";
+import { FileBorderTrim } from "./BorderTrimFields";
+import { BorderTrim } from "@/src/domain/borderTrim";
 import { highlightViews, missingHighlights } from "@/src/ui/highlightViews";
 import {
   EditingBoundary,
@@ -680,6 +682,8 @@ function PhotoEditor({
   active: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  // A border baked into the replacement file, cut away by the API.
+  const [fileTrim, setFileTrim] = useState<BorderTrim | null>(null);
   const [report, setReport] = useState(issues);
   const [title, setTitle] = useState(photo.getTitle());
   const [description, setDescription] = useState(photo.getDescription() ?? "");
@@ -731,6 +735,7 @@ function PhotoEditor({
     setFrame(photo.getFrame());
     setClassification(photo.getClassification());
     setFile(null);
+    setFileTrim(null);
     setResetKey((value) => value + 1);
     setError("");
     setConflict(false);
@@ -764,8 +769,11 @@ function PhotoEditor({
         createdAt: photo.getCreatedAt(),
       });
       if (file) {
-        const result = await replacePhoto.execute(updated, file, photo);
+        const result = fileTrim
+          ? await replacePhoto.execute(updated, file, photo, fileTrim)
+          : await replacePhoto.execute(updated, file, photo);
         setFile(null);
+        setFileTrim(null);
         setReport(result.optimizationIssues);
         onSaved(result.photo, result.optimizationIssues);
       } else {
@@ -1162,6 +1170,7 @@ function PhotoEditor({
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null);
+                    setFileTrim(null);
                     changed();
                   }}
                 />
@@ -1178,12 +1187,25 @@ function PhotoEditor({
                     type="button"
                     onClick={() => {
                       setFile(null);
+                      setFileTrim(null);
                       setResetKey((value) => value + 1);
                     }}
                   >
                     Keep the current file
                   </button>
                 </div>
+              )}
+              {file && (
+                <FileBorderTrim
+                  key={`${file.name}:${file.size}:${file.lastModified}:${resetKey}`}
+                  file={file}
+                  value={fileTrim}
+                  disabled={saving}
+                  onChange={(trim) => {
+                    setFileTrim(trim);
+                    changed();
+                  }}
+                />
               )}
             </div>,
             { summary: pending ? `⚠ ${pending}` : undefined },

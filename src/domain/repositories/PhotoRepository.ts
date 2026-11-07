@@ -2,6 +2,7 @@ import { Photo, PhotoClassification } from './../entities/Photo';
 import { PhotoOptimizationIssue } from './../entities/PhotoOptimizationIssue';
 import { PhotoHighlights } from '../entities/PhotoHighlights';
 import { PhotoFrame } from '../entities/PhotoFrame';
+import { BorderTrim } from '../borderTrim';
 
 // What the photographer hands in to publish a photo. The file travels as it came off
 // the disk: the API's upload pipeline is what resizes it and strips its metadata, and
@@ -12,6 +13,8 @@ export type PhotoDraft = Partial<PhotoClassification> & {
   description?: string;
   highlights?: PhotoHighlights;
   frame?: PhotoFrame | null;
+  /** A border baked into the file, for the API to cut away before storing it. */
+  trim?: BorderTrim;
 };
 
 // The published photo together with what its file was missing. The issues describe the
@@ -52,5 +55,10 @@ export interface PhotoRepository {
 
 export interface PhotoMaintenanceRepository {
   findUnoptimized(): Promise<PublishedPhoto[]>;
-  replace(photo: Photo, file: File, original?: Photo): Promise<PublishedPhoto>;
+  replace(
+    photo: Photo,
+    file: File,
+    original?: Photo,
+    trim?: BorderTrim,
+  ): Promise<PublishedPhoto>;
 }

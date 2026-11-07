@@ -135,3 +135,27 @@ Feature: Publishing a photo through the API
     Given a replacement request fails
     Then the selected file and edits remain available
     And no replacement is retried automatically
+
+  Scenario: Remove a border that came in the file
+    Given an administrator with a photo whose file has white bands on top and bottom
+    When they switch on "Remove border"
+    Then the border is detected and each side is shown in pixels
+    And each side can be adjusted by hand or by dragging its edge
+    And the frame and highlight editors show the photo without the border
+    And the trim is sent with the file for the API to cut
+
+  Scenario: No border is found
+    Given a photo without a border of one colour
+    When they switch on "Remove border"
+    Then they are told none was found and can set the sides by hand
+
+  Scenario: Highlights follow the trim
+    Given a photo with highlights drawn
+    When the border trim changes
+    Then each highlight keeps the same pixels of the photo
+    And a highlight that falls in the removed border is dropped with its places
+
+  Scenario: Remove the border of a replacement file
+    Given an administrator choosing a replacement file in Photos
+    When they switch on "Remove border" and save
+    Then the replacement is sent with its trim

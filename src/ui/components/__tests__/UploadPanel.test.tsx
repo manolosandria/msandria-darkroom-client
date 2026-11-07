@@ -14,6 +14,10 @@ import { SessionProvider } from "../SessionProvider";
 import UploadPanel from "../UploadPanel";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { getManagedPhotos } from "@/src/infrastructure/photoServices";
+vi.mock("@/src/ui/borderTrimImage", () => ({
+  findBorder: vi.fn(async () => ({ x: 0, y: 0.25, width: 1, height: 0.5 })),
+  trimmedPreview: vi.fn(async () => "blob:trimmed"),
+}));
 vi.mock("@/src/infrastructure/photoServices", () => ({ uploadPhoto: { execute: vi.fn() }, getManagedPhotos: { execute: vi.fn() } }));
 vi.mock('@/src/infrastructure/catalogServices', () => ({ manageCatalog: { saveWork: vi.fn(), load: vi.fn().mockResolvedValue({ categories: [], collections: [], works: [], photos: [] }) } }));
 
@@ -229,6 +233,39 @@ describe("Upload workspace", () => {
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({
           frame: { color: "#1b1b1b", leftRight: 4, topBottom: 4 },
+        }),
+      ),
+    );
+  });
+  it("sends the border to remove and edits the photo without it", async () => {
+    renderPanel();
+    await select();
+    const image = screen.getByAltText("first");
+    Object.defineProperties(image, {
+      naturalWidth: { value: 1800 },
+      naturalHeight: { value: 1200 },
+    });
+    fireEvent.load(image);
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Remove border" }),
+    );
+
+    expect(await screen.findByLabelText("Top border in pixels")).toHaveValue(300);
+    // The frame preview shows what the trim keeps, once it has been drawn.
+    await waitFor(
+      () =>
+        expect(
+          screen.getByTestId("frame-preview").querySelector("img"),
+        ).toHaveAttribute("src", "blob:trimmed"),
+      { timeout: 2000 },
+    );
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Upload All (1)" })[0],
+    );
+    await waitFor(() =>
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trim: { x: 0, y: 0.25, width: 1, height: 0.5 },
         }),
       ),
     );
