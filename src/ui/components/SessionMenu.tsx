@@ -181,6 +181,9 @@ export default function SessionMenu() {
       ref={disclosure}
       className="session-menu"
       data-admin={admin ? "" : undefined}
+      // In Curator the name folds away, so the corner covers less of the editors;
+      // pointing at the photo or focusing it brings the name back.
+      data-compact={pathname?.startsWith("/curator") ? "" : undefined}
       {...closeOnLeave}
       {...hover}
     >

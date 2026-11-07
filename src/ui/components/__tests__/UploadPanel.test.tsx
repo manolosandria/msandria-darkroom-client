@@ -175,10 +175,7 @@ describe("Upload workspace", () => {
     });
     fireEvent.load(image);
     await userEvent.click(
-      await screen.findByRole("button", { name: "New highlight" }),
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Draw square highlight" }),
+      await screen.findByRole("button", { name: "New square highlight" }),
     );
     const stage = document.querySelector(".highlight-stage") as HTMLElement;
     stage.setPointerCapture = vi.fn();
@@ -201,8 +198,12 @@ describe("Upload workspace", () => {
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({
+          // A new square joins Gallery's grids in its own proportion.
           highlights: {
             square: expect.objectContaining({ width: expect.any(Number) }),
+            presentation: expect.objectContaining({
+              gallery: ["original", "square"],
+            }),
           },
         }),
       ),

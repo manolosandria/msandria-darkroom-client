@@ -8,24 +8,33 @@ import {
   galleryViewRules,
   viewAspect,
   updateGalleryRule,
+  offerInGalleryGrid,
+  swapViewReferences,
 } from "@/src/domain/photoPresentation";
 import "./highlightPresentation.css";
 import "./highlightEditor.css";
 import { useRef, useState } from "react";
 import {
   centeredHighlight,
+  CustomHighlight,
   Highlight,
   MAX_CUSTOM_HIGHLIGHTS,
   HIGHLIGHT_RATIOS,
   HighlightKind,
   PhotoHighlights,
+  refitHighlight,
 } from "@/src/domain/entities/PhotoHighlights";
 
 const KINDS: HighlightKind[] = ["square", "landscape", "portrait"];
-const LABELS = {
-  square: "Square · 1:1",
-  landscape: "Landscape · 3:2",
-  portrait: "Portrait · 2:3",
+const NAMES: Record<HighlightKind, string> = {
+  square: "Square",
+  landscape: "Landscape",
+  portrait: "Portrait",
+};
+const PROPORTIONS: Record<HighlightKind, string> = {
+  square: "1:1",
+  landscape: "3:2",
+  portrait: "2:3",
 };
 const clamp = (n: number, max: number) => Math.max(0, Math.min(max, n));
 const MIN_SIZE = 0.02;
@@ -33,19 +42,42 @@ const MIN_SIZE = 0.02;
 /** "square", "landscape", "portrait" or "custom:<id>". */
 type HighlightKey = HighlightKind | `custom:${string}`;
 type Shape = HighlightKind | "free";
+/** One size at a time: the photograph itself, each fixed shape, or free crops. */
+type Tab = "original" | Shape;
 type Handle = "nw" | "ne" | "sw" | "se" | "n" | "e" | "s" | "w";
 type Gesture =
   | { mode: "move"; pointer: number; dx: number; dy: number }
   | { mode: "draw"; pointer: number; ax: number; ay: number }
   | { mode: "edge"; pointer: number; handle: "n" | "e" | "s" | "w" };
 
+const TABS: Tab[] = ["original", ...KINDS, "free"];
 const customKey = (id: string): HighlightKey => `custom:${id}`;
+const isKind = (key: string): key is HighlightKind =>
+  (KINDS as string[]).includes(key);
 
-function cropOf(value: PhotoHighlights, key: HighlightKey | null) {
+function customOf(value: PhotoHighlights, key: string | null) {
+  return key?.startsWith("custom:")
+    ? value.custom?.find((item) => customKey(item.id) === key)
+    : undefined;
+}
+function cropOf(value: PhotoHighlights, key: string | null) {
   if (!key) return undefined;
-  if (key.startsWith("custom:"))
-    return value.custom?.find((item) => customKey(item.id) === key)?.crop;
-  return value[key as HighlightKind];
+  if (isKind(key)) return value[key];
+  return customOf(value, key)?.crop;
+}
+/** The size tab a highlight belongs to. */
+function shapeOf(value: PhotoHighlights, key: string): Shape {
+  if (isKind(key)) return key;
+  return customOf(value, key)?.shape ?? "free";
+}
+/** Every highlight of one size, the main one of a fixed shape first. */
+function keysOf(value: PhotoHighlights, shape: Shape): HighlightKey[] {
+  return [
+    ...(shape !== "free" && value[shape] ? [shape] : []),
+    ...(value.custom ?? [])
+      .filter((item) => (item.shape ?? "free") === shape)
+      .map((item) => customKey(item.id)),
+  ];
 }
 
 // The rectangle from a fixed anchor to the pointer, kept inside the photo. A locked shape
@@ -79,7 +111,7 @@ function rectangle(
   };
 }
 
-function ShapeIcon({ shape }: { shape: Shape }) {
+function ShapeIcon({ shape }: { shape: Tab }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -96,6 +128,11 @@ function ShapeIcon({ shape }: { shape: Shape }) {
         <rect x="2.5" y="7" width="19" height="12.5" rx="1" />
       ) : shape === "portrait" ? (
         <rect x="6.5" y="2.5" width="11" height="19" rx="1" />
+      ) : shape === "original" ? (
+        <>
+          <rect x="3" y="5" width="18" height="14" rx="1.5" />
+          <path d="M3 16l5-5 4 4 3-3 6 6" />
+        </>
       ) : (
         <rect x="3" y="5" width="18" height="14" rx="1" strokeDasharray="3 2" />
       )}
@@ -127,7 +164,20 @@ const ICONS = {
   revert: "M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5",
   duplicate: "M8 8h11v11H8zM5 16V5h11",
   remove: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
+  star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z",
 };
+
+// The crop of a view laid over a box of its own proportion.
+function cropStyle(crop: Highlight) {
+  return {
+    position: "absolute" as const,
+    maxWidth: "none",
+    width: `${100 / crop.width}%`,
+    height: `${100 / crop.height}%`,
+    left: `${(-100 * crop.x) / crop.width}%`,
+    top: `${(-100 * crop.y) / crop.height}%`,
+  };
+}
 
 export function HighlightEditor({
   src,
@@ -136,6 +186,7 @@ export function HighlightEditor({
   value,
   onChange: commit,
   onActiveChange,
+  activeKey,
   disabled = false,
 }: {
   src: string;
@@ -145,6 +196,9 @@ export function HighlightEditor({
   onChange: (value: PhotoHighlights) => void;
   /** Told which highlight is selected, so a larger view elsewhere can follow it. */
   onActiveChange?: (key: string | null) => void;
+  /** A highlight chosen elsewhere, followed here. Pass back what `onActiveChange`
+   *  reports, with `null` (the whole photo) as "original". */
+  activeKey?: string;
   disabled?: boolean;
 }) {
   const onChange = (next: PhotoHighlights) => commit(cleanPresentation(next));
@@ -153,37 +207,82 @@ export function HighlightEditor({
     ...KINDS.filter((kind) => value[kind]),
     ...(value.custom ?? []).map((item) => customKey(item.id)),
   ];
-  const [chosen, setChosen] = useState<HighlightKey | null>(
-    () => existing[0] ?? null,
+  const [chosen, setChosen] = useState<string | null>(() =>
+    activeKey === undefined ? (existing[0] ?? null) : activeKey,
   );
-  const active = chosen && cropOf(value, chosen) ? chosen : null;
+  const [tab, setTab] = useState<Tab>(() => {
+    const start = activeKey === undefined ? (existing[0] ?? null) : activeKey;
+    if (start === "original") return "original";
+    return start && cropOf(value, start) ? shapeOf(value, start) : "square";
+  });
+  const active =
+    tab !== "original" && chosen && cropOf(value, chosen) ? chosen : null;
   // What each highlight looked like when the editor opened or it was accepted.
   const [snapshots, setSnapshots] = useState<Record<string, Highlight>>(() =>
     Object.fromEntries(
       existing.map((key) => [key, cropOf(value, key)!] as const),
     ),
   );
-  const [picking, setPicking] = useState(false);
   const [draft, setDraft] = useState<{
     shape: Shape;
     crop: Highlight | null;
   } | null>(null);
+  // Follows a choice made outside, such as the chips over the Photos stage.
+  const [followed, setFollowed] = useState(activeKey);
+  if (activeKey !== followed) {
+    setFollowed(activeKey);
+    setDraft(null);
+    if (activeKey === "original") {
+      setChosen(null);
+      setTab("original");
+    } else if (activeKey && cropOf(value, activeKey)) {
+      setChosen(activeKey);
+      setTab(shapeOf(value, activeKey));
+    }
+  }
   const gesture = useRef<Gesture | null>(null);
-  const custom = active?.startsWith("custom:")
-    ? value.custom?.find((item) => customKey(item.id) === active)
-    : undefined;
+  const custom = customOf(value, active);
   const crop = draft ? draft.crop : cropOf(value, active);
   const shape: Shape | null = draft
     ? draft.shape
-    : custom
-      ? "free"
-      : (active as HighlightKind | null);
+    : active
+      ? shapeOf(value, active)
+      : null;
   const relative =
     shape && shape !== "free" ? HIGHLIGHT_RATIOS[shape] / ratio : null;
+  const customCount = value.custom?.length ?? 0;
 
-  function select(key: HighlightKey | null) {
+  function select(key: string | null) {
     setChosen(key);
+    // What the parent will pass back is this editor's own choice, not a new one.
+    if (activeKey !== undefined) setFollowed(key ?? "original");
     onActiveChange?.(key);
+  }
+  function openTab(next: Tab) {
+    if (draft) {
+      // While drawing, the sizes stay on offer: another one reshapes the drawing.
+      if (next === "original" || next === draft.shape) return;
+      setTab(next);
+      setDraft({
+        shape: next,
+        crop:
+          draft.crop && next !== "free"
+            ? refitHighlight(draft.crop, next, ratio)
+            : draft.crop,
+      });
+      return;
+    }
+    setTab(next);
+    if (next === "original") {
+      select(null);
+      return;
+    }
+    const keys = keysOf(value, next);
+    select(
+      chosen && keys.includes(chosen as HighlightKey)
+        ? chosen
+        : (keys[0] ?? null),
+    );
   }
   function update(next: Highlight) {
     if (draft) {
@@ -203,48 +302,66 @@ export function HighlightEditor({
   function patch(part: Partial<Highlight>) {
     if (crop) update({ ...crop, ...part });
   }
-  function startDrawing(next: Shape) {
-    setPicking(false);
-    setDraft({ shape: next, crop: null });
+  // The name a new crop of `next` starts with: "Square 2", "Detail 3"…
+  function nameFor(next: Shape) {
+    const taken = new Set((value.custom ?? []).map((item) => item.name));
+    const base = next === "free" ? "Detail" : NAMES[next];
+    let n = next === "free" ? 1 : 2;
+    while (taken.has(`${base} ${n}`)) n++;
+    return `${base} ${n}`;
+  }
+  // Adds a crop of `next`: the main one of its shape if there is none yet, otherwise
+  // a named one. A fixed shape joins Gallery's Grid and Random in its proportion.
+  function add(next: Shape, area: Highlight) {
+    let key: HighlightKey;
+    let result: PhotoHighlights;
+    if (next !== "free" && !value[next]) {
+      key = next;
+      result = { ...value, [next]: area };
+    } else {
+      const id = crypto.randomUUID();
+      key = customKey(id);
+      const item: CustomHighlight = { id, name: nameFor(next), crop: area };
+      if (next !== "free") item.shape = next;
+      result = { ...value, custom: [...(value.custom ?? []), item] };
+    }
+    if (next !== "free") result = offerInGalleryGrid(result, key, ratio);
+    onChange(result);
+    setSnapshots((previous) => ({ ...previous, [key]: { ...area } }));
+    setTab(next);
+    select(key);
+  }
+  function canAdd(next: Shape) {
+    return (
+      (next !== "free" && !value[next]) || customCount < MAX_CUSTOM_HIGHLIGHTS
+    );
   }
   function accept() {
     if (!draft?.crop) return;
-    let key: HighlightKey;
-    if (draft.shape === "free") {
-      const items = value.custom ?? [];
-      const id = crypto.randomUUID();
-      key = customKey(id);
-      onChange({
-        ...value,
-        custom: [
-          ...items,
-          { id, name: `Detail ${items.length + 1}`, crop: draft.crop },
-        ],
-      });
-    } else {
-      key = draft.shape;
-      onChange({ ...value, [draft.shape]: draft.crop });
-    }
-    setSnapshots((previous) => ({ ...previous, [key]: draft.crop! }));
+    add(draft.shape, draft.crop);
     setDraft(null);
-    select(key);
   }
-  function addCustom(source: Highlight) {
-    const items = value.custom ?? [];
-    if (items.length >= MAX_CUSTOM_HIGHLIGHTS) return;
-    const id = crypto.randomUUID();
-    onChange({
+  // A named crop of a fixed shape becomes the main one, which thumbnails use; the
+  // previous main one keeps its place as a named crop. Gallery and Home follow.
+  function makeMain() {
+    if (!custom?.shape) return;
+    const kind = custom.shape;
+    const key = customKey(custom.id);
+    const previous = value[kind];
+    let next: PhotoHighlights = {
       ...value,
-      custom: [
-        ...items,
-        { id, name: `Detail ${items.length + 1}`, crop: { ...source } },
-      ],
-    });
-    setSnapshots((previous) => ({
-      ...previous,
-      [customKey(id)]: { ...source },
-    }));
-    select(customKey(id));
+      [kind]: custom.crop,
+      custom: previous
+        ? value.custom!.map((item) =>
+            item.id === custom.id ? { ...item, crop: previous } : item,
+          )
+        : value.custom!.filter((item) => item.id !== custom.id),
+    };
+    if (!next.custom?.length) delete next.custom;
+    next = swapViewReferences(next, kind, key);
+    onChange(next);
+    setSnapshots((all) => ({ ...all, [kind]: all[key], [key]: all[kind] }));
+    select(kind);
   }
   function remove() {
     if (!active) return;
@@ -257,7 +374,8 @@ export function HighlightEditor({
       else delete next.custom;
     } else delete next[active as HighlightKind];
     onChange(next);
-    select(null);
+    const left = keysOf(next, tab as Shape);
+    select(left[0] ?? null);
   }
   const point = (
     event: React.PointerEvent<HTMLElement>,
@@ -273,21 +391,36 @@ export function HighlightEditor({
   const changed =
     !!snapshot &&
     JSON.stringify(snapshot) !== JSON.stringify(cropOf(value, active));
-  const strip = existing.map((key) => {
-    const item = key.startsWith("custom:")
-      ? value.custom!.find((entry) => customKey(entry.id) === key)!
-      : null;
-    const c = cropOf(value, key)!;
-    return {
-      key,
-      label: item ? item.name : LABELS[key as HighlightKind],
-      alt: `${item ? item.name : key} thumbnail preview`,
-      crop: c,
-      aspect: (c.width * width) / (c.height * height),
-      shape: (item ? "free" : key) as Shape,
-    };
-  });
-  const customCount = value.custom?.length ?? 0;
+  const views = photoViews(value, ratio);
+  const enabled = (target: "gallery" | "home", id: string) =>
+    (value.presentation?.[target] ?? ["original"]).includes(id);
+  const strip =
+    tab === "original"
+      ? []
+      : keysOf(value, tab).map((key) => {
+          const item = customOf(value, key);
+          const c = cropOf(value, key)!;
+          return {
+            key,
+            main: !item,
+            label: item ? item.name : `${NAMES[key as HighlightKind]} (main)`,
+            alt: `${item ? item.name : key} thumbnail preview`,
+            crop: c,
+            aspect: (c.width * width) / (c.height * height),
+          };
+        });
+  const view =
+    tab === "original"
+      ? views[0]
+      : active && !draft
+        ? views.find((item) => item.id === active)
+        : undefined;
+  const label = (next: Tab) =>
+    next === "original"
+      ? "Original"
+      : next === "free"
+        ? "Free"
+        : `${NAMES[next]} · ${PROPORTIONS[next]}`;
   return (
     <>
       <ResolutionBadge
@@ -299,93 +432,103 @@ export function HighlightEditor({
           Highlights{" "}
           <span className="upload-muted">/ optional thumbnail crops</span>
         </legend>
-        <div className="highlight-bar">
-          <div className="highlight-strip" aria-label="Highlights">
-            {strip.map((item) => (
+        <div className="highlight-sizes" role="tablist" aria-label="Sizes">
+          {TABS.map((option) => {
+            const count =
+              option === "original" ? null : keysOf(value, option).length;
+            const selected = draft ? draft.shape === option : tab === option;
+            return (
               <button
                 type="button"
-                key={item.key}
-                className="highlight-thumb"
-                aria-pressed={!draft && active === item.key}
-                aria-label={item.label}
-                title={item.label}
-                onClick={() => {
-                  setDraft(null);
-                  select(item.key);
-                }}
-              >
-                <span
-                  className="highlight-thumb__image"
-                  style={{ aspectRatio: item.aspect }}
-                >
-                  <Image
-                    src={src}
-                    alt={item.alt}
-                    unoptimized
-                    width={width}
-                    height={height}
-                    style={{
-                      position: "absolute",
-                      maxWidth: "none",
-                      width: `${100 / item.crop.width}%`,
-                      height: `${100 / item.crop.height}%`,
-                      left: `${(-item.crop.x / item.crop.width) * 100}%`,
-                      top: `${(-item.crop.y / item.crop.height) * 100}%`,
-                    }}
-                  />
-                </span>
-                <span className="highlight-thumb__label">
-                  <ShapeIcon shape={item.shape} />
-                  {item.label}
-                </span>
-              </button>
-            ))}
-            {strip.length === 0 && (
-              <p className="upload-muted highlight-strip__empty">
-                No highlights yet. Press + and draw one on the photo.
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            className="highlight-add"
-            aria-label="New highlight"
-            title="New highlight"
-            aria-expanded={picking}
-            onClick={() => setPicking(!picking)}
-          >
-            <Icon path={ICONS.plus} />
-          </button>
-        </div>
-        {picking && (
-          <div
-            className="highlight-shapes"
-            role="group"
-            aria-label="Shape to draw"
-          >
-            {([...KINDS, "free"] as Shape[]).map((option) => (
-              <button
-                type="button"
+                role="tab"
                 key={option}
-                aria-label={
-                  option === "free"
-                    ? "Draw custom highlight"
-                    : `Draw ${option} highlight`
+                aria-selected={selected}
+                aria-label={`${label(option)} highlights`}
+                title={
+                  draft && option !== "original"
+                    ? `Draw it as ${label(option)}`
+                    : label(option)
                 }
-                disabled={
-                  option === "free" && customCount >= MAX_CUSTOM_HIGHLIGHTS
-                }
-                onClick={() => startDrawing(option)}
+                disabled={!!draft && option === "original"}
+                onClick={() => openTab(option)}
               >
                 <ShapeIcon shape={option} />
-                <span>
-                  {option === "free"
-                    ? "Free"
-                    : LABELS[option].replace(" · ", " ")}
-                  {option !== "free" && value[option] ? " ✓" : ""}
-                </span>
+                <span>{label(option)}</span>
+                {count ? (
+                  <b className="highlight-sizes__count">{count}</b>
+                ) : null}
               </button>
-            ))}
+            );
+          })}
+        </div>
+        {tab !== "original" && (
+          <div className="highlight-bar">
+            <div className="highlight-strip" aria-label="Highlights">
+              {strip.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className="highlight-thumb"
+                  aria-pressed={!draft && active === item.key}
+                  aria-label={item.label}
+                  title={item.label}
+                  onClick={() => {
+                    setDraft(null);
+                    select(item.key);
+                  }}
+                >
+                  <span
+                    className="highlight-thumb__image"
+                    style={
+                      {
+                        aspectRatio: item.aspect,
+                        "--thumb-ratio": item.aspect,
+                      } as React.CSSProperties
+                    }
+                  >
+                    <Image
+                      src={src}
+                      alt={item.alt}
+                      unoptimized
+                      width={width}
+                      height={height}
+                      style={cropStyle(item.crop)}
+                    />
+                  </span>
+                  <span className="highlight-thumb__label">
+                    {item.main ? (
+                      <>
+                        <Icon path={ICONS.star} />
+                        Main
+                      </>
+                    ) : (
+                      item.label
+                    )}
+                  </span>
+                  <span className="highlight-thumb__uses" aria-hidden="true">
+                    {enabled("gallery", item.key) && <i>Gallery</i>}
+                    {enabled("home", item.key) && <i>Home</i>}
+                  </span>
+                </button>
+              ))}
+              {strip.length === 0 && !draft && (
+                <p className="upload-muted highlight-strip__empty">
+                  No {tab === "free" ? "free" : NAMES[tab].toLowerCase()}{" "}
+                  highlights yet. Press + and draw one on the photo.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="highlight-add"
+              aria-label={`New ${tab === "free" ? "free" : tab} highlight`}
+              title={`New ${label(tab).toLowerCase()} highlight`}
+              aria-pressed={!!draft}
+              disabled={!!draft || !canAdd(tab)}
+              onClick={() => setDraft({ shape: tab, crop: null })}
+            >
+              <Icon path={ICONS.plus} />
+            </button>
           </div>
         )}
         <div
@@ -511,8 +654,8 @@ export function HighlightEditor({
             >
               <span>
                 {draft
-                  ? "New highlight"
-                  : (custom?.name ?? LABELS[active as HighlightKind])}
+                  ? `New ${label(draft.shape).toLowerCase()}`
+                  : (custom?.name ?? NAMES[active as HighlightKind])}
               </span>
               {(["nw", "ne", "sw", "se"] as const).map((handle) => (
                 <i
@@ -542,7 +685,7 @@ export function HighlightEditor({
           <div className="highlight-confirm">
             <span>
               {draft.crop
-                ? "Move it or pull a corner, then accept."
+                ? "Move it or pull a corner, then accept. Another size above reshapes it."
                 : "Draw the new highlight."}
             </span>
             <button
@@ -560,7 +703,15 @@ export function HighlightEditor({
               className="highlight-confirm__cancel"
               aria-label="Cancel highlight"
               title="Cancel"
-              onClick={() => setDraft(null)}
+              onClick={() => {
+                setDraft(null);
+                // Back to what was chosen in this size, if it is still here.
+                if (
+                  !chosen ||
+                  !keysOf(value, tab as Shape).includes(chosen as HighlightKey)
+                )
+                  select(keysOf(value, tab as Shape)[0] ?? null);
+              }}
             >
               <Icon path={ICONS.cancel} />
             </button>
@@ -594,6 +745,16 @@ export function HighlightEditor({
                 {Math.round(crop.width * width)} ×{" "}
                 {Math.round(crop.height * height)} px
               </span>
+              {custom?.shape && (
+                <button
+                  type="button"
+                  aria-label="Make main highlight"
+                  title={`Make it the main ${custom.shape}, the one thumbnails use`}
+                  onClick={makeMain}
+                >
+                  <Icon path={ICONS.star} />
+                </button>
+              )}
               <button
                 type="button"
                 aria-label="Revert highlight"
@@ -605,17 +766,17 @@ export function HighlightEditor({
               </button>
               <button
                 type="button"
-                aria-label="Duplicate as custom highlight"
-                title="Duplicate as custom highlight"
+                aria-label="Duplicate highlight"
+                title="Duplicate"
                 disabled={customCount >= MAX_CUSTOM_HIGHLIGHTS}
-                onClick={() => addCustom(crop)}
+                onClick={() => add(shape!, { ...crop })}
               >
                 <Icon path={ICONS.duplicate} />
               </button>
               <button
                 type="button"
                 className="highlight-tools__remove"
-                aria-label={`Remove ${custom ? "custom" : active} highlight`}
+                aria-label={`Remove ${custom ? custom.name : active} highlight`}
                 title="Remove highlight"
                 onClick={remove}
               >
@@ -627,7 +788,7 @@ export function HighlightEditor({
         {!draft && active && crop && (
           <details className="highlight-precise">
             <summary>Precise size and position</summary>
-            {custom && (
+            {shape === "free" && (
               <div className="highlight-controls">
                 {(["width", "height"] as const).map((axis) => (
                   <label key={axis}>
@@ -669,22 +830,25 @@ export function HighlightEditor({
                   max="100"
                   value={Math.round(Math.max(crop.width, crop.height) * 100)}
                   onChange={(event) => {
-                    const resized = custom
-                      ? {
-                          width:
-                            ((crop.width / Math.max(crop.width, crop.height)) *
-                              Number(event.target.value)) /
-                            100,
-                          height:
-                            ((crop.height / Math.max(crop.width, crop.height)) *
-                              Number(event.target.value)) /
-                            100,
-                        }
-                      : centeredHighlight(
-                          active as HighlightKind,
-                          ratio,
-                          Number(event.target.value) / 100,
-                        );
+                    const resized =
+                      shape === "free"
+                        ? {
+                            width:
+                              ((crop.width /
+                                Math.max(crop.width, crop.height)) *
+                                Number(event.target.value)) /
+                              100,
+                            height:
+                              ((crop.height /
+                                Math.max(crop.width, crop.height)) *
+                                Number(event.target.value)) /
+                              100,
+                          }
+                        : centeredHighlight(
+                            shape as HighlightKind,
+                            ratio,
+                            Number(event.target.value) / 100,
+                          );
                     update({
                       width: resized.width,
                       height: resized.height,
@@ -732,55 +896,46 @@ export function HighlightEditor({
             </div>
           </details>
         )}
-        <section
-          className="highlight-eligibility"
-          aria-label="Random presentation choices"
-        >
-          <h3>Where can this image appear?</h3>
-          <p>
-            Enable each original or crop for Gallery and Home. Leave a column
-            empty to exclude this photo there. Save the photo to apply.
-          </p>
-          <div className="highlight-eligibility__grid">
-            {photoViews(value, ratio).map((view) => (
-              <article key={view.id}>
-                <div
-                  className="highlight-eligibility__preview"
-                  style={{ aspectRatio: view.ratio }}
-                >
-                  <Image
-                    src={src}
-                    alt={`${view.name} presentation preview`}
-                    unoptimized
-                    width={width}
-                    height={height}
-                    style={
-                      view.crop
-                        ? {
-                            position: "absolute",
-                            maxWidth: "none",
-                            width: `${100 / view.crop.width}%`,
-                            height: `${100 / view.crop.height}%`,
-                            left: `${(-100 * view.crop.x) / view.crop.width}%`,
-                            top: `${(-100 * view.crop.y) / view.crop.height}%`,
-                          }
-                        : {
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                          }
-                    }
-                  />
-                </div>
-                <strong>{view.name}</strong>
+        {view && (
+          <section
+            className="highlight-eligibility"
+            aria-label="Random presentation choices"
+          >
+            <h3>Where can {view.name} appear?</h3>
+            <p>
+              Gallery and Home choose at random among the views enabled here.
+              Turn off every view of a page to leave this photo out of it. Save
+              the photo to apply.
+            </p>
+            <article className="highlight-eligibility__view">
+              <div
+                className="highlight-eligibility__preview"
+                style={{ aspectRatio: view.ratio }}
+              >
+                <Image
+                  src={src}
+                  alt={`${view.name} presentation preview`}
+                  unoptimized
+                  width={width}
+                  height={height}
+                  style={
+                    view.crop
+                      ? cropStyle(view.crop)
+                      : {
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                        }
+                  }
+                />
+              </div>
+              <div className="highlight-eligibility__choices">
                 {(["gallery", "home"] as const).map((target) => (
                   <label key={target}>
                     <input
                       type="checkbox"
                       aria-label={`${view.name} in ${target === "gallery" ? "Gallery" : "Home"}`}
-                      checked={(
-                        value.presentation?.[target] ?? ["original"]
-                      ).includes(view.id)}
+                      checked={enabled(target, view.id)}
                       onChange={(event) => {
                         if (target === "gallery") {
                           onChange(
@@ -812,69 +967,69 @@ export function HighlightEditor({
                     {target === "gallery" ? "Gallery" : "Home"}
                   </label>
                 ))}
-                <details className="highlight-distribution-matrix">
-                  <summary>Distribution & aspect eligibility</summary>
-                  <p>
-                    This view is {viewAspect(view.ratio)}. Add a separate
-                    highlight to offer another aspect ratio.
-                  </p>
-                  <table>
-                    <caption>Eligible view aspects for {view.name}</caption>
-                    <thead>
-                      <tr>
-                        <th>Layout</th>
-                        {["Portrait", "Square", "Landscape"].map((label) => (
-                          <th key={label}>{label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(
-                        [
-                          ["random", "Random"],
-                          ["uniform", "Grid"],
-                          ["justified", "Original"],
-                        ] as const
-                      ).map(([layout, label]) => (
-                        <tr key={layout}>
-                          <th>{label}</th>
-                          {["portrait", "square", "landscape"].map((aspect) => (
-                            <td key={aspect}>
-                              <input
-                                type="checkbox"
-                                aria-label={`${view.name} in ${label} ${aspect}`}
-                                disabled={viewAspect(view.ratio) !== aspect}
-                                checked={galleryViewRules(value, ratio)
-                                  .find(
-                                    (rule) =>
-                                      rule.layout === layout &&
-                                      rule.aspect === aspect,
-                                  )!
-                                  .views.includes(view.id)}
-                                onChange={(event) =>
-                                  onChange(
-                                    updateGalleryRule(
-                                      value,
-                                      view.id,
-                                      event.target.checked,
-                                      ratio,
-                                      layout,
-                                      aspect,
-                                    ),
-                                  )
-                                }
-                              />
-                            </td>
-                          ))}
-                        </tr>
+              </div>
+            </article>
+            <details className="highlight-distribution-matrix">
+              <summary>Gallery layouts and proportions</summary>
+              <p>
+                This view is {viewAspect(view.ratio)}. Add a highlight of
+                another size to offer another proportion.
+              </p>
+              <table>
+                <caption>Eligible view aspects for {view.name}</caption>
+                <thead>
+                  <tr>
+                    <th>Layout</th>
+                    {["Portrait", "Square", "Landscape"].map((name) => (
+                      <th key={name}>{name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ["random", "Random"],
+                      ["uniform", "Grid"],
+                      ["justified", "Original"],
+                    ] as const
+                  ).map(([layout, name]) => (
+                    <tr key={layout}>
+                      <th>{name}</th>
+                      {["portrait", "square", "landscape"].map((aspect) => (
+                        <td key={aspect}>
+                          <input
+                            type="checkbox"
+                            aria-label={`${view.name} in ${name} ${aspect}`}
+                            disabled={viewAspect(view.ratio) !== aspect}
+                            checked={galleryViewRules(value, ratio)
+                              .find(
+                                (rule) =>
+                                  rule.layout === layout &&
+                                  rule.aspect === aspect,
+                              )!
+                              .views.includes(view.id)}
+                            onChange={(event) =>
+                              onChange(
+                                updateGalleryRule(
+                                  value,
+                                  view.id,
+                                  event.target.checked,
+                                  ratio,
+                                  layout,
+                                  aspect,
+                                ),
+                              )
+                            }
+                          />
+                        </td>
                       ))}
-                    </tbody>
-                  </table>
-                </details>
-              </article>
-            ))}
-          </div>
-        </section>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          </section>
+        )}
       </fieldset>
     </>
   );

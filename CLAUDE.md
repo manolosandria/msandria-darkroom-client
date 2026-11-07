@@ -557,10 +557,13 @@ filter remains a future addition.
 ## Multiple photo highlights
 
 `PhotoHighlights` retains optional `square`, `landscape` and `portrait` crops,
-and adds `custom?: { id, name, crop: { x, y, width, height } }[]` (up to 20).
+and adds `custom?: { id, name, crop: { x, y, width, height }, shape? }[]` (up to 20).
+A named crop with `shape` (`square`, `landscape` or `portrait`) keeps that proportion,
+so a photo can have several highlights of one size: the main one, which thumbnails
+use, and named ones beside it ("Square 2"); without `shape` it is free.
 Upload and Photos share `HighlightEditor`: add or duplicate a crop, name it,
-select it, drag its position and edit its width and height independently in pixels.
-The size slider preserves its current ratio. Pixel dimensions describe the image
+select it, drag its position and edit a free one's width and height independently in
+pixels. The size slider preserves its current ratio. Pixel dimensions describe the image
 being edited; persisted coordinates remain normalized and scale with upload resizing.
 Custom crops never replace the main thumbnail presets automatically. Each custom
 crop has an independent preview and deletion action. Existing photos require no
@@ -578,7 +581,13 @@ load before saving. Preview changes never publish until Save banner is pressed.
 `BannerArrange` gives Welcome and Photographs their drag grips and drop map, and
 `BannerLayoutPicker` the layout drawings and the Welcome panel controls. bannerPresets contains local font stacks and palette presets.
 HomePage supports framed/fill/highlight modes with independent desktop/mobile crops;
-the crop source uses normalized highlight coordinates, then covers the banner.
+the crop source uses normalized highlight coordinates. The highlight is the part
+that always shows whole: the banner shows as much of the photograph around it as its
+own proportion needs, centred on it and never past the photo's edges, so one highlight
+reads the same on a wide monitor, a laptop and a phone. Only when the photograph has
+nothing more around the highlight is the banner filled by cutting into it from its
+centre. `homeCarousel.css` draws that window with container units and `bannerWindow`
+(`src/ui/bannerFocus.ts`) is its twin, used for the quality chip and the tests.
 Container queries keep the real page and embedded mobile preview consistent.
 Horizontal swipes suppress link activation; vertical gestures keep scrolling.
 
@@ -676,14 +685,29 @@ drawings (`galleryOptionIcons`), lit when offered.
 
 ## Highlights, palettes and filters
 
-`HighlightEditor` shows every highlight as a thumbnail; choosing one selects it on the
-stage, where it moves with the pointer and resizes from its corners (a custom one from
-its edges too), keeping a main shape's proportion. The green **+** offers the four
-shapes (square, landscape, portrait, free); the curator draws the crop on the photo and
-then accepts or cancels it, so nothing is created by a click alone. **Revert** puts back
-the crop the highlight had when the editor opened or it was accepted. The sliders stay
-under **Precise size and position** for keyboard use. In Photos, choosing a highlight
-also shows it large on the stage (`onActiveChange`).
+`HighlightEditor` works on one size at a time: **Original**, **Square · 1:1**,
+**Landscape · 3:2**, **Portrait · 2:3** and **Free** are tabs, each counting its
+highlights. A tab shows that size's highlights as thumbnails (the main one first, with a
+star, then the named ones, each marked with the pages it appears on); choosing one
+selects it on the stage, where it moves with the pointer and resizes from its corners (a
+free one from its edges too), keeping its shape's proportion. The green **+** draws a
+new one of the tab's size: the curator draws the crop on the photo and then accepts or
+cancels it, so nothing is created by a click alone. While drawing, the size tabs stay on
+screen with the one in use marked, and choosing another reshapes the drawing where it is
+(`refitHighlight`). The first crop of a shape becomes its main one; the next are named
+crops of that shape, and **Make main** (the star) swaps one with the main crop, its
+Gallery and Home choices following it (`swapViewReferences`). **Revert** puts back the
+crop the highlight had when the editor opened or it was accepted. The sliders stay under
+**Precise size and position** for keyboard use. In Photos, choosing a highlight also
+shows it large on the stage (`onActiveChange`), and the chips over the stage choose it in
+the editor (`activeKey`).
+
+Under the stage, **Where can … appear?** concerns only the view on screen (the
+photograph in the Original tab): its Gallery and Home switches and, folded, the matrix
+of Gallery's layouts and proportions. A newly accepted square, landscape or portrait
+highlight joins Gallery's **Grid** and **Random** in its own proportion
+(`offerInGalleryGrid`); **Original** keeps the photograph as it is. Free crops start
+off, as before. The API must accept `shape` on named crops before this client saves one.
 
 Gallery's categories can be combined: the query sends `categories`, groups separated by
 `|` and ids by `,`, and the API returns photos with any category of each chosen group.
@@ -1041,6 +1065,8 @@ Its menu starts with the site's own pages (Home, Gallery, Collections, Contact),
 stands in for the header's links once the header is folded, then every Curator group;
 each list is a labelled group.
 
+Inside Curator the account folds to its photo (`data-compact`) so the corner covers
+less of the editors; pointing at it or focusing it brings the name back.
 The account card opens when the mouse points at it and closes on leaving (a press
 right after keeps it open; touch and keyboard toggle it as before). The administrator's
 account wears a thin moving ring of the same plasma and a soft glow. While Curator is

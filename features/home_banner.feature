@@ -104,3 +104,10 @@ Feature: Home banner studio
     And its words, link destination, size and place can be changed apart from the general title
     And Home shows it instead of the general title while that slide is on show
     And switching back to General title removes it
+
+  Scenario: Keep the slide's highlight whole on any screen
+    Given a slide shows a highlight of its photograph
+    When the banner is wider or taller than the highlight
+    Then the whole highlight stays in view, centred
+    And the rest of the banner is filled with the photograph around it
+    But when the photograph has nothing more around it, the banner is filled by cutting from the highlight's centre

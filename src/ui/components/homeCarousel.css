@@ -267,15 +267,37 @@
 }
 .home-carousel__crop-window {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: max(100cqw, calc(100cqh * var(--crop-aspect)));
-  height: max(100cqh, calc(100cqw / var(--crop-aspect)));
+  inset: 0;
   overflow: hidden;
 }
+/* The highlight (the focus) always shows whole when the photo allows it: the photo is
+   scaled so the focus fits the banner, but never smaller than the banner, and placed
+   with the focus centred without uncovering an edge. A banner of the focus's own
+   proportion shows exactly the focus; a wider or taller one shows the photo around it
+   instead of cutting into it. Twin of bannerWindow() in src/ui/bannerFocus.ts. */
 .home-carousel__crop-source {
+  --photo-width: max(
+    min(
+      100cqw / var(--focus-width),
+      100cqh * var(--image-ratio) / var(--focus-height)
+    ),
+    100cqw,
+    100cqh * var(--image-ratio)
+  );
+  --photo-height: calc(var(--photo-width) / var(--image-ratio));
   position: absolute;
+  width: var(--photo-width);
+  height: var(--photo-height);
+  left: clamp(
+    100cqw - var(--photo-width),
+    50cqw - var(--photo-width) * var(--focus-x),
+    0px
+  );
+  top: clamp(
+    100cqh - var(--photo-height),
+    50cqh - var(--photo-height) * var(--focus-y),
+    0px
+  );
 }
 .home-carousel__crop-source img {
   object-fit: fill;
