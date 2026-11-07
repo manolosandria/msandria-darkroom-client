@@ -241,6 +241,43 @@ describe("ApiPhotoRepository", () => {
     ).findById("v");
     expect(clash?.getVariantPosition()).toBeNull();
   });
+  it("sends the border trim, serialized, only when there is one", async () => {
+    const trim = { x: 0, y: 0.1, width: 1, height: 0.8 };
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ ...apiPhoto("t"), optimizationIssues: [] }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    const repository = new ApiPhotoRepository(API_URL, fetchFn);
+    const file = new File(["x"], "x.jpg", { type: "image/jpeg" });
+    await repository.upload({ file, title: "Trimmed", trim });
+    await repository.upload({ file, title: "Whole" });
+    const bodies = (fetchFn.mock.calls as unknown as [string, { body: FormData }][]).map(
+      ([, options]) => options.body,
+    );
+    expect(bodies[0].get("trim")).toBe(JSON.stringify(trim));
+    expect(bodies[1].has("trim")).toBe(false);
+  });
+  it("sends the border trim of a replacement file", async () => {
+    const trim = { x: 0.05, y: 0, width: 0.9, height: 1 };
+    const fetchFn = respondWith({ ...apiPhoto("r"), optimizationIssues: [] });
+    const photo = new Photo({
+      id: "r",
+      title: "Coast",
+      width: 1920,
+      height: 1080,
+      renditions: [{ width: 640, url: "https://cdn/old.jpg" }],
+    });
+    await new ApiPhotoRepository(API_URL, fetchFn).replace(
+      photo,
+      new File(["x"], "x.jpg", { type: "image/jpeg" }),
+      undefined,
+      trim,
+    );
+    expect(fetchFn.mock.calls[0][1].body.get("trim")).toBe(JSON.stringify(trim));
+  });
   it("hands the upload's abort signal to fetch", async () => {
     const fetchFn = respondWith({ ...apiPhoto("up"), optimizationIssues: [] });
     const controller = new AbortController();

@@ -16,6 +16,13 @@ import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { FrameFields } from "./FrameFields";
+import { BorderTrimFields } from "./BorderTrimFields";
+import {
+  BorderTrim,
+  remapHighlights,
+  trimmedSize,
+} from "@/src/domain/borderTrim";
+import { useTrimmedPreview } from "@/src/ui/hooks/useTrimmedPreview";
 import { PhotoFrame } from "@/src/domain/entities/PhotoFrame";
 import { OptimizationIssueList } from "./OptimizationIssueList";
 import { useSessionValue } from "./SessionProvider";
@@ -43,6 +50,8 @@ type UploadItem = {
   description: string;
   highlights: PhotoHighlights;
   frame: PhotoFrame | null;
+  /** A border baked into the file, removed by the API. Highlights are drawn inside it. */
+  trim: BorderTrim | null;
   width?: number;
   height?: number;
   status: "draft" | "queued" | "uploading" | "published" | "failed";
@@ -108,6 +117,7 @@ export default function UploadPanel({
         description: "",
         highlights: {},
         frame: null,
+        trim: null,
         status: "draft",
       });
     });
@@ -154,6 +164,7 @@ export default function UploadPanel({
               description: item.description.trim() || undefined,
               highlights: item.highlights,
               frame: item.frame,
+              ...(item.trim ? { trim: item.trim } : {}),
               ...item.classification,
             }));
           // Store the successful upload before linking. A failed link retries only the link.
@@ -372,7 +383,13 @@ function UploadCard({
 }) {
   const locked = !!item.published || ["queued", "uploading", "published"].includes(item.status);
   const metadata = item.published?.photo.getMetadata();
-  const src = item.published?.photo.urlForWidth(640) ?? item.preview;
+  const trimmed = useTrimmedPreview(item.preview, item.trim);
+  const src = item.published?.photo.urlForWidth(640) ?? trimmed;
+  // The frame and highlight editors work on what the trim keeps.
+  const kept =
+    item.width && item.height
+      ? trimmedSize(item.trim, item.width, item.height)
+      : undefined;
   return (
     <article
       className="upload-card"
@@ -533,20 +550,35 @@ function UploadCard({
             />
           </label>
           {item.width && item.height && (
-            <FrameFields
-              src={src}
+            <BorderTrimFields
+              src={item.preview}
               width={item.width}
               height={item.height}
+              value={item.trim}
+              disabled={locked}
+              onChange={(trim) =>
+                onChange({
+                  trim,
+                  highlights: remapHighlights(item.highlights, item.trim, trim),
+                })
+              }
+            />
+          )}
+          {kept && (
+            <FrameFields
+              src={src}
+              width={kept.width}
+              height={kept.height}
               value={item.frame}
               disabled={locked}
               onChange={(frame) => onChange({ frame })}
             />
           )}
-          {item.width && item.height && (
+          {kept && (
             <HighlightEditor
               src={src}
-              width={item.width}
-              height={item.height}
+              width={kept.width}
+              height={kept.height}
               value={item.highlights}
               disabled={locked}
               onChange={(highlights) => onChange({ highlights })}

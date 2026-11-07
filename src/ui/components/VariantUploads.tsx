@@ -6,6 +6,13 @@ import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { uploadPhoto } from "@/src/infrastructure/photoServices";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { HighlightEditor } from "./HighlightEditor";
+import { BorderTrimFields } from "./BorderTrimFields";
+import {
+  BorderTrim,
+  remapHighlights,
+  trimmedSize,
+} from "@/src/domain/borderTrim";
+import { useTrimmedPreview } from "@/src/ui/hooks/useTrimmedPreview";
 import { PhotoClassificationFields } from "./PhotoClassificationFields";
 
 export const VARIANT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -21,6 +28,8 @@ export type VariantUpload = {
   description: string;
   classification: PhotoClassification;
   highlights: PhotoHighlights;
+  /** A border baked into the file, removed by the API. Highlights are drawn inside it. */
+  trim: BorderTrim | null;
   width?: number;
   height?: number;
   status: "draft" | "queued" | "uploading" | "done" | "failed" | "cancelled";
@@ -80,6 +89,7 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
             title: item.title.trim(),
             description: item.description.trim() || undefined,
             highlights: item.highlights,
+            ...(item.trim ? { trim: item.trim } : {}),
             ...item.classification,
           },
           controller.signal,
@@ -148,6 +158,7 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
           description: "",
           classification: { ...defaults.classification },
           highlights: {},
+          trim: null,
           status: "draft",
         });
       }
@@ -322,6 +333,11 @@ function VariantUploadCard({
 }) {
   const busy = item.status === "queued" || item.status === "uploading";
   const locked = busy || item.status === "done";
+  const trimmed = useTrimmedPreview(item.preview, item.trim);
+  const kept =
+    item.width && item.height
+      ? trimmedSize(item.trim, item.width, item.height)
+      : undefined;
   return (
     <li
       className="variant-upload"
@@ -331,7 +347,7 @@ function VariantUploadCard({
       <div className="variant-upload__preview">
         {/* eslint-disable-next-line @next/next/no-img-element -- A local object URL, before the API has any rendition. */}
         <img
-          src={item.preview}
+          src={trimmed}
           alt=""
           onLoad={(event) => {
             const image = event.currentTarget;
@@ -394,6 +410,27 @@ function VariantUploadCard({
         {item.width && item.height ? (
           <details className="variant-upload__more">
             <summary>
+              Border
+              <small>{item.trim ? "Removed" : "Kept"}</small>
+            </summary>
+            <BorderTrimFields
+              src={item.preview}
+              width={item.width}
+              height={item.height}
+              value={item.trim}
+              disabled={locked}
+              onChange={(trim) =>
+                onChange({
+                  trim,
+                  highlights: remapHighlights(item.highlights, item.trim, trim),
+                })
+              }
+            />
+          </details>
+        ) : null}
+        {kept ? (
+          <details className="variant-upload__more">
+            <summary>
               Highlights
               <small>
                 {
@@ -408,9 +445,9 @@ function VariantUploadCard({
               </small>
             </summary>
             <HighlightEditor
-              src={item.preview}
-              width={item.width}
-              height={item.height}
+              src={trimmed}
+              width={kept.width}
+              height={kept.height}
               value={item.highlights}
               disabled={locked}
               onChange={(highlights) => onChange({ highlights })}

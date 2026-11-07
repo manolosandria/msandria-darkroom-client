@@ -11,6 +11,7 @@ import {
   PhotoVisibility,
 } from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
+import { BorderTrim } from "../domain/borderTrim";
 import {
   PhotoTitlePosition,
   PhotoVariantPosition,
@@ -159,6 +160,7 @@ export class ApiPhotoRepository
     if (draft.description) form.append("description", draft.description);
     if (draft.highlights)
       form.append("highlights", JSON.stringify(draft.highlights));
+    if (draft.trim) form.append("trim", JSON.stringify(draft.trim));
     if (draft.frame) {
       form.append("frameColor", draft.frame.color);
       form.append("frameLeftRight", String(draft.frame.leftRight));
@@ -192,9 +194,11 @@ export class ApiPhotoRepository
     photo: Photo,
     file: File,
     original?: Photo,
+    trim?: BorderTrim,
   ): Promise<PublishedPhoto> {
     const form = new FormData();
     form.append("file", file);
+    if (trim) form.append("trim", JSON.stringify(trim));
     for (const [key, value] of Object.entries(
       this.editFields(photo, original),
     )) {

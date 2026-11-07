@@ -16,6 +16,10 @@ import {
   getUnoptimizedPhotos,
   replacePhoto,
 } from "@/src/infrastructure/photoServices";
+vi.mock("@/src/ui/borderTrimImage", () => ({
+  findBorder: vi.fn(async () => null),
+  trimmedPreview: vi.fn(),
+}));
 vi.mock("@/src/infrastructure/catalogServices", () => ({
   manageCatalog: {
     load: vi
@@ -328,6 +332,49 @@ describe("ManagePhotos", () => {
       photo,
     );
     expect(savePhoto.execute).not.toHaveBeenCalled();
+  });
+  it("removes the border of a replacement file when asked", async () => {
+    vi.mocked(replacePhoto.execute).mockResolvedValue({
+      photo,
+      optimizationIssues: [],
+    });
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "The coast" }),
+    );
+    const file = new File(["image"], "framed.jpg", { type: "image/jpeg" });
+    await userEvent.upload(
+      await screen.findByLabelText("Replacement file"),
+      file,
+    );
+    const probe = document.querySelector(
+      "img[hidden]",
+    ) as HTMLImageElement;
+    Object.defineProperties(probe, {
+      naturalWidth: { value: 1000 },
+      naturalHeight: { value: 800 },
+    });
+    fireEvent.load(probe);
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Remove border" }),
+    );
+    await screen.findByLabelText("Top border in pixels");
+    fireEvent.change(screen.getByLabelText("Top border in pixels"), {
+      target: { value: "80" },
+    });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Save changes" })[0],
+    );
+    await confirmSave();
+
+    await waitFor(() =>
+      expect(replacePhoto.execute).toHaveBeenCalledWith(
+        expect.any(Photo),
+        file,
+        photo,
+        { x: 0, y: 0.1, width: 1, height: 0.9 },
+      ),
+    );
   });
   it("keeps the chosen file and edits available after replacement fails", async () => {
     vi.mocked(replacePhoto.execute).mockRejectedValue(new Error("offline"));

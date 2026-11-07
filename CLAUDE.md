@@ -217,6 +217,19 @@ thicknesses at 0; a replacement form cannot carry null, so it sends only the zer
 thicknesses, and a frame without thickness is read back as no frame. The Home
 carousel shows each photo inside its frame too.
 
+A border that came **baked into the file** is a different thing: **Border in the file**
+(`BorderTrimFields`) on every Upload card, on Variants' upload cards and under
+**Replace file…** removes it. Switching on **Remove border** looks for a border of one
+colour on each side (`findBorder` samples the image on a canvas, `detectBorder` walks in
+from each edge, so a letterbox is found as well as a full mat); each side can then be
+set by hand in pixels of the original or by dragging the edges of the kept area, and
+**Detect again** starts over. Nothing is cut here: the trim travels as `trim` (fractions
+of the oriented image) and the API cuts the file before storing it. The Frame and
+Highlight editors work on a local drawing of what the trim keeps (`useTrimmedPreview`),
+and changing the trim keeps each highlight on the same pixels (`remapHighlights`),
+dropping one that falls in the removed border. The API must accept `trim` before this
+client sends it.
+
 A fixed corner control (`QualitySelector`) picks one of three levels, each capped at
 a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) and
 **Maximum** (the widest the detail response offers, 2560 px). Only these few
