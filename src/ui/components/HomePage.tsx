@@ -1,5 +1,12 @@
 "use client";
-import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { getPhotoById as defaultGetPhotoById } from "@/src/infrastructure/photoServices";
 import { GetPhotoById } from "@/src/application/use-cases/GetPhotoById";
 import { rememberViewerSequence } from "@/src/ui/viewerSequence";
@@ -58,6 +65,7 @@ export default function HomePage({
    */
   onPlaceWelcome?: (placement: WelcomePlacement, photoId?: string) => void;
 }) {
+  const bannerDevice = useBannerDevice();
   const [savedBanner, setSavedBanner] = useState<HomeBanner>(defaultHomeBanner);
   useEffect(() => {
     if (previewBanner) return;
@@ -410,7 +418,11 @@ export default function HomePage({
                 }}
               >
                 {banner.imageMode === "framed" ? (
-                  <FramedSlide photo={photo} view={view!} />
+                  <FramedSlide
+                    photo={photo}
+                    view={view!}
+                    priority={!onEditPhoto}
+                  />
                 ) : (
                   <>
                     <CroppedSlide
@@ -425,6 +437,7 @@ export default function HomePage({
                       )}
                       device="desktop"
                       quality={!!onEditPhoto}
+                      priority={!onEditPhoto && bannerDevice === "desktop"}
                     />
                     <CroppedSlide
                       photo={photo}
@@ -438,6 +451,7 @@ export default function HomePage({
                       )}
                       device="mobile"
                       quality={!!onEditPhoto}
+                      priority={!onEditPhoto && bannerDevice === "mobile"}
                     />
                   </>
                 )}
@@ -540,7 +554,34 @@ function resolveHomeCrop(
 
 // The photo inside its own frame, as large as the slide allows. The slide is a size
 // container, so the framed box fits whichever of its width or height runs out first.
-function FramedSlide({ photo, view }: { photo: Photo; view: PhotoView }) {
+// homeCarousel.css swaps the desktop crop for the phone one in a banner of 800 px or
+// less. On the public page the banner spans the window, so the window says which crop
+// shows; until it is known (on the server) neither is fetched first.
+const PHONE_BANNER = "(max-width: 800px)";
+const watchWidth = (change: () => void) => {
+  const query = window.matchMedia?.(PHONE_BANNER);
+  query?.addEventListener?.("change", change);
+  return () => query?.removeEventListener?.("change", change);
+};
+const phoneBanner = () => window.matchMedia?.(PHONE_BANNER).matches ?? false;
+function useBannerDevice(): "desktop" | "mobile" | null {
+  const phone = useSyncExternalStore<boolean | null>(
+    watchWidth,
+    phoneBanner,
+    () => null,
+  );
+  return phone === null ? null : phone ? "mobile" : "desktop";
+}
+
+function FramedSlide({
+  photo,
+  view,
+  priority = false,
+}: {
+  photo: Photo;
+  view: PhotoView;
+  priority?: boolean;
+}) {
   const frame = photo.getFrame();
   const layout = framedLayout(view.ratio, frame);
   return (
@@ -562,6 +603,7 @@ function FramedSlide({ photo, view }: { photo: Photo; view: PhotoView }) {
             photo={photo}
             crop={view.crop}
             fallbackSizes="(max-width: 800px) 100vw, 70vw"
+            priority={priority}
           />
         </div>
       </div>
@@ -574,11 +616,14 @@ export function CroppedSlide({
   cropName,
   device,
   quality = false,
+  priority = false,
 }: {
   photo: Photo;
   cropName: string;
   device: "desktop" | "mobile";
   quality?: boolean;
+  /** The slide on show on the public page: its photo is fetched at once and first. */
+  priority?: boolean;
 }) {
   const crop = (cropName.startsWith("custom:")
     ? photo
@@ -665,7 +710,7 @@ export function CroppedSlide({
       )}
       <div className="home-carousel__crop-window">
         <div className="home-carousel__crop-source">
-          <PhotoImage photo={photo} fallbackSizes="100vw" />
+          <PhotoImage photo={photo} fallbackSizes="100vw" priority={priority} />
         </div>
       </div>
     </div>

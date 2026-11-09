@@ -4,7 +4,14 @@ import Link from "next/link";
 import { CSSProperties, Fragment, useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
 import { CollectionText } from "@/src/domain/entities/Catalog";
-import { spanStyle } from "@/src/domain/collectionLayout";
+import {
+  MOBILE_MOSAIC_COLUMNS,
+  MOSAIC_COLUMNS,
+  mobileSpan,
+  spanIn,
+  spanStyle,
+} from "@/src/domain/collectionLayout";
+import { shareSizes } from "@/src/ui/imageSizes";
 import { PhotoImage } from "./PhotoImage";
 import { VariantThumbs } from "./VariantThumbs";
 import { rememberTilesOnViewerClick } from "@/src/ui/viewerSequence";
@@ -109,7 +116,16 @@ function MosaicTile({
             <PhotoImage
               photo={photo}
               className="object-contain"
-              fallbackSizes="(max-width: 640px) 100vw, 50vw"
+              fallbackSizes={
+                // A piece takes its columns of eight (four on phones).
+                mosaic && tile.entry
+                  ? shareSizes(
+                      mobileSpan(tile.entry).columns / MOBILE_MOSAIC_COLUMNS,
+                      spanIn(tile.entry, "desktop").columns / MOSAIC_COLUMNS,
+                      640,
+                    )
+                  : "(max-width: 640px) 100vw, 25vw"
+              }
             />
             {tile.entry?.showTitle !== false && (
               <span className="photo-grid__caption">{photo.getTitle()}</span>

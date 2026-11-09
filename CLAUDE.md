@@ -231,8 +231,11 @@ dropping one that falls in the removed border. The API must accept `trim` before
 client sends it.
 
 A fixed corner control (`QualitySelector`) picks one of three levels, each capped at
-a rendition width: **Data saver** (960 px), **Standard** (1920 px, the default) and
-**Maximum** (the widest the detail response offers, 2560 px). Only these few
+a rendition width: **Data saver** (960 px), **Standard** (1920 px) and
+**Maximum** (the widest the detail response offers, 2560 px). Until the visitor
+chooses, the screen decides (`qualityForScreen`: the window's width at up to 2×), so a
+phone gets Data saver, a laptop or HD monitor Standard and a wider or denser screen
+Maximum. Only these few
 renditions are ever requested, which favours browser and CDN caches. The choice is
 kept in `localStorage` under `photoQuality` (a per-visitor convenience; reads and
 writes are guarded and fall back to memory), and it applies to every photo opened.
@@ -267,7 +270,9 @@ bottom right, top left or top right) so it does not get lost over a bright or bu
 area. It is set in `/manage` under **Title corner in the viewer**, by choosing a corner on a small copy of the photo, and saved with the
 other edits.
 
-The variant thumbnails (`ViewerVariants`) sit over the photo in a corner of their own
+The variant thumbnails (`ViewerVariants`) come with the photo's detail (`variants` in
+`GET /photos/:id`, read as `getWorkVariants`), so opening a photo never downloads the
+whole catalog for them. They sit over the photo in a corner of their own
 (`variantPosition`), chosen beside it under **Variant thumbnails in the viewer**: any
 corner but the title's, which the picker shows locked, or **Automatic**, the other end of
 the title's edge (`getVariantCorner`). Moving the title onto the variants' corner sends
@@ -289,10 +294,17 @@ Visitors never see the pencil (`useOptionalSessionValue`; the API decides what i
 
 `PhotoImage` uses a native `<img>` with the API's rendition URLs and their exact
 width descriptors. It does not pass through the Next image loader or optimizer.
-`sizes="auto, ..."` lets supporting browsers use the actual laid-out width; the
-fallback covers the phone viewport minus gallery padding and caps desktop estimates
-at the maximum row height. Images use native lazy loading and async decoding;
-photos near the viewport start loading without eagerly fetching the whole gallery.
+`sizes="auto, ..."` lets supporting browsers use the actual laid-out width. The
+fallback, which Safari and Firefox use, follows each piece's real share of the width:
+a Gallery tile in Random its packed width, the other layouts two columns on phones and
+about four on wide screens, a collection piece its columns of eight (four on phones)
+(`shareSizes`). A crop draws the photo `1 / crop.width` times wider than its box, so
+`PhotoImage` grows its sizes by as much (`scaleSizes`). Images use native lazy loading
+and async decoding; photos near the viewport start loading without eagerly fetching the
+whole gallery. The one image a page is about takes `priority` (eager, `fetchpriority`
+high, sizes without `auto`): Home's slide on show, and in the fill and highlight modes
+only the crop the window shows (the banner swaps them at 800 px), so a phone never
+downloads the desktop one.
 
 URLs are kept unchanged between pages and renders, allowing the browser HTTP cache
 to reuse the same rendition. A browser can choose an already cached larger image;
@@ -578,8 +590,7 @@ Existing groups are edited in the Variants panel, not silently merged.
 
 The collection editor can replace an entry with a variant, retaining layout,
 caption visibility and cover selection. The viewer offers variant thumbnails,
-including collection-only variants available through the public catalog and detail
-endpoint. Category filtering keeps only matching variants and chooses a matching
+including collection-only variants, from the photo's own detail. Category filtering keeps only matching variants and chooses a matching
 photo for each work's single tile. A dedicated color/monochrome classification and
 filter remains a future addition.
 

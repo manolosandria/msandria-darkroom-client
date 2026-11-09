@@ -3,6 +3,7 @@
 import { Highlight } from "@/src/domain/entities/PhotoHighlights";
 import { Photo } from "@/src/domain/entities/Photo";
 import { useImageFallback } from "@/src/ui/hooks/useImageFallback";
+import { scaleSizes } from "@/src/ui/imageSizes";
 
 interface PhotoImageProps {
   photo: Photo;
@@ -11,6 +12,9 @@ interface PhotoImageProps {
   /** Widest rendition offered, for thumbnails that must never pull a large file. */
   maxWidth?: number;
   crop?: Highlight;
+  /** The image a page is about, such as Home's slide on show: fetched at once and
+   *  first, instead of waiting for layout like the rest. */
+  priority?: boolean;
 }
 
 // The image host already optimizes these files. Native srcset keeps every descriptor
@@ -22,22 +26,27 @@ export function PhotoImage({
   className = "",
   maxWidth,
   crop,
+  priority = false,
 }: PhotoImageProps) {
   const { useFallback, onError } = useImageFallback(photo);
   const all = photo.getRenditions(useFallback);
   const capped = maxWidth ? all.filter(({ width }) => width <= maxWidth) : all;
   // A cap below the smallest rendition still needs one candidate.
   const renditions = capped.length ? capped : all.slice(0, 1);
+  // A crop draws the photo `1 / crop.width` times wider than its box.
+  const sizes = crop ? scaleSizes(fallbackSizes, 1 / crop.width) : fallbackSizes;
   const image = (
     // eslint-disable-next-line @next/next/no-img-element -- Use API rendition URLs and widths verbatim, without the Next image loader.
     <img
       src={renditions[0].url}
       srcSet={renditions.map(({ url, width }) => `${url} ${width}w`).join(", ")}
-      sizes={`auto, ${fallbackSizes}`}
+      // `auto` only counts for lazy images; an eager one reads the list as written.
+      sizes={priority ? sizes : `auto, ${sizes}`}
       alt={photo.getTitle()}
       width={photo.getWidth()}
       height={photo.getHeight()}
-      loading="lazy"
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
       decoding="async"
       onError={onError}
       style={

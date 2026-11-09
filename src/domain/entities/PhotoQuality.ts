@@ -16,3 +16,21 @@ export const PHOTO_QUALITY_WIDTH: Record<PhotoQuality, number> = {
 export function isPhotoQuality(value: unknown): value is PhotoQuality {
   return PHOTO_QUALITIES.includes(value as PhotoQuality);
 }
+
+/**
+ * The level a screen needs when the visitor has chosen none: the photo fills about the
+ * window's width, so a phone (390 px at 3×, counted at 2× at most) gets Data saver, a
+ * laptop or an HD monitor Standard, and only a wider or denser screen Maximum.
+ */
+export function qualityForScreen(
+  cssWidth: number,
+  pixelRatio: number,
+): PhotoQuality {
+  const needed = cssWidth * Math.min(Math.max(pixelRatio, 1), 2);
+  if (!(needed > 0)) return DEFAULT_PHOTO_QUALITY;
+  return needed <= PHOTO_QUALITY_WIDTH.saver
+    ? "saver"
+    : needed <= PHOTO_QUALITY_WIDTH.standard
+      ? "standard"
+      : "max";
+}

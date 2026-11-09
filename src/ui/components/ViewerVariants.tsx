@@ -1,51 +1,22 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { editCatalog } from "@/src/infrastructure/catalogServices";
-import { getPhotoById } from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
 import { PhotoVariantPosition } from "@/src/domain/entities/PhotoTitlePosition";
 import { PhotoImage } from "./PhotoImage";
 import "./catalogStudio.css";
 
 // Over the photo, in the corner the photo chose (never the title's), or centred at the
-// bottom when it chose none.
+// bottom when it chose none. The variants come with the photo's detail
+// (`getWorkVariants`), so opening a photo never downloads the whole catalog for them.
 export function ViewerVariants({
   photoId,
-  photos,
+  variants,
   position = null,
 }: {
   photoId: string;
-  photos: Photo[];
+  variants: Photo[];
   position?: PhotoVariantPosition;
 }) {
-  const [variants, setVariants] = useState<Photo[]>([]);
-  useEffect(() => {
-    let active = true;
-    void editCatalog
-      .load()
-      .then(async (catalog) => {
-        const ids =
-          catalog.works
-            .find((work) => work.variants.some((v) => v.photoId === photoId))
-            ?.variants.map((v) => v.photoId) ?? [];
-        const resolved = await Promise.all(
-          ids.map(
-            async (id) =>
-              photos.find((photo) => photo.getId() === id) ??
-              (await getPhotoById.execute(id).catch(() => null)),
-          ),
-        );
-        if (active)
-          setVariants(resolved.filter((photo): photo is Photo => !!photo));
-      })
-      .catch(() => {
-        if (active) setVariants([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [photoId, photos]);
   if (variants.length < 2) return null;
   return (
     <nav

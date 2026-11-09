@@ -7,15 +7,6 @@ import { ViewerVariants } from "../ViewerVariants";
 
 vi.mock("../PhotoComments", () => ({ PhotoComments: () => null }));
 vi.mock("../PhotoReactions", () => ({ PhotoReactions: () => null }));
-vi.mock("@/src/infrastructure/catalogServices", () => ({
-  editCatalog: {
-    load: vi.fn().mockResolvedValue({
-      works: [
-        { id: "w", title: "Two", variants: [{ photoId: "a" }, { photoId: "b" }] },
-      ],
-    }),
-  },
-}));
 vi.mock("@/src/infrastructure/photoServices", () => ({
   getPhotoById: { execute: vi.fn() },
 }));
@@ -79,16 +70,21 @@ describe("ViewerVariants", () => {
   const photos = [shot("a"), shot("b")];
 
   it("sits in the corner the photo chose", async () => {
-    render(<ViewerVariants photoId="a" photos={photos} position="TOP_RIGHT" />);
+    render(<ViewerVariants photoId="a" variants={photos} position="TOP_RIGHT" />);
     expect(
       await screen.findByRole("navigation", { name: "Photograph variants" }),
     ).toHaveAttribute("data-corner", "top-right");
   });
 
   it("stays centred at the bottom without a corner", async () => {
-    render(<ViewerVariants photoId="a" photos={photos} />);
+    render(<ViewerVariants photoId="a" variants={photos} />);
     expect(
       await screen.findByRole("navigation", { name: "Photograph variants" }),
     ).toHaveAttribute("data-corner", "bottom-center");
+  });
+
+  it("shows nothing for a photo without other variants", () => {
+    const { container } = render(<ViewerVariants photoId="a" variants={[shot("a")]} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
