@@ -69,6 +69,9 @@ export type PhotoParams = Partial<PhotoClassification> & {
   titlePosition?: PhotoTitlePosition;
   variantPosition?: PhotoVariantPosition;
   metadata?: PhotoMetadata;
+  /** The detail's work, as small thumbnails in order (this photo included); only when
+   *  the visitor can see more than one of its variants. */
+  workVariants?: Photo[];
 };
 
 export class Photo {
@@ -86,6 +89,7 @@ export class Photo {
   private readonly height: number;
   private readonly renditions: PhotoRendition[];
   private readonly createdAt: Date;
+  private readonly workVariants: Photo[];
 
   constructor(params: PhotoParams) {
     this.version = params.version ?? 1;
@@ -119,7 +123,13 @@ export class Photo {
       .sort((a, b) => a.width - b.width);
     this.description = params.description?.trim();
     this.createdAt = params.createdAt ?? new Date();
+    this.workVariants = params.workVariants ?? [];
     this.validate();
+  }
+
+  /** The photo's work as the detail brought it; empty when there is nothing to choose. */
+  getWorkVariants(): Photo[] {
+    return this.workVariants;
   }
 
   private validate() {

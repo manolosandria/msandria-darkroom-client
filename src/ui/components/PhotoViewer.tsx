@@ -337,15 +337,13 @@ export default function PhotoViewer({
             >
               {photo.getTitle()}
             </figcaption>
-            {all && (
-              <div className={fade}>
-                <ViewerVariants
-                  photoId={photoId}
-                  photos={all}
-                  position={photo.getVariantCorner()}
-                />
-              </div>
-            )}
+            <div className={fade}>
+              <ViewerVariants
+                photoId={photoId}
+                variants={photo.getWorkVariants()}
+                position={photo.getVariantCorner()}
+              />
+            </div>
           </figure>
         )}
 

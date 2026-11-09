@@ -413,6 +413,37 @@ describe("HomePage", () => {
     expect(focus(desktop)).toEqual([0.5, 0.5, photo.getAspectRatio()]);
     expect(focus(mobile)).toEqual([0.5, 1, photo.getAspectRatio()]);
   });
+  it("fetches only the crop on show first, by the window's width", async () => {
+    const photo = new Photo({
+      id: "first",
+      title: "First",
+      width: 1800,
+      height: 1200,
+      renditions: [{ width: 640, url: "https://cdn/first.jpg" }],
+    });
+    const original = window.matchMedia;
+    const phone = (matches: boolean) =>
+      ((query: string) => ({
+        matches,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      })) as unknown as typeof window.matchMedia;
+    window.matchMedia = phone(true);
+    try {
+      render(
+        <HomePage getAllPhotos={{ execute: vi.fn().mockResolvedValue([photo]) }} />,
+      );
+      const desktop = within(await screen.findByTestId("banner-crop-desktop")).getByRole("img");
+      const mobile = within(screen.getByTestId("banner-crop-mobile")).getByRole("img");
+      // The hidden desktop crop stays lazy, so a phone never downloads it.
+      expect(desktop).toHaveAttribute("loading", "lazy");
+      expect(mobile).toHaveAttribute("loading", "eager");
+      expect(mobile).toHaveAttribute("fetchpriority", "high");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
   it("applies saved appearance and escaped text to public Home", async () => {
     const get = vi.spyOn(manageHomeBanner, "get").mockResolvedValue({
       ...defaultHomeBanner,

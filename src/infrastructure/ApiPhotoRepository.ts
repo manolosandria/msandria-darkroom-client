@@ -66,6 +66,8 @@ type ApiPhoto = ApiPhotoListItem & {
   camera?: PhotoCamera;
   titlePosition?: PhotoTitlePosition;
   variantPosition?: PhotoVariantPosition;
+  // The work's variants the visitor can see, as small thumbnails.
+  variants?: ApiPhotoListItem[];
 };
 
 type ApiOptimizationIssue = {
@@ -424,6 +426,9 @@ export class ApiPhotoRepository
           : null,
       titlePosition: detail?.titlePosition,
       variantPosition: detail?.variantPosition,
+      workVariants: detail?.variants
+        ?.filter((variant) => this.isDeliverable(variant))
+        .map((variant) => this.toDomainPhoto(variant)),
       metadata: {
         format: detail?.format,
         capturedAt: detail?.capturedAt,

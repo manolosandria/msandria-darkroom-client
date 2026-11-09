@@ -58,4 +58,21 @@ describe("PhotoImage", () => {
     render(<PhotoImage photo={photo} fallbackSizes="100vw" />);
     expect(screen.getByRole("img")).toHaveAttribute("srcset", "https://cdn/240 240w");
   });
+
+  it("grows the sizes of a crop and fetches a priority image at once", () => {
+    const photo = new Photo({ id: "p", title: "Priority", width: 1000, height: 1000,
+      renditions: [{ width: 640, url: "https://cdn/640" }] });
+    const { rerender } = render(
+      <PhotoImage photo={photo} fallbackSizes="(max-width: 600px) 50vw, 25vw"
+        crop={{ x: 0, y: 0, width: 0.5, height: 1 }} />,
+    );
+    const image = screen.getByRole("img");
+    expect(image).toHaveAttribute("sizes", "auto, (max-width: 600px) calc(50vw * 2), calc(25vw * 2)");
+    expect(image).toHaveAttribute("loading", "lazy");
+    rerender(<PhotoImage photo={photo} fallbackSizes="100vw" priority />);
+    const first = screen.getByRole("img");
+    expect(first).toHaveAttribute("loading", "eager");
+    expect(first).toHaveAttribute("fetchpriority", "high");
+    expect(first).toHaveAttribute("sizes", "100vw");
+  });
 });

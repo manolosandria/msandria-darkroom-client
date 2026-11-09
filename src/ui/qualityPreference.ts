@@ -2,6 +2,7 @@ import {
   DEFAULT_PHOTO_QUALITY,
   PhotoQuality,
   isPhotoQuality,
+  qualityForScreen,
 } from "@/src/domain/entities/PhotoQuality";
 
 const STORAGE_KEY = "photoQuality";
@@ -9,16 +10,25 @@ const listeners = new Set<() => void>();
 
 // Storage can be missing or throw (private windows, blocked site data), and the viewer
 // has to work without it: the preference then lasts only until the page closes.
-let fallback: PhotoQuality = DEFAULT_PHOTO_QUALITY;
+let fallback: PhotoQuality | null = null;
+
+// Without a choice, the screen decides: a phone does not download the 1920 px file.
+function screenDefault(): PhotoQuality {
+  try {
+    return qualityForScreen(window.innerWidth, window.devicePixelRatio || 1);
+  } catch {
+    return DEFAULT_PHOTO_QUALITY;
+  }
+}
 
 export function readQuality(): PhotoQuality {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (isPhotoQuality(stored)) return stored;
   } catch {
-    return fallback;
+    return fallback ?? screenDefault();
   }
-  return fallback;
+  return fallback ?? screenDefault();
 }
 
 export function writeQuality(quality: PhotoQuality) {

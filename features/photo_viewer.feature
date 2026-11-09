@@ -16,8 +16,16 @@ Feature: Photo viewer
 
   Scenario: Default quality
     Given a visitor who never chose a quality
-    When a photo opens
+    When a photo opens on a laptop or an HD monitor
     Then it uses the largest rendition up to 1920 px wide
+    When a photo opens on a phone
+    Then it uses the largest rendition up to 960 px wide
+
+  Scenario: Variants without the catalog
+    Given a photo whose work has other public variants
+    When the photo opens
+    Then its variant thumbnails come with the photo's detail
+    And the whole catalog is not downloaded
 
   Scenario Outline: Choosing a quality
     Given a photo with renditions of 640, 960, 1920 and 2560 px

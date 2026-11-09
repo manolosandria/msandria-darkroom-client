@@ -1,4 +1,5 @@
 "use client";
+import { shareSizes } from "@/src/ui/imageSizes";
 import Link from "next/link";
 import { CSSProperties, useState } from "react";
 import { CatalogTile } from "@/src/domain/catalogSelection";
@@ -113,7 +114,13 @@ function Tile({
           photo={photo}
           crop={desktop.view.crop}
           className="object-cover"
-          fallbackSizes="(max-width: 600px) 66vw, 50vw"
+          fallbackSizes={
+            // Random places each tile by its share of the width; the other layouts
+            // lay out two columns on phones and about four on wide screens.
+            layout === "random"
+              ? shareSizes(mobile.width, desktop.width, 600)
+              : "(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw"
+          }
         />
         <span className="photo-grid__caption">{photo.getTitle()}</span>
       </Link>

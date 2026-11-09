@@ -219,6 +219,25 @@ describe("ApiPhotoRepository", () => {
     const photo = await new ApiPhotoRepository(API_URL, fetchFn).findById("t");
     expect(photo?.getTitlePosition()).toBe("TOP_LEFT");
   });
+  it("brings the work's variants with the detail, leaving out undeliverable ones", async () => {
+    const photo = await new ApiPhotoRepository(
+      API_URL,
+      respondWith({
+        ...apiPhoto("a"),
+        description: null,
+        variants: [apiPhoto("a"), { ...apiPhoto("x"), renditions: [] }, apiPhoto("b")],
+      }),
+    ).findById("a");
+    expect(photo?.getWorkVariants().map((variant) => variant.getId())).toEqual([
+      "a",
+      "b",
+    ]);
+    const alone = await new ApiPhotoRepository(
+      API_URL,
+      respondWith({ ...apiPhoto("c"), description: null }),
+    ).findById("c");
+    expect(alone?.getWorkVariants()).toEqual([]);
+  });
   it("reads the variant corner, and drops one that meets the title", async () => {
     const corner = await new ApiPhotoRepository(
       API_URL,
