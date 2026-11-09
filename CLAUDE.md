@@ -1123,7 +1123,7 @@ drafts and scheduled ones marked, beside the editor: title, **Draft**/**Publishe
 publication date (empty publishes at once, a later date schedules the post), tags
 (Enter or a comma closes one; stored without `#`, in lower case and once each, as
 `normalizeTag` and the API agree), and the body as blocks that reorder by dragging their
-⠿ grip (`useLiveSort`) or with ↑ ↓. **+ Text** adds a text block, **+ Photo from the
+⠿ grip (`useLiveSort`) or with ↑ ↓. **Text** adds a text block, **Photo from the
 library** offers the photos a post can show (public, collections-only and posts-only),
 and **Upload photos…** publishes files through `UploadPhoto`, either **Only in posts**
 (`POSTS_ONLY`, the default) or **To the gallery too** (`PUBLIC`), adding each to the
@@ -1132,3 +1132,16 @@ post. **Preview** shows the post as Home will. **Save post** sends the whole pos
 **Reload posts**); unsaved posts register with the save bar. **Delete post** asks first;
 its photos stay in Photos. Photos' visibility adds **Posts only** to the classification
 cards. The API's `20261106000000_posts` migration must be applied before this client.
+
+### Posts studio
+
+Curator → Posts offers a searchable library with All, Draft, Scheduled and Published
+filters, thumbnail covers and excerpts. The writing surface separates story blocks
+from publishing settings, with labelled icon buttons and a sticky save/preview bar.
+The bar distinguishes unsaved edits from saved changes; publishing settings explain
+whether saving keeps a draft, schedules the post or makes it visible immediately.
+Reader preview switches between desktop and phone widths without saving.
+
+Uploads are stored in Photos immediately, while the post itself still needs **Save
+post**. During an upload the editor locks selection, preview and saving so the result
+stays with its story. A batch is capped at the remaining block capacity before upload.
