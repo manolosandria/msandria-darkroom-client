@@ -52,3 +52,22 @@ Feature: Posts on Home
   Scenario: A post that cannot be published
     When I try to publish a post without a title, without blocks or with a private photo
     Then the editor or the API explains why and keeps my edits
+
+  Scenario: Finding a post in the studio
+    Given the journal contains drafts, scheduled and published posts
+    When I search by title or tag and choose a status filter
+    Then the library shows matching posts with their cover, excerpt and status
+    And filtering does not discard the story I am editing
+
+  Scenario: Checking the reading experience
+    Given I am editing a post
+    When I open Preview and choose Phone or Desktop
+    Then I see the story at that width without saving it
+    And Edit returns to my changes
+
+  Scenario: Waiting for photo uploads
+    Given a photo upload is in progress
+    Then switching posts, previewing and saving are disabled until it finishes
+    And the photo joins the same post when the upload completes
+    And files beyond the remaining block capacity are not uploaded
+    And the editor explains that uploaded files are stored immediately, before saving the post

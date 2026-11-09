@@ -18,7 +18,10 @@ import {
 import { PostConflictError } from "@/src/domain/errors/PostConflictError";
 import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { managePosts } from "@/src/infrastructure/postServices";
-import { getManagedPhotos, uploadPhoto } from "@/src/infrastructure/photoServices";
+import {
+  getManagedPhotos,
+  uploadPhoto,
+} from "@/src/infrastructure/photoServices";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
 import { rateLimitMessage } from "@/src/ui/rateLimitMessage";
 import { useLiveSort } from "@/src/ui/hooks/useLiveSort";
@@ -29,6 +32,7 @@ import { EmptyState } from "./EmptyState";
 import { PhotoImage } from "./PhotoImage";
 import { PhotoPicker } from "./PhotoPicker";
 import { PostArticle } from "./PostArticle";
+import { PostIcon } from "./PostIcon";
 import "./catalogStudio.css";
 import "./postStudio.css";
 
@@ -66,7 +70,11 @@ const STYLE_LABELS: Record<PostTextStyle, string> = {
 
 // Photos that a published post can show. Private and select ones never can; a
 // collections-only one can while it is in a collection, which the API checks.
-const POSTABLE: PhotoVisibility[] = ["PUBLIC", "COLLECTIONS_ONLY", "POSTS_ONLY"];
+const POSTABLE: PhotoVisibility[] = [
+  "PUBLIC",
+  "COLLECTIONS_ONLY",
+  "POSTS_ONLY",
+];
 
 let nextKey = 0;
 const newKey = () => `block-${++nextKey}`;
@@ -79,7 +87,13 @@ export function toLocalInput(date: Date | null): string {
 
 function editorDraftOf(post: Post | null): EditorDraft {
   if (!post)
-    return { title: "", status: "DRAFT", publishedAt: "", tags: [], blocks: [] };
+    return {
+      title: "",
+      status: "DRAFT",
+      publishedAt: "",
+      tags: [],
+      blocks: [],
+    };
   const draft = draftOf(post);
   return {
     title: draft.title,
@@ -95,12 +109,17 @@ export function postDraftOf(draft: EditorDraft): PostDraft {
   return {
     title: draft.title.trim(),
     status: draft.status,
-    publishedAt: date && !Number.isNaN(date.getTime()) ? date.toISOString() : null,
+    publishedAt:
+      date && !Number.isNaN(date.getTime()) ? date.toISOString() : null,
     tags: draft.tags,
     blocks: draft.blocks.map((block) =>
       block.kind === "TEXT"
         ? { kind: "TEXT", text: block.text, style: block.style }
-        : { kind: "PHOTO", photoId: block.photoId, caption: block.caption.trim() },
+        : {
+            kind: "PHOTO",
+            photoId: block.photoId,
+            caption: block.caption.trim(),
+          },
     ),
   };
 }
@@ -109,31 +128,58 @@ const sameDraft = (a: EditorDraft, b: EditorDraft) =>
   JSON.stringify(postDraftOf(a)) === JSON.stringify(postDraftOf(b));
 
 const fileTitle = (file: File) =>
-  file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled";
+  file.name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .trim() || "Untitled";
 
 /**
  * Curator → Posts: Home's journal. A list of every post (drafts and scheduled ones
  * marked) beside the editor: title, status and publication date, tags, and the body as
  * blocks of text and photos that reorder by dragging their grip or with the arrows.
  * Photos come from the library or are uploaded here, to the gallery as well or for
- * posts only. Nothing is written until **Save post**.
+ * posts only. Uploads are stored immediately; the story is saved with **Save post**.
  */
-export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudioPorts }) {
+export default function PostStudio({
+  ports = defaultPorts,
+}: {
+  ports?: PostStudioPorts;
+}) {
   const portsRef = useRef(ports);
-  const { posts: postPort, photos: photoPort, upload: uploadPort } = portsRef.current;
+  const {
+    posts: postPort,
+    photos: photoPort,
+    upload: uploadPort,
+  } = portsRef.current;
   const { confirm } = useEditingWorkspace();
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [library, setLibrary] = useState<Photo[]>([]);
   const [uploaded, setUploaded] = useState<Photo[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [original, setOriginal] = useState<EditorDraft>(() => editorDraftOf(null));
+  const [original, setOriginal] = useState<EditorDraft>(() =>
+    editorDraftOf(null),
+  );
   const [draft, setDraft] = useState<EditorDraft>(original);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "phone">(
+    "desktop",
+  );
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<PostState | "all">("all");
+  const [uploading, setUploading] = useState(false);
+  const locked = busy || uploading;
+  const shownPosts = (posts ?? []).filter(
+    (post) =>
+      (filter === "all" || stateOf(post) === filter) &&
+      `${post.title} ${post.tags.join(" ")}`
+        .toLocaleLowerCase()
+        .includes(search.trim().toLocaleLowerCase()),
+  );
   const editing = selectedId !== null;
   const selected = posts?.find((post) => post.id === selectedId) ?? null;
   const dirty = editing && !sameDraft(draft, original);
@@ -143,7 +189,9 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
     try {
       setPosts(await postPort.all());
     } catch (caught) {
-      setLoadError(caught instanceof Error ? caught.message : "Posts could not be loaded.");
+      setLoadError(
+        caught instanceof Error ? caught.message : "Posts could not be loaded.",
+      );
     }
   };
   useEffect(() => {
@@ -154,7 +202,11 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
       .catch(
         (caught: unknown) =>
           live &&
-          setLoadError(caught instanceof Error ? caught.message : "Posts could not be loaded."),
+          setLoadError(
+            caught instanceof Error
+              ? caught.message
+              : "Posts could not be loaded.",
+          ),
       );
     photoPort
       .execute()
@@ -173,7 +225,8 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
     for (const post of posts ?? [])
       for (const block of post.blocks)
         if (block.kind === "PHOTO") known.set(block.photo.getId(), block.photo);
-    for (const photo of [...library, ...uploaded]) known.set(photo.getId(), photo);
+    for (const photo of [...library, ...uploaded])
+      known.set(photo.getId(), photo);
     return known;
   }, [posts, library, uploaded]);
 
@@ -188,19 +241,25 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
     setPreviewing(false);
   };
   const choose = async (post: Post | null) => {
+    if (locked) return;
     const id = post ? post.id : "new";
     if (id === selectedId) return;
     if (
       dirty &&
-      !(await confirm("Discard changes?", "This post has unsaved changes. Leave it and lose them?"))
+      !(await confirm(
+        "Discard changes?",
+        "This post has unsaved changes. Leave it and lose them?",
+      ))
     )
       return;
     open(post, id);
   };
 
   const save = async (): Promise<boolean> => {
+    if (locked) return false;
     const body = postDraftOf(draft);
-    const problem = body.status === "PUBLISHED" ? publishingProblem(body) : null;
+    const problem =
+      body.status === "PUBLISHED" ? publishingProblem(body) : null;
     if (problem) {
       setError(problem);
       return false;
@@ -213,7 +272,10 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
         selected === null
           ? await postPort.create(body)
           : await postPort.update(selected.id, body, selected.version);
-      setPosts((previous) => [saved, ...(previous ?? []).filter((post) => post.id !== saved.id)]);
+      setPosts((previous) => [
+        saved,
+        ...(previous ?? []).filter((post) => post.id !== saved.id),
+      ]);
       open(saved, saved.id);
       setNotice(
         saved.status === "DRAFT"
@@ -260,11 +322,17 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
     setError("");
     try {
       await postPort.remove(selected.id);
-      setPosts((previous) => (previous ?? []).filter((post) => post.id !== selected.id));
+      setPosts((previous) =>
+        (previous ?? []).filter((post) => post.id !== selected.id),
+      );
       open(null, null);
       setNotice("Post deleted.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The post could not be deleted.");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The post could not be deleted.",
+      );
     } finally {
       setBusy(false);
     }
@@ -273,17 +341,28 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
   const reloadPost = async () => {
     await load();
     setConflict(false);
-    setError("Reloaded. Open the post again to see its saved state; your edits are still here.");
+    setError(
+      "Reloaded. Open the post again to see its saved state; your edits are still here.",
+    );
   };
 
-  const change = (patch: Partial<EditorDraft>) => setDraft((previous) => ({ ...previous, ...patch }));
+  const change = (patch: Partial<EditorDraft>) =>
+    setDraft((previous) => ({ ...previous, ...patch }));
   const setBlocks = (update: (blocks: EditorBlock[]) => EditorBlock[]) =>
     setDraft((previous) => ({ ...previous, blocks: update(previous.blocks) }));
   const addPhoto = (photo: Photo) =>
     setBlocks((blocks) =>
       blocks.length >= MAX_POST_BLOCKS
         ? blocks
-        : [...blocks, { key: newKey(), kind: "PHOTO", photoId: photo.getId(), caption: "" }],
+        : [
+            ...blocks,
+            {
+              key: newKey(),
+              kind: "PHOTO",
+              photoId: photo.getId(),
+              caption: "",
+            },
+          ],
     );
 
   const previewPost: Post | null = editing
@@ -302,7 +381,10 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
         liked: false,
         saved: false,
         blocks: draft.blocks.flatMap((block): PostBlock[] => {
-          if (block.kind === "TEXT") return [{ kind: "TEXT" as const, text: block.text, style: block.style }];
+          if (block.kind === "TEXT")
+            return [
+              { kind: "TEXT" as const, text: block.text, style: block.style },
+            ];
           const photo = photos.get(block.photoId);
           return photo
             ? [
@@ -310,7 +392,8 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
                   kind: "PHOTO" as const,
                   caption: block.caption.trim() || null,
                   photo,
-                  hasDetail: photo.getClassification().visibility !== "POSTS_ONLY",
+                  hasDetail:
+                    photo.getClassification().visibility !== "POSTS_ONLY",
                 },
               ]
             : [];
@@ -324,8 +407,9 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
         <div className="upload-heading">
           <h1>Posts</h1>
           <p>
-            Home&rsquo;s journal: text and photos in the order you choose, with tags and a
-            publication date. Drafts and scheduled posts are seen only here.
+            Home&rsquo;s journal: text and photos in the order you choose, with
+            tags and a publication date. Drafts and scheduled posts are seen
+            only here.
           </p>
         </div>
         {loadError && (
@@ -338,144 +422,375 @@ export default function PostStudio({ ports = defaultPorts }: { ports?: PostStudi
         )}
         <div className="post-studio__layout">
           <aside className="post-studio__list" aria-label="Posts">
+            <div className="post-studio__library-heading">
+              <span>Your journal</span>
+              <small>
+                {posts?.length ?? "…"} {posts?.length === 1 ? "post" : "posts"}
+              </small>
+            </div>
             <button
               type="button"
               className="post-studio__new"
               aria-pressed={selectedId === "new"}
+              disabled={locked || posts === null}
               onClick={() => choose(null)}
             >
-              + New post
+              <PostIcon name="plus" /> New post
             </button>
+            <label className="post-studio__search">
+              <PostIcon name="search" />
+              <input
+                type="search"
+                aria-label="Search posts"
+                placeholder="Find a title or tag…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <div
+              className="post-studio__filters"
+              role="group"
+              aria-label="Filter posts"
+            >
+              {(["all", "draft", "scheduled", "published"] as const).map(
+                (state) => (
+                  <button
+                    key={state}
+                    type="button"
+                    aria-pressed={filter === state}
+                    onClick={() => setFilter(state)}
+                  >
+                    {state === "all" ? "All" : STATE_LABELS[state]}{" "}
+                    <small>
+                      {
+                        (posts ?? []).filter(
+                          (post) => state === "all" || stateOf(post) === state,
+                        ).length
+                      }
+                    </small>
+                  </button>
+                ),
+              )}
+            </div>
+            {posts === null && !loadError && (
+              <p role="status" className="post-studio__hint">
+                Loading your journal…
+              </p>
+            )}
             {posts && posts.length === 0 && (
               <EmptyState picture="comments" title="No posts yet" quiet>
                 Start one with New post.
               </EmptyState>
             )}
+            {posts !== null && posts.length > 0 && !shownPosts.length && (
+              <p className="post-studio__hint">
+                No posts match. Try another title, tag or status.
+              </p>
+            )}
             <ul>
-              {(posts ?? []).map((post) => (
-                <li key={post.id}>
-                  <button
-                    type="button"
-                    aria-pressed={post.id === selectedId}
-                    onClick={() => choose(post)}
-                  >
-                    <strong>{post.title || "Untitled post"}</strong>
-                    <span className="post-studio__meta">
-                      <span className={`post-studio__state post-studio__state--${stateOf(post)}`}>
-                        {STATE_LABELS[stateOf(post)]}
+              {shownPosts.map((post) => {
+                const cover = post.blocks.find(
+                  (block) => block.kind === "PHOTO",
+                );
+                return (
+                  <li key={post.id}>
+                    <button
+                      type="button"
+                      aria-pressed={post.id === selectedId}
+                      disabled={locked}
+                      onClick={() => choose(post)}
+                    >
+                      <span
+                        className="post-studio__card-cover"
+                        aria-hidden="true"
+                      >
+                        {cover ? (
+                          <PhotoImage
+                            photo={cover.photo}
+                            maxWidth={160}
+                            fallbackSizes="64px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <PostIcon name="text" />
+                        )}
                       </span>
-                      {post.publishedAt && post.publishedAt.toLocaleDateString()}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <span className="post-studio__card-copy">
+                        <strong>{post.title || "Untitled post"}</strong>
+                        <span className="post-studio__meta">
+                          <span
+                            className={`post-studio__state post-studio__state--${stateOf(post)}`}
+                          >
+                            {STATE_LABELS[stateOf(post)]}
+                          </span>
+                          {post.publishedAt &&
+                            post.publishedAt.toLocaleDateString()}
+                        </span>
+                        <small className="post-studio__excerpt">
+                          {post.blocks.find((block) => block.kind === "TEXT")
+                            ?.text || `${post.blocks.length} blocks`}
+                        </small>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </aside>
           {editing ? (
             <section className="post-studio__editor" aria-label="Post editor">
-              <div className="post-studio__actions">
-                <button type="button" className="post-studio__save" disabled={busy || (!dirty && selected !== null)} onClick={save}>
-                  {busy ? "Saving…" : "Save post"}
-                </button>
-                <button type="button" disabled={!dirty || busy} onClick={() => setDraft(original)}>
-                  Cancel changes
-                </button>
-                <button type="button" aria-pressed={previewing} onClick={() => setPreviewing(!previewing)}>
-                  {previewing ? "Edit" : "Preview"}
-                </button>
-                <button type="button" className="post-studio__delete" disabled={busy} onClick={remove}>
-                  {selected ? "Delete post" : "Discard"}
-                </button>
-              </div>
-              {notice && <p role="status" className="post-studio__notice">{notice}</p>}
-              {error && (
-                <p role="alert" className="post-studio__error">
-                  {error}{" "}
-                  {conflict && (
-                    <button type="button" onClick={reloadPost}>
-                      Reload posts
-                    </button>
-                  )}
-                </p>
-              )}
-              {previewing && previewPost ? (
-                <div className="post-studio__preview">
-                  <PostArticle post={previewPost} preview linkTitle={false} />
-                </div>
-              ) : (
-                <>
-                  <label className="post-studio__field">
-                    <span>Title</span>
-                    <input
-                      value={draft.title}
-                      maxLength={200}
-                      onChange={(event) => change({ title: event.target.value })}
-                      placeholder="A title for the post"
+              <fieldset className="post-studio__editing" disabled={locked}>
+                <legend className="sr-only">Compose post</legend>
+                <div className="post-studio__actions">
+                  <span className="post-studio__save-state">
+                    <PostIcon
+                      name={dirty || selected === null ? "edit" : "check"}
                     />
-                  </label>
-                  <div className="post-studio__row">
-                    <fieldset className="post-studio__status">
-                      <legend>Status</legend>
-                      {(["DRAFT", "PUBLISHED"] as const).map((status) => (
-                        <label key={status}>
-                          <input
-                            type="radio"
-                            name="post-status"
-                            value={status}
-                            checked={draft.status === status}
-                            onChange={() => change({ status })}
-                          />
-                          {status === "DRAFT" ? "Draft" : "Published"}
-                        </label>
-                      ))}
-                    </fieldset>
-                    <label className="post-studio__field">
-                      <span>Publication date</span>
-                      <input
-                        type="datetime-local"
-                        value={draft.publishedAt}
-                        onChange={(event) => change({ publishedAt: event.target.value })}
-                      />
-                      <small>Empty: the moment it is published. A later date schedules it.</small>
-                    </label>
-                  </div>
-                  <TagField tags={draft.tags} onChange={(tags) => change({ tags })} />
-                  <BlockList
-                    blocks={draft.blocks}
-                    photos={photos}
-                    onChange={setBlocks}
-                  />
-                  <AddBlocks
-                    full={draft.blocks.length >= MAX_POST_BLOCKS}
-                    library={library.filter(
-                      (photo) =>
-                        POSTABLE.includes(photo.getClassification().visibility) &&
-                        !draft.blocks.some(
-                          (block) => block.kind === "PHOTO" && block.photoId === photo.getId(),
-                        ),
+                    {uploading
+                      ? "Uploading photos…"
+                      : busy
+                        ? "Saving…"
+                        : dirty
+                          ? "Unsaved changes"
+                          : selected
+                            ? "All changes saved"
+                            : "New draft"}
+                  </span>
+                  <button
+                    type="button"
+                    className="post-studio__save"
+                    disabled={busy || (!dirty && selected !== null)}
+                    onClick={save}
+                  >
+                    <PostIcon name="save" />
+                    {busy ? "Saving…" : "Save post"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!dirty || busy}
+                    onClick={() => setDraft(original)}
+                  >
+                    <PostIcon name="undo" />
+                    Cancel changes
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={previewing}
+                    onClick={() => setPreviewing(!previewing)}
+                  >
+                    <PostIcon name={previewing ? "edit" : "eye"} />
+                    {previewing ? "Edit" : "Preview"}
+                  </button>
+                  <button
+                    type="button"
+                    className="post-studio__delete"
+                    disabled={busy}
+                    onClick={remove}
+                  >
+                    <PostIcon name="trash" />
+                    {selected ? "Delete post" : "Discard"}
+                  </button>
+                </div>
+                {notice && (
+                  <p role="status" className="post-studio__notice">
+                    {notice}
+                  </p>
+                )}
+                {error && (
+                  <p role="alert" className="post-studio__error">
+                    {error}{" "}
+                    {conflict && (
+                      <button type="button" onClick={reloadPost}>
+                        Reload posts
+                      </button>
                     )}
-                    onText={() =>
-                      setBlocks((blocks) => [
-                        ...blocks,
-                        { key: newKey(), kind: "TEXT", text: "", style: "BODY" },
-                      ])
-                    }
-                    onPhoto={addPhoto}
-                    upload={uploadPort}
-                    onUploaded={(photo) => {
-                      setUploaded((previous) => [...previous, photo]);
-                      addPhoto(photo);
-                    }}
-                  />
-                </>
-              )}
+                  </p>
+                )}
+                {previewing && previewPost ? (
+                  <div
+                    className="post-studio__preview"
+                    data-device={previewDevice}
+                  >
+                    <div
+                      className="post-studio__preview-tools"
+                      role="group"
+                      aria-label="Preview size"
+                    >
+                      <span>Reader preview</span>
+                      {(["desktop", "phone"] as const).map((device) => (
+                        <button
+                          type="button"
+                          key={device}
+                          aria-pressed={previewDevice === device}
+                          onClick={() => setPreviewDevice(device)}
+                        >
+                          <PostIcon name={device} />
+                          {device === "desktop" ? "Desktop" : "Phone"}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="post-studio__preview-page">
+                      <PostArticle
+                        post={previewPost}
+                        preview
+                        linkTitle={false}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div key={selectedId} className="post-studio__compose">
+                    <div className="post-studio__paper">
+                      <div className="post-studio__section-heading">
+                        <PostIcon name="edit" />
+                        <div>
+                          <h2>Your story</h2>
+                          <p>
+                            Give it a title, then bring it to life with text and
+                            photographs.
+                          </p>
+                        </div>
+                      </div>
+                      <label className="post-studio__field post-studio__title">
+                        <span>Title</span>
+                        <input
+                          value={draft.title}
+                          maxLength={200}
+                          onChange={(event) =>
+                            change({ title: event.target.value })
+                          }
+                          placeholder="A title for the post"
+                        />
+                      </label>
+                      <div className="post-studio__body-heading">
+                        <h3>Story blocks</h3>
+                        <small>
+                          {draft.blocks.length} / {MAX_POST_BLOCKS}
+                        </small>
+                      </div>
+                      <BlockList
+                        blocks={draft.blocks}
+                        photos={photos}
+                        onChange={setBlocks}
+                      />
+                      <AddBlocks
+                        key={selectedId}
+                        remaining={MAX_POST_BLOCKS - draft.blocks.length}
+                        library={library.filter(
+                          (photo) =>
+                            POSTABLE.includes(
+                              photo.getClassification().visibility,
+                            ) &&
+                            !draft.blocks.some(
+                              (block) =>
+                                block.kind === "PHOTO" &&
+                                block.photoId === photo.getId(),
+                            ),
+                        )}
+                        onText={() =>
+                          setBlocks((blocks) =>
+                            blocks.length >= MAX_POST_BLOCKS
+                              ? blocks
+                              : [
+                                  ...blocks,
+                                  {
+                                    key: newKey(),
+                                    kind: "TEXT",
+                                    text: "",
+                                    style: "BODY",
+                                  },
+                                ],
+                          )
+                        }
+                        onPhoto={addPhoto}
+                        upload={uploadPort}
+                        onUploadingChange={setUploading}
+                        onUploaded={(photo) => {
+                          setUploaded((previous) => [...previous, photo]);
+                          addPhoto(photo);
+                        }}
+                      />
+                    </div>
+                    <aside
+                      className="post-studio__publishing"
+                      aria-label="Publishing settings"
+                    >
+                      <div className="post-studio__section-heading">
+                        <PostIcon name="calendar" />
+                        <div>
+                          <h2>Publishing</h2>
+                          <p>You decide when your story goes live.</p>
+                        </div>
+                      </div>
+                      <div className="post-studio__row">
+                        <fieldset className="post-studio__status">
+                          <legend>Status</legend>
+                          {(["DRAFT", "PUBLISHED"] as const).map((status) => (
+                            <label key={status}>
+                              <input
+                                type="radio"
+                                name="post-status"
+                                value={status}
+                                aria-label={
+                                  status === "DRAFT" ? "Draft" : "Published"
+                                }
+                                checked={draft.status === status}
+                                onChange={() => change({ status })}
+                              />
+                              <span>
+                                <strong>
+                                  {status === "DRAFT" ? "Draft" : "Published"}
+                                </strong>
+                                <small>
+                                  {status === "DRAFT"
+                                    ? "Only you can see it"
+                                    : "Visible on Home when due"}
+                                </small>
+                              </span>
+                            </label>
+                          ))}
+                        </fieldset>
+                        <label className="post-studio__field">
+                          <span>Publication date</span>
+                          <input
+                            type="datetime-local"
+                            value={draft.publishedAt}
+                            onChange={(event) =>
+                              change({ publishedAt: event.target.value })
+                            }
+                          />
+                          <small>
+                            Empty: the moment it is published. A later date
+                            schedules it.
+                          </small>
+                        </label>
+                      </div>
+                      <TagField
+                        tags={draft.tags}
+                        onChange={(tags) => change({ tags })}
+                      />
+                      <p className="post-studio__publishing-summary">
+                        {draft.status === "DRAFT"
+                          ? "Save as a draft to keep working at your own pace."
+                          : draft.publishedAt &&
+                              new Date(draft.publishedAt) > new Date()
+                            ? `Saving schedules this post for ${new Date(draft.publishedAt).toLocaleString()}.`
+                            : "Saving makes this post visible on Home immediately."}
+                      </p>
+                    </aside>
+                  </div>
+                )}
+              </fieldset>
             </section>
           ) : (
             <section className="post-studio__editor post-studio__editor--empty">
               <EmptyState picture="comments" title="Choose a post">
                 Pick one from the list or start a new post.
               </EmptyState>
-              {notice && <p role="status" className="post-studio__notice">{notice}</p>}
+              {notice && (
+                <p role="status" className="post-studio__notice">
+                  {notice}
+                </p>
+              )}
             </section>
           )}
         </div>
@@ -491,9 +806,19 @@ const STATE_LABELS: Record<PostState, string> = {
   published: "Published",
 };
 const stateOf = (post: Post): PostState =>
-  post.status === "DRAFT" ? "draft" : isScheduled(post) ? "scheduled" : "published";
+  post.status === "DRAFT"
+    ? "draft"
+    : isScheduled(post)
+      ? "scheduled"
+      : "published";
 
-function TagField({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+function TagField({
+  tags,
+  onChange,
+}: {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+}) {
   const [text, setText] = useState("");
   const [problem, setProblem] = useState("");
   const add = (raw: string) => {
@@ -502,7 +827,9 @@ function TagField({ tags, onChange }: { tags: string[]; onChange: (tags: string[
       if (!part.trim()) continue;
       const tag = normalizeTag(part);
       if (!tag) {
-        setProblem(`“${part.trim()}” is not a tag: use letters, numbers, spaces, - or _.`);
+        setProblem(
+          `“${part.trim()}” is not a tag: use letters, numbers, spaces, - or _.`,
+        );
         return;
       }
       if (!next.includes(tag)) next.push(tag);
@@ -550,8 +877,14 @@ function TagField({ tags, onChange }: { tags: string[]; onChange: (tags: string[
           onBlur={() => text.trim() && add(text)}
         />
       </div>
-      <small>Enter or a comma closes a tag. Visitors can open every post with it.</small>
-      {problem && <p role="alert" className="post-studio__error">{problem}</p>}
+      <small>
+        Enter or a comma closes a tag. Visitors can open every post with it.
+      </small>
+      {problem && (
+        <p role="alert" className="post-studio__error">
+          {problem}
+        </p>
+      )}
     </div>
   );
 }
@@ -573,29 +906,40 @@ function BlockList({
       next.splice(to, 0, item);
       return next;
     });
-  const { order, dragging, attachList, attachItem, itemStyle, gripProps } = useLiveSort({
-    keys: blocks.map((block) => block.key),
-    onMove: move,
-  });
+  const { order, dragging, attachList, attachItem, itemStyle, gripProps } =
+    useLiveSort({
+      keys: blocks.map((block) => block.key),
+      onMove: move,
+    });
   const update = (key: string, patch: Partial<EditorBlock>) =>
     onChange((current) =>
-      current.map((block) => (block.key === key ? ({ ...block, ...patch } as EditorBlock) : block)),
+      current.map((block) =>
+        block.key === key ? ({ ...block, ...patch } as EditorBlock) : block,
+      ),
     );
   if (!blocks.length)
     return (
       <p className="post-studio__hint">
-        The post is empty. Add text or photos below; drag the ⠿ grip or use the arrows to
-        change their order.
+        The post is empty. Add text or photos below; drag the ⠿ grip or use the
+        arrows to change their order.
       </p>
     );
   return (
-    <ol ref={attachList} className={`post-studio__blocks${dragging ? " is-sorting" : ""}`} aria-label="Post blocks">
+    <ol
+      ref={attachList}
+      className={`post-studio__blocks${dragging ? " is-sorting" : ""}`}
+      aria-label="Post blocks"
+    >
       {order.map((key) => {
         const index = blocks.findIndex((block) => block.key === key);
         const block = blocks[index];
         if (!block) return null;
-        const photo = block.kind === "PHOTO" ? photos.get(block.photoId) : undefined;
-        const name = block.kind === "TEXT" ? `${STYLE_LABELS[block.style]} block` : (photo?.getTitle() ?? "Photo");
+        const photo =
+          block.kind === "PHOTO" ? photos.get(block.photoId) : undefined;
+        const name =
+          block.kind === "TEXT"
+            ? `${STYLE_LABELS[block.style]} block`
+            : (photo?.getTitle() ?? "Photo");
         return (
           <li
             key={key}
@@ -611,10 +955,15 @@ function BlockList({
                 title="Drag or use the arrow keys to reorder"
                 {...gripProps(key)}
               >
-                ⠿
+                <PostIcon name="grip" />
               </button>
-              <button type="button" aria-label={`Move ${name} up`} disabled={index === 0} onClick={() => move(index, index - 1)}>
-                ↑
+              <button
+                type="button"
+                aria-label={`Move ${name} up`}
+                disabled={index === 0}
+                onClick={() => move(index, index - 1)}
+              >
+                <PostIcon name="up" />
               </button>
               <button
                 type="button"
@@ -622,25 +971,35 @@ function BlockList({
                 disabled={index === blocks.length - 1}
                 onClick={() => move(index, index + 1)}
               >
-                ↓
+                <PostIcon name="down" />
               </button>
               <button
                 type="button"
                 aria-label={`Remove ${name}`}
-                onClick={() => onChange((current) => current.filter((each) => each.key !== key))}
+                onClick={() =>
+                  onChange((current) =>
+                    current.filter((each) => each.key !== key),
+                  )
+                }
               >
-                ×
+                <PostIcon name="trash" />
               </button>
+              <span className="post-studio__block-label">
+                {String(index + 1).padStart(2, "0")} ·{" "}
+                {block.kind === "TEXT" ? STYLE_LABELS[block.style] : "Photo"}
+              </span>
             </div>
             {block.kind === "TEXT" ? (
               <div className="post-studio__text">
                 <ChoiceMenu
                   value={block.style}
                   ariaLabel={`Style of block ${index + 1}`}
-                  options={(Object.keys(STYLE_LABELS) as PostTextStyle[]).map((style) => ({
-                    value: style,
-                    label: STYLE_LABELS[style],
-                  }))}
+                  options={(Object.keys(STYLE_LABELS) as PostTextStyle[]).map(
+                    (style) => ({
+                      value: style,
+                      label: STYLE_LABELS[style],
+                    }),
+                  )}
                   onChange={(style) => update(key, { style })}
                 />
                 <label>
@@ -649,8 +1008,14 @@ function BlockList({
                     value={block.text}
                     maxLength={10000}
                     rows={block.style === "HEADING" ? 1 : 4}
-                    placeholder={block.style === "HEADING" ? "A heading" : "Write here. A blank line starts a new paragraph."}
-                    onChange={(event) => update(key, { text: event.target.value })}
+                    placeholder={
+                      block.style === "HEADING"
+                        ? "A heading"
+                        : "Write here. A blank line starts a new paragraph."
+                    }
+                    onChange={(event) =>
+                      update(key, { text: event.target.value })
+                    }
                   />
                 </label>
               </div>
@@ -658,21 +1023,30 @@ function BlockList({
               <div className="post-studio__photo">
                 <span className="post-studio__thumb">
                   {photo ? (
-                    <PhotoImage photo={photo} className="object-cover" maxWidth={320} fallbackSizes="120px" />
+                    <PhotoImage
+                      photo={photo}
+                      className="object-cover"
+                      maxWidth={320}
+                      fallbackSizes="120px"
+                    />
                   ) : (
                     <span aria-hidden="true">?</span>
                   )}
                 </span>
                 <div>
                   <strong>{photo?.getTitle() ?? "Photo not available"}</strong>
-                  <VisibilityNote visibility={photo?.getClassification().visibility} />
+                  <VisibilityNote
+                    visibility={photo?.getClassification().visibility}
+                  />
                   <label>
                     <span className="sr-only">Caption of {name}</span>
                     <input
                       value={block.caption}
                       maxLength={500}
                       placeholder="Caption (optional)"
-                      onChange={(event) => update(key, { caption: event.target.value })}
+                      onChange={(event) =>
+                        update(key, { caption: event.target.value })
+                      }
                     />
                   </label>
                 </div>
@@ -687,7 +1061,11 @@ function BlockList({
 
 function VisibilityNote({ visibility }: { visibility?: PhotoVisibility }) {
   if (visibility === "POSTS_ONLY")
-    return <small className="post-studio__note">Posts only · opens no detail view</small>;
+    return (
+      <small className="post-studio__note">
+        Posts only · opens no detail view
+      </small>
+    );
   if (visibility === "PRIVATE" || visibility === "SELECT")
     return (
       <small className="post-studio__note post-studio__note--warn">
@@ -695,35 +1073,51 @@ function VisibilityNote({ visibility }: { visibility?: PhotoVisibility }) {
       </small>
     );
   if (visibility === "COLLECTIONS_ONLY")
-    return <small className="post-studio__note">Collections only · opens its detail view</small>;
-  return <small className="post-studio__note">In the gallery · opens its detail view with comments</small>;
+    return (
+      <small className="post-studio__note">
+        Collections only · opens its detail view
+      </small>
+    );
+  return (
+    <small className="post-studio__note">
+      In the gallery · opens its detail view with comments
+    </small>
+  );
 }
 
 function AddBlocks({
-  full,
+  remaining,
   library,
   onText,
   onPhoto,
   upload,
   onUploaded,
+  onUploadingChange,
 }: {
-  full: boolean;
+  remaining: number;
   library: Photo[];
   onText: () => void;
   onPhoto: (photo: Photo) => void;
   upload: PostStudioPorts["upload"];
   onUploaded: (photo: Photo) => void;
+  onUploadingChange: (value: boolean) => void;
 }) {
+  const full = remaining <= 0;
   const [picking, setPicking] = useState(false);
-  const [destination, setDestination] = useState<"POSTS_ONLY" | "PUBLIC">("POSTS_ONLY");
+  const [destination, setDestination] = useState<"POSTS_ONLY" | "PUBLIC">(
+    "POSTS_ONLY",
+  );
   const [uploading, setUploading] = useState("");
   const [problem, setProblem] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const { catalog } = useClassificationCatalog();
 
   const send = async (files: File[]) => {
+    if (full || uploading) return;
     setProblem("");
-    for (const file of files) {
+    onUploadingChange(true);
+    let failed = false;
+    for (const file of files.slice(0, remaining)) {
       setUploading(`Uploading ${file.name}…`);
       try {
         const { photo } = await upload.execute({
@@ -733,24 +1127,52 @@ function AddBlocks({
         });
         onUploaded(photo);
       } catch (caught) {
+        failed = true;
         setProblem(`${file.name}: ${apiFailureMessage(caught)}`);
         break;
       }
     }
     setUploading("");
+    onUploadingChange(false);
+    if (!failed && files.length > remaining)
+      setProblem(
+        `Only ${remaining} more ${remaining === 1 ? "photo fits" : "photos fit"} in this post. Extra files were not uploaded.`,
+      );
   };
 
   return (
     <div className="post-studio__add">
+      <div className="post-studio__body-heading">
+        <h3>Add to your story</h3>
+        <small>Text and photos, in any order</small>
+      </div>
       <div className="post-studio__add-row">
         <button type="button" disabled={full} onClick={onText}>
-          + Text
+          <PostIcon name="text" />
+          <span>
+            Text<small>A paragraph, heading or quote</small>
+          </span>
         </button>
-        <button type="button" disabled={full} aria-expanded={picking} onClick={() => setPicking(!picking)}>
-          + Photo from the library
+        <button
+          type="button"
+          disabled={full}
+          aria-expanded={picking}
+          onClick={() => setPicking(!picking)}
+        >
+          <PostIcon name="photo" />
+          <span>
+            Photo from the library<small>Choose an existing photograph</small>
+          </span>
         </button>
-        <button type="button" disabled={full || Boolean(uploading)} onClick={() => input.current?.click()}>
-          Upload photos…
+        <button
+          type="button"
+          disabled={full || Boolean(uploading)}
+          onClick={() => input.current?.click()}
+        >
+          <PostIcon name="upload" />
+          <span>
+            Upload photos…<small>Add photographs from your device</small>
+          </span>
         </button>
         <input
           ref={input}
@@ -786,9 +1208,21 @@ function AddBlocks({
           To the gallery too <small>(detail view with comments)</small>
         </label>
       </fieldset>
+      <p className="post-studio__hint">
+        Uploads are added to Photos immediately. Save the post when your story
+        is ready.
+      </p>
       {uploading && <p role="status">{uploading}</p>}
-      {problem && <p role="alert" className="post-studio__error">{problem}</p>}
-      {full && <p className="post-studio__hint">A post takes up to {MAX_POST_BLOCKS} blocks.</p>}
+      {problem && (
+        <p role="alert" className="post-studio__error">
+          {problem}
+        </p>
+      )}
+      {full && (
+        <p className="post-studio__hint">
+          A post takes up to {MAX_POST_BLOCKS} blocks.
+        </p>
+      )}
       {picking &&
         (catalog ? (
           <PhotoPicker photos={library} catalog={catalog} onPick={onPhoto} />
