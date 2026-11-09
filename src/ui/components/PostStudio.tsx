@@ -27,12 +27,14 @@ import { rateLimitMessage } from "@/src/ui/rateLimitMessage";
 import { useLiveSort } from "@/src/ui/hooks/useLiveSort";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { useClassificationCatalog } from "./ClassificationCatalog";
-import { ChoiceMenu } from "./ChoiceMenu";
 import { EmptyState } from "./EmptyState";
 import { PhotoImage } from "./PhotoImage";
 import { PhotoPicker } from "./PhotoPicker";
 import { PostArticle } from "./PostArticle";
 import { PostIcon } from "./PostIcon";
+import { EditorActions } from "./EditorActions";
+import { DeviceFrame, DeviceSwitch, PreviewDevice } from "./DeviceSwitch";
+import { TEXT_STYLE_LABELS, TextStyleChoice } from "./TextStyleChoice";
 import { PostDatePicker } from "./PostDatePicker";
 import { UploadCard, UploadItem } from "./UploadPanel";
 import { publicClassification } from "./PhotoClassificationFields";
@@ -65,11 +67,8 @@ type EditorDraft = {
   blocks: EditorBlock[];
 };
 
-const STYLE_LABELS: Record<PostTextStyle, string> = {
-  BODY: "Text",
-  HEADING: "Heading",
-  QUOTE: "Quote",
-};
+// Named as in collections, so a block's style reads the same everywhere.
+const STYLE_LABELS: Record<PostTextStyle, string> = TEXT_STYLE_LABELS;
 
 // Photos that a published post can show. Private and select ones never can; a
 // collections-only one can while it is in a collection, which the API checks.
@@ -169,9 +168,7 @@ export default function PostStudio({
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [previewing, setPreviewing] = useState(false);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "phone">(
-    "desktop",
-  );
+  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PostState | "all">("all");
   const [uploading, setUploading] = useState(false);
@@ -572,25 +569,14 @@ export default function PostStudio({
                             ? "All changes saved"
                             : "New draft"}
                   </span>
-                  <button
-                    type="button"
-                    className="post-studio__save"
-                    disabled={
-                      busy || pendingUploads || (!dirty && selected !== null)
-                    }
-                    onClick={save}
-                  >
-                    <PostIcon name="save" />
-                    {busy ? "Saving…" : "Save post"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!dirty || busy}
-                    onClick={() => setDraft(original)}
-                  >
-                    <PostIcon name="undo" />
-                    Cancel changes
-                  </button>
+                  <EditorActions
+                    onSave={save}
+                    busy={busy}
+                    dirty={dirty}
+                    canSave={!pendingUploads && (dirty || selected === null)}
+                    saveLabel="Save post"
+                    onCancel={() => setDraft(original)}
+                  />
                   <button
                     type="button"
                     aria-pressed={previewing}
@@ -634,31 +620,23 @@ export default function PostStudio({
                     className="post-studio__preview"
                     data-device={previewDevice}
                   >
-                    <div
-                      className="post-studio__preview-tools"
-                      role="group"
-                      aria-label="Preview size"
-                    >
+                    <div className="post-studio__preview-tools">
                       <span>Reader preview</span>
-                      {(["desktop", "phone"] as const).map((device) => (
-                        <button
-                          type="button"
-                          key={device}
-                          aria-pressed={previewDevice === device}
-                          onClick={() => setPreviewDevice(device)}
-                        >
-                          <PostIcon name={device} />
-                          {device === "desktop" ? "Desktop" : "Phone"}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="post-studio__preview-page">
-                      <PostArticle
-                        post={previewPost}
-                        preview
-                        linkTitle={false}
+                      <DeviceSwitch
+                        label="Preview size"
+                        value={previewDevice}
+                        onChange={setPreviewDevice}
                       />
                     </div>
+                    <DeviceFrame device={previewDevice}>
+                      <div className="post-studio__preview-page">
+                        <PostArticle
+                          post={previewPost}
+                          preview
+                          linkTitle={false}
+                        />
+                      </div>
+                    </DeviceFrame>
                   </div>
                 )}
                 <div
@@ -1003,15 +981,9 @@ function BlockList({
             </div>
             {block.kind === "TEXT" ? (
               <div className="post-studio__text">
-                <ChoiceMenu
+                <TextStyleChoice
                   value={block.style}
-                  ariaLabel={`Style of block ${index + 1}`}
-                  options={(Object.keys(STYLE_LABELS) as PostTextStyle[]).map(
-                    (style) => ({
-                      value: style,
-                      label: STYLE_LABELS[style],
-                    }),
-                  )}
+                  label={`Style of block ${index + 1}`}
                   onChange={(style) => update(key, { style })}
                 />
                 <label>

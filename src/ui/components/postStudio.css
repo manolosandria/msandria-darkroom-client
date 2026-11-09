@@ -231,8 +231,7 @@
   font-size: 0.72rem;
   color: var(--post-muted);
 }
-.post-studio__actions button,
-.post-studio__preview-tools button {
+.post-studio__actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -244,12 +243,6 @@
   background: white;
   color: var(--post-ink);
   font-size: 0.78rem;
-}
-.post-studio__actions .post-studio__save {
-  color: white;
-  background: var(--post-accent);
-  border-color: var(--post-accent);
-  font-weight: 600;
 }
 .post-studio__actions .post-studio__delete {
   margin-left: auto;
@@ -713,10 +706,6 @@
   font-size: 0.75rem;
   color: var(--post-muted);
 }
-.post-studio__preview-tools button[aria-pressed="true"] {
-  background: #d8e6cd;
-  border-color: #8aa774;
-}
 .post-studio__preview-page {
   width: 100%;
   margin: 0 auto;
@@ -725,7 +714,7 @@
   background: var(--site-background, #f4f1ea);
   overflow-wrap: anywhere;
 }
-.post-studio__preview[data-device="phone"] .post-studio__preview-page {
+.post-studio__preview[data-device="mobile"] .post-studio__preview-page {
   max-width: 390px;
 }
 .post-studio__editor--empty {
