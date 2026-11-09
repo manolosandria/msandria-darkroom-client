@@ -310,6 +310,120 @@
   min-width: 0;
   font-size: 0.8rem;
 }
+.post-date__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  border: 1px solid #ccd5c5;
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: #fff;
+  color: var(--post-ink);
+  text-align: left;
+  font: inherit;
+}
+.post-date__trigger > span:last-child {
+  margin-left: auto;
+}
+.post-date__trigger svg {
+  width: 20px;
+  height: 20px;
+  color: var(--post-accent);
+}
+.post-date__panel {
+  padding: 0.75rem;
+  border: 1px solid var(--post-line);
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 8px 24px -16px #26392050;
+}
+.post-date__month,
+.post-date__time,
+.post-date__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+.post-date__panel button {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  background: transparent;
+  color: var(--post-ink);
+  font: inherit;
+  min-height: 36px;
+}
+.post-date__panel button:hover {
+  background: #eef4e7;
+}
+.post-date__month > button {
+  font-size: 1.4rem;
+  min-width: 36px;
+}
+.post-date__week,
+.post-date__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+}
+.post-date__week {
+  padding: 0.75rem 0 0.35rem;
+  font-size: 0.7rem;
+  color: var(--post-muted);
+}
+.post-date__days button {
+  padding: 0.35rem 0;
+}
+.post-date__days button[data-outside="true"] {
+  color: #a1aa9a;
+}
+.post-date__days button[aria-current="date"] {
+  box-shadow: inset 0 0 0 1px #8aa774;
+}
+.post-date__days button[aria-pressed="true"] {
+  background: var(--post-accent);
+  color: #fff;
+}
+.post-date__time {
+  justify-content: flex-end;
+  border-top: 1px solid var(--post-line);
+  margin-top: 0.6rem;
+  padding-top: 0.75rem;
+}
+.post-date__time > span:first-child {
+  margin-right: auto;
+  color: var(--post-muted);
+}
+.post-date__time select {
+  border: 1px solid #ccd5c5;
+  border-radius: 0.45rem;
+  padding: 0.45rem;
+  background: #fafbf7;
+  color: var(--post-ink);
+  font: inherit;
+}
+.post-date__footer {
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+}
+.post-date__footer button:last-child {
+  background: var(--post-accent);
+  color: #fff;
+}
+.post-studio__uploads {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+.post-studio__uploads .upload-card-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.post-studio__compose[hidden] {
+  display: none;
+}
 .post-studio__field > span,
 .post-studio__field > label {
   font-weight: 600;

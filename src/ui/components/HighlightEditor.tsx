@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import { ResolutionBadge } from "./ResolutionBadge";
 import {
   cleanPresentation,
@@ -188,6 +189,7 @@ export function HighlightEditor({
   onActiveChange,
   activeKey,
   disabled = false,
+  stageContainer,
 }: {
   src: string;
   width: number;
@@ -200,6 +202,8 @@ export function HighlightEditor({
    *  reports, with `null` (the whole photo) as "original". */
   activeKey?: string;
   disabled?: boolean;
+  /** Places the drawing surface on a shared photo preview; controls stay here. */
+  stageContainer?: HTMLElement | null;
 }) {
   const onChange = (next: PhotoHighlights) => commit(cleanPresentation(next));
   const ratio = width / height;
@@ -421,6 +425,158 @@ export function HighlightEditor({
       : next === "free"
         ? "Free"
         : `${NAMES[next]} · ${PROPORTIONS[next]}`;
+  const stage = (
+    <div
+      className="highlight-stage"
+      data-drawing={draft ? "" : undefined}
+      style={{ aspectRatio: ratio, width: `min(100%, ${460 * ratio}px)` }}
+      onPointerDown={(event) => {
+        if (disabled) return;
+        const target = event.target as HTMLElement;
+        const handle = target.dataset.handle as Handle | undefined;
+        const stage = event.currentTarget;
+        const { x, y } = point(event, stage);
+        event.preventDefault();
+        stage.setPointerCapture?.(event.pointerId);
+        if (handle && crop) {
+          if (handle.length === 1) {
+            gesture.current = {
+              mode: "edge",
+              pointer: event.pointerId,
+              handle: handle as "n" | "e" | "s" | "w",
+            };
+            return;
+          }
+          // A corner resizes from the opposite one, which stays put.
+          gesture.current = {
+            mode: "draw",
+            pointer: event.pointerId,
+            ax: handle.includes("w") ? crop.x + crop.width : crop.x,
+            ay: handle.includes("n") ? crop.y + crop.height : crop.y,
+          };
+          return;
+        }
+        const inside =
+          !!crop &&
+          x >= crop.x &&
+          x <= crop.x + crop.width &&
+          y >= crop.y &&
+          y <= crop.y + crop.height;
+        if (draft && !inside) {
+          // Drawing starts where the pointer goes down.
+          gesture.current = {
+            mode: "draw",
+            pointer: event.pointerId,
+            ax: x,
+            ay: y,
+          };
+          setDraft({ ...draft, crop: { x, y, width: 0, height: 0 } });
+          return;
+        }
+        if (!crop) return;
+        gesture.current = {
+          mode: "move",
+          pointer: event.pointerId,
+          dx: inside ? x - crop.x : crop.width / 2,
+          dy: inside ? y - crop.y : crop.height / 2,
+        };
+        const g = gesture.current;
+        update({
+          ...crop,
+          x: clamp(x - g.dx, 1 - crop.width),
+          y: clamp(y - g.dy, 1 - crop.height),
+        });
+      }}
+      onPointerMove={(event) => {
+        const g = gesture.current;
+        if (!g || g.pointer !== event.pointerId || !crop || disabled)
+          return;
+        const { x, y } = point(event, event.currentTarget);
+        if (g.mode === "move")
+          update({
+            ...crop,
+            x: clamp(x - g.dx, 1 - crop.width),
+            y: clamp(y - g.dy, 1 - crop.height),
+          });
+        else if (g.mode === "draw")
+          update(rectangle(g.ax, g.ay, x, y, relative));
+        else {
+          const right = crop.x + crop.width;
+          const bottom = crop.y + crop.height;
+          if (g.handle === "e")
+            update({ ...crop, width: Math.max(MIN_SIZE, x - crop.x) });
+          else if (g.handle === "s")
+            update({ ...crop, height: Math.max(MIN_SIZE, y - crop.y) });
+          else if (g.handle === "w") {
+            const left = Math.min(x, right - MIN_SIZE);
+            update({ ...crop, x: left, width: right - left });
+          } else {
+            const top = Math.min(y, bottom - MIN_SIZE);
+            update({ ...crop, y: top, height: bottom - top });
+          }
+        }
+      }}
+      onPointerUp={() => {
+        gesture.current = null;
+        // A click without a drag leaves nothing worth keeping.
+        if (
+          draft?.crop &&
+          (draft.crop.width < MIN_SIZE || draft.crop.height < MIN_SIZE)
+        )
+          setDraft({ ...draft, crop: null });
+      }}
+      onPointerCancel={() => {
+        gesture.current = null;
+      }}
+    >
+      <Image
+        src={src}
+        alt="Highlight selection"
+        fill
+        unoptimized
+        draggable={false}
+        sizes="600px"
+      />
+      {crop && crop.width > 0 && (
+        <div
+          className={`highlight-selection${draft ? " highlight-selection--draft" : ""}`}
+          style={{
+            left: `${crop.x * 100}%`,
+            top: `${crop.y * 100}%`,
+            width: `${crop.width * 100}%`,
+            height: `${crop.height * 100}%`,
+          }}
+        >
+          <span>
+            {draft
+              ? `New ${label(draft.shape).toLowerCase()}`
+              : (custom?.name ?? NAMES[active as HighlightKind])}
+          </span>
+          {(["nw", "ne", "sw", "se"] as const).map((handle) => (
+            <i
+              key={handle}
+              className={`highlight-handle highlight-handle--${handle}`}
+              data-handle={handle}
+            />
+          ))}
+          {shape === "free" &&
+            (["n", "e", "s", "w"] as const).map((handle) => (
+              <i
+                key={handle}
+                className={`highlight-handle highlight-handle--${handle}`}
+                data-handle={handle}
+              />
+            ))}
+        </div>
+      )}
+      {draft && !draft.crop && (
+        <p className="highlight-stage__hint">
+          Drag on the photo to draw{" "}
+          {draft.shape === "free" ? "a free shape" : `a ${draft.shape}`}
+        </p>
+      )}
+    </div>
+  );
   return (
     <>
       <ResolutionBadge
@@ -531,156 +687,7 @@ export function HighlightEditor({
             </button>
           </div>
         )}
-        <div
-          className="highlight-stage"
-          data-drawing={draft ? "" : undefined}
-          style={{ aspectRatio: ratio, width: `min(100%, ${460 * ratio}px)` }}
-          onPointerDown={(event) => {
-            if (disabled) return;
-            const target = event.target as HTMLElement;
-            const handle = target.dataset.handle as Handle | undefined;
-            const stage = event.currentTarget;
-            const { x, y } = point(event, stage);
-            event.preventDefault();
-            stage.setPointerCapture?.(event.pointerId);
-            if (handle && crop) {
-              if (handle.length === 1) {
-                gesture.current = {
-                  mode: "edge",
-                  pointer: event.pointerId,
-                  handle: handle as "n" | "e" | "s" | "w",
-                };
-                return;
-              }
-              // A corner resizes from the opposite one, which stays put.
-              gesture.current = {
-                mode: "draw",
-                pointer: event.pointerId,
-                ax: handle.includes("w") ? crop.x + crop.width : crop.x,
-                ay: handle.includes("n") ? crop.y + crop.height : crop.y,
-              };
-              return;
-            }
-            const inside =
-              !!crop &&
-              x >= crop.x &&
-              x <= crop.x + crop.width &&
-              y >= crop.y &&
-              y <= crop.y + crop.height;
-            if (draft && !inside) {
-              // Drawing starts where the pointer goes down.
-              gesture.current = {
-                mode: "draw",
-                pointer: event.pointerId,
-                ax: x,
-                ay: y,
-              };
-              setDraft({ ...draft, crop: { x, y, width: 0, height: 0 } });
-              return;
-            }
-            if (!crop) return;
-            gesture.current = {
-              mode: "move",
-              pointer: event.pointerId,
-              dx: inside ? x - crop.x : crop.width / 2,
-              dy: inside ? y - crop.y : crop.height / 2,
-            };
-            const g = gesture.current;
-            update({
-              ...crop,
-              x: clamp(x - g.dx, 1 - crop.width),
-              y: clamp(y - g.dy, 1 - crop.height),
-            });
-          }}
-          onPointerMove={(event) => {
-            const g = gesture.current;
-            if (!g || g.pointer !== event.pointerId || !crop || disabled)
-              return;
-            const { x, y } = point(event, event.currentTarget);
-            if (g.mode === "move")
-              update({
-                ...crop,
-                x: clamp(x - g.dx, 1 - crop.width),
-                y: clamp(y - g.dy, 1 - crop.height),
-              });
-            else if (g.mode === "draw")
-              update(rectangle(g.ax, g.ay, x, y, relative));
-            else {
-              const right = crop.x + crop.width;
-              const bottom = crop.y + crop.height;
-              if (g.handle === "e")
-                update({ ...crop, width: Math.max(MIN_SIZE, x - crop.x) });
-              else if (g.handle === "s")
-                update({ ...crop, height: Math.max(MIN_SIZE, y - crop.y) });
-              else if (g.handle === "w") {
-                const left = Math.min(x, right - MIN_SIZE);
-                update({ ...crop, x: left, width: right - left });
-              } else {
-                const top = Math.min(y, bottom - MIN_SIZE);
-                update({ ...crop, y: top, height: bottom - top });
-              }
-            }
-          }}
-          onPointerUp={() => {
-            gesture.current = null;
-            // A click without a drag leaves nothing worth keeping.
-            if (
-              draft?.crop &&
-              (draft.crop.width < MIN_SIZE || draft.crop.height < MIN_SIZE)
-            )
-              setDraft({ ...draft, crop: null });
-          }}
-          onPointerCancel={() => {
-            gesture.current = null;
-          }}
-        >
-          <Image
-            src={src}
-            alt="Highlight selection"
-            fill
-            unoptimized
-            draggable={false}
-            sizes="600px"
-          />
-          {crop && crop.width > 0 && (
-            <div
-              className={`highlight-selection${draft ? " highlight-selection--draft" : ""}`}
-              style={{
-                left: `${crop.x * 100}%`,
-                top: `${crop.y * 100}%`,
-                width: `${crop.width * 100}%`,
-                height: `${crop.height * 100}%`,
-              }}
-            >
-              <span>
-                {draft
-                  ? `New ${label(draft.shape).toLowerCase()}`
-                  : (custom?.name ?? NAMES[active as HighlightKind])}
-              </span>
-              {(["nw", "ne", "sw", "se"] as const).map((handle) => (
-                <i
-                  key={handle}
-                  className={`highlight-handle highlight-handle--${handle}`}
-                  data-handle={handle}
-                />
-              ))}
-              {shape === "free" &&
-                (["n", "e", "s", "w"] as const).map((handle) => (
-                  <i
-                    key={handle}
-                    className={`highlight-handle highlight-handle--${handle}`}
-                    data-handle={handle}
-                  />
-                ))}
-            </div>
-          )}
-          {draft && !draft.crop && (
-            <p className="highlight-stage__hint">
-              Drag on the photo to draw{" "}
-              {draft.shape === "free" ? "a free shape" : `a ${draft.shape}`}
-            </p>
-          )}
-        </div>
+        {stageContainer ? createPortal(stage, stageContainer) : stage}
         {draft ? (
           <div className="highlight-confirm">
             <span>

@@ -41,9 +41,31 @@ Feature: Posts on Home
 
   Scenario: Uploading photos from the post editor
     Given I am writing a post
-    When I upload photos with "Only in posts"
+    When I choose photo files
+    Then each photo offers the same preparation card as Photos, defaulting to "Only in posts"
+    And the upload destination appears only after choosing a file
+    When I upload the prepared photos
     Then they join the post and stay out of the gallery
+    And each photo shows its optimization review
     But with "To the gallery too" they also join the gallery with a detail view
+
+  Scenario: Recovering cancelled changes
+    Given I have edited a post
+    When I cancel its changes and press Ctrl+Z outside a text field
+    Then the cancelled draft is restored, including removed story blocks
+    And opening a different post starts a separate undo history
+
+  Scenario: Choosing a publication date
+    When I open Publication date
+    Then a styled calendar offers month navigation and a separate local hour and minute
+    And "When published" clears the scheduled date
+
+  Scenario: Keeping prepared photo edits
+    Given I have selected photo files without uploading them yet
+    When I preview the post and return to Edit
+    Then the prepared photos and their edits are kept
+    And leaving the post asks before discarding them
+    And their block slots are reserved until uploaded or removed
 
   Scenario: Drafts and scheduled posts
     When I save a post as a draft, or published with a later date

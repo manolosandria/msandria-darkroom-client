@@ -33,6 +33,9 @@ import { PhotoImage } from "./PhotoImage";
 import { PhotoPicker } from "./PhotoPicker";
 import { PostArticle } from "./PostArticle";
 import { PostIcon } from "./PostIcon";
+import { PostDatePicker } from "./PostDatePicker";
+import { UploadCard, UploadItem } from "./UploadPanel";
+import { publicClassification } from "./PhotoClassificationFields";
 import "./catalogStudio.css";
 import "./postStudio.css";
 
@@ -172,6 +175,7 @@ export default function PostStudio({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PostState | "all">("all");
   const [uploading, setUploading] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState(false);
   const locked = busy || uploading;
   const shownPosts = (posts ?? []).filter(
     (post) =>
@@ -245,7 +249,7 @@ export default function PostStudio({
     const id = post ? post.id : "new";
     if (id === selectedId) return;
     if (
-      dirty &&
+      (dirty || pendingUploads) &&
       !(await confirm(
         "Discard changes?",
         "This post has unsaved changes. Leave it and lose them?",
@@ -257,6 +261,10 @@ export default function PostStudio({
 
   const save = async (): Promise<boolean> => {
     if (locked) return false;
+    if (pendingUploads) {
+      setError("Upload or remove the selected photos before saving the post.");
+      return false;
+    }
     const body = postDraftOf(draft);
     const problem =
       body.status === "PUBLISHED" ? publishingProblem(body) : null;
@@ -304,6 +312,14 @@ export default function PostStudio({
     label: draft.title.trim() ? `Post “${draft.title.trim()}”` : "Post",
     save,
     discard: () => setDraft(original),
+    document: {
+      original,
+      draft,
+      restore: (value) => {
+        if (!locked) setDraft(value as EditorDraft);
+      },
+      undoScope: original,
+    },
   });
 
   const remove = async () => {
@@ -559,7 +575,9 @@ export default function PostStudio({
                   <button
                     type="button"
                     className="post-studio__save"
-                    disabled={busy || (!dirty && selected !== null)}
+                    disabled={
+                      busy || pendingUploads || (!dirty && selected !== null)
+                    }
                     onClick={save}
                   >
                     <PostIcon name="save" />
@@ -606,7 +624,12 @@ export default function PostStudio({
                     )}
                   </p>
                 )}
-                {previewing && previewPost ? (
+                {pendingUploads && (
+                  <p className="post-studio__hint">
+                    Upload or remove the selected photos before saving the post.
+                  </p>
+                )}
+                {previewing && previewPost && (
                   <div
                     className="post-studio__preview"
                     data-device={previewDevice}
@@ -637,148 +660,142 @@ export default function PostStudio({
                       />
                     </div>
                   </div>
-                ) : (
-                  <div key={selectedId} className="post-studio__compose">
-                    <div className="post-studio__paper">
-                      <div className="post-studio__section-heading">
-                        <PostIcon name="edit" />
-                        <div>
-                          <h2>Your story</h2>
-                          <p>
-                            Give it a title, then bring it to life with text and
-                            photographs.
-                          </p>
-                        </div>
+                )}
+                <div
+                  key={selectedId}
+                  className="post-studio__compose"
+                  hidden={previewing}
+                >
+                  <div className="post-studio__paper">
+                    <div className="post-studio__section-heading">
+                      <PostIcon name="edit" />
+                      <div>
+                        <h2>Your story</h2>
+                        <p>
+                          Give it a title, then bring it to life with text and
+                          photographs.
+                        </p>
                       </div>
-                      <label className="post-studio__field post-studio__title">
-                        <span>Title</span>
-                        <input
-                          value={draft.title}
-                          maxLength={200}
-                          onChange={(event) =>
-                            change({ title: event.target.value })
-                          }
-                          placeholder="A title for the post"
-                        />
-                      </label>
-                      <div className="post-studio__body-heading">
-                        <h3>Story blocks</h3>
-                        <small>
-                          {draft.blocks.length} / {MAX_POST_BLOCKS}
-                        </small>
-                      </div>
-                      <BlockList
-                        blocks={draft.blocks}
-                        photos={photos}
-                        onChange={setBlocks}
-                      />
-                      <AddBlocks
-                        key={selectedId}
-                        remaining={MAX_POST_BLOCKS - draft.blocks.length}
-                        library={library.filter(
-                          (photo) =>
-                            POSTABLE.includes(
-                              photo.getClassification().visibility,
-                            ) &&
-                            !draft.blocks.some(
-                              (block) =>
-                                block.kind === "PHOTO" &&
-                                block.photoId === photo.getId(),
-                            ),
-                        )}
-                        onText={() =>
-                          setBlocks((blocks) =>
-                            blocks.length >= MAX_POST_BLOCKS
-                              ? blocks
-                              : [
-                                  ...blocks,
-                                  {
-                                    key: newKey(),
-                                    kind: "TEXT",
-                                    text: "",
-                                    style: "BODY",
-                                  },
-                                ],
-                          )
+                    </div>
+                    <label className="post-studio__field post-studio__title">
+                      <span>Title</span>
+                      <input
+                        value={draft.title}
+                        maxLength={200}
+                        onChange={(event) =>
+                          change({ title: event.target.value })
                         }
-                        onPhoto={addPhoto}
-                        upload={uploadPort}
-                        onUploadingChange={setUploading}
-                        onUploaded={(photo) => {
-                          setUploaded((previous) => [...previous, photo]);
-                          addPhoto(photo);
-                        }}
+                        placeholder="A title for the post"
+                      />
+                    </label>
+                    <div className="post-studio__body-heading">
+                      <h3>Story blocks</h3>
+                      <small>
+                        {draft.blocks.length} / {MAX_POST_BLOCKS}
+                      </small>
+                    </div>
+                    <BlockList
+                      blocks={draft.blocks}
+                      photos={photos}
+                      onChange={setBlocks}
+                    />
+                    <AddBlocks
+                      key={selectedId}
+                      remaining={MAX_POST_BLOCKS - draft.blocks.length}
+                      library={library.filter(
+                        (photo) =>
+                          POSTABLE.includes(
+                            photo.getClassification().visibility,
+                          ) &&
+                          !draft.blocks.some(
+                            (block) =>
+                              block.kind === "PHOTO" &&
+                              block.photoId === photo.getId(),
+                          ),
+                      )}
+                      onText={() =>
+                        setBlocks((blocks) =>
+                          blocks.length >= MAX_POST_BLOCKS
+                            ? blocks
+                            : [
+                                ...blocks,
+                                {
+                                  key: newKey(),
+                                  kind: "TEXT",
+                                  text: "",
+                                  style: "BODY",
+                                },
+                              ],
+                        )
+                      }
+                      onPhoto={addPhoto}
+                      upload={uploadPort}
+                      onUploadingChange={setUploading}
+                      onPendingChange={setPendingUploads}
+                      onUploaded={(photo) => {
+                        setUploaded((previous) => [...previous, photo]);
+                        addPhoto(photo);
+                      }}
+                    />
+                  </div>
+                  <aside
+                    className="post-studio__publishing"
+                    aria-label="Publishing settings"
+                  >
+                    <div className="post-studio__section-heading">
+                      <PostIcon name="calendar" />
+                      <div>
+                        <h2>Publishing</h2>
+                        <p>You decide when your story goes live.</p>
+                      </div>
+                    </div>
+                    <div className="post-studio__row">
+                      <fieldset className="post-studio__status">
+                        <legend>Status</legend>
+                        {(["DRAFT", "PUBLISHED"] as const).map((status) => (
+                          <label key={status}>
+                            <input
+                              type="radio"
+                              name="post-status"
+                              value={status}
+                              aria-label={
+                                status === "DRAFT" ? "Draft" : "Published"
+                              }
+                              checked={draft.status === status}
+                              onChange={() => change({ status })}
+                            />
+                            <span>
+                              <strong>
+                                {status === "DRAFT" ? "Draft" : "Published"}
+                              </strong>
+                              <small>
+                                {status === "DRAFT"
+                                  ? "Only you can see it"
+                                  : "Visible on Home when due"}
+                              </small>
+                            </span>
+                          </label>
+                        ))}
+                      </fieldset>
+                      <PostDatePicker
+                        value={draft.publishedAt}
+                        onChange={(publishedAt) => change({ publishedAt })}
                       />
                     </div>
-                    <aside
-                      className="post-studio__publishing"
-                      aria-label="Publishing settings"
-                    >
-                      <div className="post-studio__section-heading">
-                        <PostIcon name="calendar" />
-                        <div>
-                          <h2>Publishing</h2>
-                          <p>You decide when your story goes live.</p>
-                        </div>
-                      </div>
-                      <div className="post-studio__row">
-                        <fieldset className="post-studio__status">
-                          <legend>Status</legend>
-                          {(["DRAFT", "PUBLISHED"] as const).map((status) => (
-                            <label key={status}>
-                              <input
-                                type="radio"
-                                name="post-status"
-                                value={status}
-                                aria-label={
-                                  status === "DRAFT" ? "Draft" : "Published"
-                                }
-                                checked={draft.status === status}
-                                onChange={() => change({ status })}
-                              />
-                              <span>
-                                <strong>
-                                  {status === "DRAFT" ? "Draft" : "Published"}
-                                </strong>
-                                <small>
-                                  {status === "DRAFT"
-                                    ? "Only you can see it"
-                                    : "Visible on Home when due"}
-                                </small>
-                              </span>
-                            </label>
-                          ))}
-                        </fieldset>
-                        <label className="post-studio__field">
-                          <span>Publication date</span>
-                          <input
-                            type="datetime-local"
-                            value={draft.publishedAt}
-                            onChange={(event) =>
-                              change({ publishedAt: event.target.value })
-                            }
-                          />
-                          <small>
-                            Empty: the moment it is published. A later date
-                            schedules it.
-                          </small>
-                        </label>
-                      </div>
-                      <TagField
-                        tags={draft.tags}
-                        onChange={(tags) => change({ tags })}
-                      />
-                      <p className="post-studio__publishing-summary">
-                        {draft.status === "DRAFT"
-                          ? "Save as a draft to keep working at your own pace."
-                          : draft.publishedAt &&
-                              new Date(draft.publishedAt) > new Date()
-                            ? `Saving schedules this post for ${new Date(draft.publishedAt).toLocaleString()}.`
-                            : "Saving makes this post visible on Home immediately."}
-                      </p>
-                    </aside>
-                  </div>
-                )}
+                    <TagField
+                      tags={draft.tags}
+                      onChange={(tags) => change({ tags })}
+                    />
+                    <p className="post-studio__publishing-summary">
+                      {draft.status === "DRAFT"
+                        ? "Save as a draft to keep working at your own pace."
+                        : draft.publishedAt &&
+                            new Date(draft.publishedAt) > new Date()
+                          ? `Saving schedules this post for ${new Date(draft.publishedAt).toLocaleString()}.`
+                          : "Saving makes this post visible on Home immediately."}
+                    </p>
+                  </aside>
+                </div>
               </fieldset>
             </section>
           ) : (
@@ -918,12 +935,7 @@ function BlockList({
       ),
     );
   if (!blocks.length)
-    return (
-      <p className="post-studio__hint">
-        The post is empty. Add text or photos below; drag the ⠿ grip or use the
-        arrows to change their order.
-      </p>
-    );
+    return <p className="post-studio__hint">Add text or photos to begin.</p>;
   return (
     <ol
       ref={attachList}
@@ -1093,6 +1105,7 @@ function AddBlocks({
   upload,
   onUploaded,
   onUploadingChange,
+  onPendingChange,
 }: {
   remaining: number;
   library: Photo[];
@@ -1101,78 +1114,153 @@ function AddBlocks({
   upload: PostStudioPorts["upload"];
   onUploaded: (photo: Photo) => void;
   onUploadingChange: (value: boolean) => void;
+  onPendingChange: (value: boolean) => void;
 }) {
   const full = remaining <= 0;
   const [picking, setPicking] = useState(false);
-  const [destination, setDestination] = useState<"POSTS_ONLY" | "PUBLIC">(
-    "POSTS_ONLY",
-  );
+  const [items, setItems] = useState<UploadItem[]>([]);
+  const urls = useRef(new Set<string>());
+  const nextId = useRef(0);
   const [uploading, setUploading] = useState("");
   const [problem, setProblem] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const { catalog } = useClassificationCatalog();
+  const pending = items.some((item) => item.status !== "published");
+  const reserved = items.filter((item) => item.status !== "published").length;
+  const noSpace = remaining <= reserved;
+  useUnsavedEditor(pending, {
+    label: "Post photo uploads",
+    save: async () => ({
+      error: "Upload or remove the selected photos in the post editor first",
+    }),
+    discard: () =>
+      setItems((previous) =>
+        previous.filter((item) => item.status === "published"),
+      ),
+  });
+  useEffect(() => {
+    onPendingChange(pending);
+    return () => onPendingChange(false);
+  }, [pending, onPendingChange]);
+  useEffect(() => {
+    const allocated = urls.current;
+    return () => allocated.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+  const patch = (id: number, fields: Partial<UploadItem>) =>
+    setItems((previous) =>
+      previous.map((item) => (item.id === id ? { ...item, ...fields } : item)),
+    );
+  const addFiles = (files: File[]) => {
+    const available = Math.max(
+      0,
+      remaining - items.filter((item) => item.status !== "published").length,
+    );
+    const additions: UploadItem[] = [];
+    const errors: string[] = [];
+    for (const file of files.slice(0, available)) {
+      if (
+        ![
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/avif",
+          "image/gif",
+        ].includes(file.type) ||
+        file.size > 10 * 1024 * 1024
+      ) {
+        errors.push(
+          `${file.name}: choose a JPEG, PNG, WebP, AVIF or GIF up to 10 MB.`,
+        );
+        continue;
+      }
+      const preview = URL.createObjectURL(file);
+      urls.current.add(preview);
+      additions.push({
+        id: nextId.current++,
+        file,
+        preview,
+        title: fileTitle(file),
+        description: "",
+        highlights: {},
+        frame: null,
+        trim: null,
+        status: "draft",
+        classification: { ...publicClassification(), visibility: "POSTS_ONLY" },
+      });
+    }
+    if (files.length > available)
+      errors.push(
+        `Only ${available} more ${available === 1 ? "photo fits" : "photos fit"} in this post. Extra files were not uploaded.`,
+      );
+    setProblem(errors.join(" "));
+    setItems((previous) => [...previous, ...additions]);
+  };
 
-  const send = async (files: File[]) => {
+  const send = async (onlyId?: number) => {
     if (full || uploading) return;
+    const batch = items
+      .filter(
+        (item) =>
+          item.status !== "published" &&
+          (onlyId === undefined || item.id === onlyId),
+      )
+      .slice(0, remaining);
+    if (!batch.length) return;
+    if (batch.some((item) => !item.title.trim())) {
+      setProblem("Give every photo a title before uploading.");
+      return;
+    }
     setProblem("");
     onUploadingChange(true);
-    let failed = false;
-    for (const file of files.slice(0, remaining)) {
-      setUploading(`Uploading ${file.name}…`);
+    for (const item of batch) {
+      setUploading(`Uploading ${item.file.name}…`);
+      patch(item.id, { status: "uploading", error: undefined });
       try {
-        const { photo } = await upload.execute({
-          file,
-          title: fileTitle(file),
-          visibility: destination,
+        const published = await upload.execute({
+          file: item.file,
+          title: item.title.trim(),
+          description: item.description.trim() || undefined,
+          highlights: item.highlights,
+          frame: item.frame,
+          ...(item.trim ? { trim: item.trim } : {}),
+          ...item.classification,
         });
-        onUploaded(photo);
+        patch(item.id, { status: "published", published });
+        onUploaded(published.photo);
+        window.dispatchEvent(new Event("curator:catalog-changed"));
       } catch (caught) {
-        failed = true;
-        setProblem(`${file.name}: ${apiFailureMessage(caught)}`);
+        const error = `${item.file.name}: ${apiFailureMessage(caught)}`;
+        patch(item.id, { status: "failed", error });
         break;
       }
     }
     setUploading("");
     onUploadingChange(false);
-    if (!failed && files.length > remaining)
-      setProblem(
-        `Only ${remaining} more ${remaining === 1 ? "photo fits" : "photos fit"} in this post. Extra files were not uploaded.`,
-      );
   };
 
   return (
     <div className="post-studio__add">
-      <div className="post-studio__body-heading">
-        <h3>Add to your story</h3>
-        <small>Text and photos, in any order</small>
-      </div>
       <div className="post-studio__add-row">
-        <button type="button" disabled={full} onClick={onText}>
+        <button type="button" disabled={noSpace} onClick={onText}>
           <PostIcon name="text" />
-          <span>
-            Text<small>A paragraph, heading or quote</small>
-          </span>
+          <span>Text</span>
         </button>
         <button
           type="button"
-          disabled={full}
+          disabled={noSpace}
           aria-expanded={picking}
           onClick={() => setPicking(!picking)}
         >
           <PostIcon name="photo" />
-          <span>
-            Photo from the library<small>Choose an existing photograph</small>
-          </span>
+          <span>Photo from the library</span>
         </button>
         <button
           type="button"
-          disabled={full || Boolean(uploading)}
+          disabled={noSpace || Boolean(uploading)}
           onClick={() => input.current?.click()}
         >
           <PostIcon name="upload" />
-          <span>
-            Upload photos…<small>Add photographs from your device</small>
-          </span>
+          <span>Upload photos…</span>
         </button>
         <input
           ref={input}
@@ -1183,35 +1271,45 @@ function AddBlocks({
           onChange={(event) => {
             const files = Array.from(event.target.files ?? []);
             event.target.value = "";
-            if (files.length) void send(files);
+            if (files.length) addFiles(files);
           }}
         />
       </div>
-      <fieldset className="post-studio__destination">
-        <legend>Uploaded photos go</legend>
-        <label>
-          <input
-            type="radio"
-            name="post-upload-destination"
-            checked={destination === "POSTS_ONLY"}
-            onChange={() => setDestination("POSTS_ONLY")}
-          />
-          Only in posts <small>(no gallery, no detail view)</small>
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="post-upload-destination"
-            checked={destination === "PUBLIC"}
-            onChange={() => setDestination("PUBLIC")}
-          />
-          To the gallery too <small>(detail view with comments)</small>
-        </label>
-      </fieldset>
-      <p className="post-studio__hint">
-        Uploads are added to Photos immediately. Save the post when your story
-        is ready.
-      </p>
+      {items.length > 0 && (
+        <div className="post-studio__uploads">
+          <p className="post-studio__hint">
+            Prepare your photos, then upload. Photos are stored immediately;
+            save the post separately.
+          </p>
+          {items.map((item, index) => (
+            <UploadCard
+              key={item.id}
+              item={item}
+              index={index}
+              forPost
+              running={Boolean(uploading)}
+              onChange={(fields) => patch(item.id, fields)}
+              onRemove={() => {
+                URL.revokeObjectURL(item.preview);
+                urls.current.delete(item.preview);
+                setItems((previous) =>
+                  previous.filter((each) => each.id !== item.id),
+                );
+              }}
+              onUpload={() => void send(item.id)}
+            />
+          ))}
+          {items.filter((item) => item.status !== "published").length > 1 && (
+            <button
+              type="button"
+              disabled={Boolean(uploading) || full}
+              onClick={() => void send()}
+            >
+              Upload all photos
+            </button>
+          )}
+        </div>
+      )}
       {uploading && <p role="status">{uploading}</p>}
       {problem && (
         <p role="alert" className="post-studio__error">
@@ -1224,6 +1322,7 @@ function AddBlocks({
         </p>
       )}
       {picking &&
+        !noSpace &&
         (catalog ? (
           <PhotoPicker photos={library} catalog={catalog} onPick={onPhoto} />
         ) : (

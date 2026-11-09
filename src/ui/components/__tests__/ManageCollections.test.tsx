@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { SessionProvider } from "../SessionProvider";
+import { User } from "@/src/domain/entities/User";
 import { CatalogEditor } from "../ManageCollections";
 import { CollectionMosaic } from "../CollectionMosaic";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
@@ -78,10 +80,10 @@ describe("catalog tabs", () => {
     const user = userEvent.setup(); render(<CatalogEditor />);
     await user.click(await screen.findByRole("button", { name: /City/ }));
     await user.click(await screen.findByRole("button", { name: "Edit collection" }));
-    await user.type(screen.getByLabelText("Collection title"), " at night");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " at night");
     await saveAndAccept(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Your edits are kept");
-    expect(screen.getByLabelText("Collection title")).toHaveValue("City at night");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("City at night");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
     expect(manageCatalog.saveCollection).toHaveBeenCalledWith(expect.objectContaining({ version: 4 }), "c");
     expect(screen.getByRole("button", { name: "Reload state" })).toBeInTheDocument();
@@ -104,10 +106,10 @@ describe("catalog tabs", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByLabelText("Collection title"), "Harbour");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Harbour");
     await user.click(screen.getByRole("tab", { name: "Categories" }));
     await user.click(screen.getByRole("tab", { name: "Collections" }));
-    expect(screen.getByLabelText("Collection title")).toHaveValue("Harbour");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Harbour");
   });
 });
 
@@ -143,7 +145,7 @@ describe("collection browser", () => {
     await user.click(
       within(panel).getByRole("button", { name: "Edit collection" }),
     );
-    expect(screen.getByLabelText("Collection title")).toHaveValue("City");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("City");
     expect(screen.getByLabelText("Description")).toHaveValue(
       "Streets after the rain",
     );
@@ -163,13 +165,13 @@ describe("collection browser", () => {
       await user.click(screen.getByRole("button", { name: "Edit collection" }));
     };
     await open(/One/);
-    await user.type(screen.getByLabelText("Collection title"), " edited");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " edited");
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/Two/);
-    await user.type(screen.getByLabelText("Collection title"), " pending");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " pending");
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/One/);
-    expect(screen.getByLabelText("Collection title")).toHaveValue("One edited");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("One edited");
     await saveAndAccept(user);
     await screen.findByText("Saved.");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
@@ -179,12 +181,12 @@ describe("collection browser", () => {
     );
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/Two/);
-    expect(screen.getByLabelText("Collection title")).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue(
       "Two pending",
     );
     await user.click(screen.getByRole("button", { name: "Cancel changes" }));
     await user.keyboard("{Enter}");
-    expect(screen.getByLabelText("Collection title")).toHaveValue("Two");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Two");
     // Many typed edits across three editors: slow when the whole suite runs at once.
   }, 15000);
 });
@@ -194,7 +196,7 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByLabelText("Collection title"), "Pending");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Pending");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     vi.mocked(getManagedPhotos.execute).mockResolvedValue([
       photo("Color", "PRIVATE"),
@@ -209,7 +211,7 @@ describe("collection editor", () => {
     await user.click(
       screen.getByRole("button", { name: "← Collection details" }),
     );
-    expect(screen.getByLabelText("Collection title")).toHaveValue("Pending");
+    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Pending");
   });
 
   it("frames a private photo and warns above the composition", async () => {
@@ -243,7 +245,7 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByLabelText("Collection title"), "City");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
     await user.type(screen.getByLabelText("Description"), "  At night ");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.click(
@@ -288,7 +290,7 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByLabelText("Collection title"), "City");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
     await user.click(screen.getByRole("button", { name: "← Move earlier" }));
@@ -453,7 +455,7 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByLabelText("Collection title"), "City");
+    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.type(
       screen.getByLabelText(/Text with the photo/),
@@ -782,4 +784,39 @@ describe("collection mosaic with text", () => {
     );
     expect(screen.getByRole("link")).toHaveAccessibleDescription("At dawn");
   });
+});
+
+it("prepares photos with the shared steps and adds uploads to the collection draft", async () => {
+  const user = userEvent.setup();
+  const uploaded = photo("New lake");
+  vi.mocked(uploadPhoto.execute).mockResolvedValue({ photo: uploaded, optimizationIssues: [] });
+  const createObjectURL = vi.fn(() => "blob:collection");
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL }));
+  const ports = {
+    getCurrentUser: vi.fn().mockResolvedValue(new User({ id: "admin", email: "admin@example.com", role: "ADMIN" })),
+    signIn: vi.fn(), signOut: vi.fn(),
+  };
+  render(<SessionProvider ports={ports}><CatalogEditor /></SessionProvider>);
+  await startNewCollection(user);
+  await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Lakes");
+  await user.click(screen.getByRole("button", { name: "Upload new photos…" }));
+  await user.upload(await screen.findByLabelText("Photos"), new File(["x"], "lake.jpg", { type: "image/jpeg" }));
+  expect(screen.getByRole("tab", { name: "1 Details" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Upload new photos…" }));
+  expect(screen.queryByRole("article", { name: /lake.jpg/ })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Upload new photos…" }));
+  expect(screen.getByRole("article", { name: /lake.jpg/ })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Save collection" }));
+  const review = screen.queryByRole("dialog", { name: "Review changes" });
+  if (review) await user.click(within(review).getByRole("button", { name: "Save all" }));
+  expect(manageCatalog.saveCollection).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Upload" }));
+  await waitFor(() => expect(uploadPhoto.execute).toHaveBeenCalledWith(expect.objectContaining({ visibility: "COLLECTIONS_ONLY" })));
+  await screen.findByRole("button", { name: "Uploaded" });
+  await saveAndAccept(user);
+  expect(manageCatalog.saveCollection).toHaveBeenCalledWith(expect.objectContaining({
+    entries: [expect.objectContaining({ photoId: "New lake" })],
+  }), undefined);
+  vi.unstubAllGlobals();
 });

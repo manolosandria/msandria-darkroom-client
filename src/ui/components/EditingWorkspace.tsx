@@ -28,6 +28,8 @@ export type EditorDocument = {
   original: unknown;
   draft: unknown;
   restore: (draft: unknown) => void;
+  /** Keep a return to the saved draft undoable; reset history when this scope changes. */
+  undoScope?: object;
 };
 /** What a save reports: `true` once saved; `false`, or why, when it was not. */
 export type SaveOutcome = boolean | { error: string };
@@ -144,16 +146,24 @@ export function useUnsavedEditor(dirty: boolean, editor: Editor) {
   const draftJson = editor.document
     ? JSON.stringify(editor.document.draft)
     : undefined;
-  const before = useRef<{ json?: string; value?: unknown }>({});
+  const before = useRef<{ json?: string; value?: unknown; scope?: object }>({});
   useEffect(() => {
     const current = latest.current.document;
     if (!current) return;
     const previous = before.current;
-    before.current = { json: draftJson, value: current.draft };
+    before.current = {
+      json: draftJson,
+      value: current.draft,
+      scope: current.undoScope,
+    };
+    if (current.undoScope && previous.scope !== current.undoScope) {
+      forget(id);
+      return;
+    }
     if (previous.json === undefined || previous.json === draftJson) return;
     if (consumeSkip(id)) return;
-    // Loaded, saved, discarded or back as it was saved: nothing left to undo.
-    if (draftJson === JSON.stringify(current.original)) {
+    // Editors without a scope keep their existing reset-on-clean behavior.
+    if (!current.undoScope && draftJson === JSON.stringify(current.original)) {
       forget(id);
       return;
     }
@@ -161,11 +171,14 @@ export function useUnsavedEditor(dirty: boolean, editor: Editor) {
       id,
       label: latest.current.label,
       previous: previous.value,
-      key: diffChanges(previous.value, current.draft)
-        .map((change) => change.label)
-        .join("|"),
+      key:
+        draftJson === JSON.stringify(current.original)
+          ? "discard"
+          : diffChanges(previous.value, current.draft)
+              .map((change) => change.label)
+              .join("|"),
     });
-  }, [draftJson, id, record, forget, consumeSkip]);
+  }, [draftJson, editor.document?.undoScope, id, record, forget, consumeSkip]);
   // Nothing pending: nothing to review, and the editor saves as it always did.
   return {
     review: () =>

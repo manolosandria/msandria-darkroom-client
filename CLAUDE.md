@@ -1180,3 +1180,39 @@ Reader preview switches between desktop and phone widths without saving.
 Uploads are stored in Photos immediately, while the post itself still needs **Save
 post**. During an upload the editor locks selection, preview and saving so the result
 stays with its story. A batch is capped at the remaining block capacity before upload.
+
+### Post dates, undo and photo preparation
+
+Posts uses an inline calendar with month navigation, keyboard arrows and separate
+local hour/minute controls. **When published** clears the date. Post drafts take part
+in Curator's undo history: Ctrl+Z outside text fields can restore cancelled changes,
+including removed blocks; opening or saving a post starts a fresh history.
+
+The story toolbar offers Text, Photo from the library and Upload photos without
+extra descriptions. Choosing files opens the same preparation cards as Photos:
+title, description, border trimming, frame, highlights and optimization review.
+**Uploaded photo goes to** appears only on these cards, defaulting to **Only in posts**.
+Upload explicitly after preparing each file. The API optimizes and removes GPS through
+the same pipeline as Photos. Successful uploads join the story and are never uploaded
+again on retry. Prepared files survive Preview and reserve their story block slots;
+upload or remove them before saving the post. Saving the story remains separate.
+
+### Photo preparation steps
+
+Photos and Posts share `UploadCard`: Details, Appearance, Highlights, Organization
+and Review. Next/Back and the numbered tabs preserve edits; optional steps can be
+skipped and Upload remains available at every step. Arrow keys, Home and End move
+between tabs. Upload All still publishes the pending queue directly.
+
+Collections offers **Upload new photos…** through the same `UploadPanel` in embedded
+mode. Photos start as collections-only and enter the composition draft after upload;
+**Save collection** persists that composition. Upload or remove pending files before
+saving. Folding the uploader or switching collections preserves prepared files.
+
+The preparation card has one shared photograph surface: Highlights draws directly on
+that preview, and Appearance shows its frame there. **Expand photo** gives the image
+the full row with properties below; **Compact view** restores the split layout without
+losing edits. In compact mode each step has the same height, the inspector scrolls
+independently and starts at its top on a step change. Review lists metadata, border
+trimming, frame, highlights, presentation choices and classification, with links back
+to each step. The same card is used by Photos, Posts and Collections.
