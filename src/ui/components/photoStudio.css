@@ -48,6 +48,33 @@
   background: #e7ecdf;
   border-color: var(--studio-accent);
 }
+/* Folds the strip of photos away while one is open, filters and all. */
+.photo-studio__fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--studio-accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.photo-studio__fold:hover,
+.photo-studio__fold[aria-expanded="false"] {
+  background: #e7ecdf;
+}
+.photo-studio__library[data-folded]
+  .photo-studio__toolbar
+  > :not(.photo-studio__back):not(.photo-studio__fold),
+.photo-studio__library[data-folded] .photo-studio__alerts,
+.photo-browser[hidden] {
+  display: none;
+}
 .photo-studio__pending {
   position: relative;
   display: inline-flex;

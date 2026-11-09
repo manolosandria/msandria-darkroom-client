@@ -57,16 +57,16 @@ export function SaveIcon() {
   );
 }
 
+// A cross: discarding must never look like Undo's curved arrow beside it.
 export function CancelIcon() {
   return (
     <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <path
-        d="M7.5 5.5 4 9l3.5 3.5M4.5 9h7a4 4 0 0 1 0 8h-2"
+        d="M5.5 5.5l9 9M14.5 5.5l-9 9"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.9"
+        strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -111,10 +111,11 @@ export function CuratorSaveBar({
   const { pending, hidden, toggle } = state;
   const labels = pending?.labels ?? [];
   if (!pending || !labels.length) return null;
+  const names = labels.join(", ");
   const summary =
     labels.length === 1
-      ? `Unsaved: ${labels[0]}`
-      : `${labels.length} editors unsaved: ${labels.join(", ")}`;
+      ? `Unsaved: ${names}`
+      : `${labels.length} editors unsaved: ${names}`;
   if (hidden)
     return (
       <div className="curator-savebar is-folded">
@@ -133,10 +134,20 @@ export function CuratorSaveBar({
       </div>
     );
   return (
-    <div className="curator-savebar" role="region" aria-label="Save changes">
+    <div
+      className="curator-savebar"
+      role="region"
+      aria-label="Save changes"
+      data-error={pending.error ? "" : undefined}
+    >
       <span className="curator-savebar__summary" title={summary}>
-        <span className="curator-savebar__dot" aria-hidden="true" />
-        <span className="curator-savebar__text">{summary}</span>
+        {/* The badge always reads whole; only the names give way to an ellipsis. */}
+        <span className="curator-savebar__badge">
+          <span className="curator-savebar__dot" aria-hidden="true" />
+          {labels.length === 1 ? "Unsaved" : `${labels.length} editors unsaved`}
+          <span className="sr-only">: </span>
+        </span>
+        <span className="curator-savebar__text">{names}</span>
       </span>
       {pending.error && (
         <span className="curator-savebar__error" role="alert">
@@ -188,12 +199,12 @@ export function CuratorSaveBar({
           title="Fold into the corner"
           onClick={() => toggle(true)}
         >
-          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
             <path
-              d="M6 6l8 8M14 9v5H9"
+              d="M4.5 4.5l7.5 7.5M12.5 6.5v6h-6M15.5 9.5v6h-6"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />

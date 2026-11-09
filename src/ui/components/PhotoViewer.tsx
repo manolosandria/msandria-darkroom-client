@@ -21,7 +21,10 @@ import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { usePhotoQuality } from "@/src/ui/hooks/usePhotoQuality";
 import { useImageFallback } from "@/src/ui/hooks/useImageFallback";
 import { Photo } from "@/src/domain/entities/Photo";
+import { Highlight } from "@/src/domain/entities/PhotoHighlights";
 import { PhotoQuality } from "@/src/domain/entities/PhotoQuality";
+import { highlightViews } from "@/src/ui/highlightViews";
+import { useOptionalSessionValue } from "./SessionProvider";
 import { framedLayout } from "@/src/ui/framedLayout";
 import { hasSeenViewerHint, markViewerHintSeen } from "@/src/ui/viewerHint";
 import {
@@ -44,8 +47,17 @@ interface PhotoViewerProps {
 const SWIPE_DISTANCE = 50;
 
 // The photo at the chosen quality; if it fails to load, the same width from the other
-// image host.
-function ViewerImage({ photo, quality }: { photo: Photo; quality: PhotoQuality }) {
+// image host. With a crop, the photo is scaled and shifted inside a box of the crop's
+// own proportion, so only that part shows.
+function ViewerImage({
+  photo,
+  quality,
+  crop,
+}: {
+  photo: Photo;
+  quality: PhotoQuality;
+  crop?: Highlight;
+}) {
   const { useFallback, onError } = useImageFallback(photo);
   return (
     // eslint-disable-next-line @next/next/no-img-element -- API rendition URLs are used verbatim.
@@ -56,7 +68,18 @@ function ViewerImage({ photo, quality }: { photo: Photo; quality: PhotoQuality }
       height={photo.getHeight()}
       draggable={false}
       onError={onError}
-      className="block h-auto w-full"
+      className={crop ? "absolute block" : "block h-auto w-full"}
+      style={
+        crop
+          ? {
+              maxWidth: "none",
+              width: `${100 / crop.width}%`,
+              height: `${100 / crop.height}%`,
+              left: `${(-100 * crop.x) / crop.width}%`,
+              top: `${(-100 * crop.y) / crop.height}%`,
+            }
+          : undefined
+      }
     />
   );
 }
@@ -90,6 +113,13 @@ export default function PhotoViewer({
     subscribeViewerPanel,
     isViewerPanelOpen,
     () => false,
+  );
+  const session = useOptionalSessionValue();
+  const isAdmin = Boolean(session?.user?.isAdmin());
+  // The highlight shown instead of the whole photo, chosen in the info panel. It
+  // belongs to one photo: another photo opens whole.
+  const [chosen, setChosen] = useState<{ id: string; key: string } | null>(
+    null,
   );
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
@@ -237,8 +267,21 @@ export default function PhotoViewer({
     setHint(null);
   };
 
+  const highlight =
+    photo && chosen?.id === photoId
+      ? highlightViews(photo.getHighlights()).find(
+          (view) => view.key === chosen.key,
+        )
+      : undefined;
+  const chooseHighlight = (key: string | null) =>
+    setChosen(key ? { id: photoId, key } : null);
   const frame = photo?.getFrame() ?? null;
   const layout = photo ? framedLayout(photo.getAspectRatio(), frame) : null;
+  // A highlight shows bare, in its own proportion; the frame belongs to the whole photo.
+  const highlightRatio =
+    photo && highlight
+      ? (photo.getAspectRatio() * highlight.crop.width) / highlight.crop.height
+      : null;
   const fade = `transition-opacity duration-300 ${controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"}`;
 
   return (
@@ -260,18 +303,34 @@ export default function PhotoViewer({
           <figure
             className="relative m-0"
             style={{
-              width: `min(100cqw - 2rem, calc((100cqh - 2rem) / ${layout.heightPerWidth}))`,
+              width: highlightRatio
+                ? `min(100cqw - 2rem, calc((100cqh - 2rem) * ${highlightRatio}))`
+                : `min(100cqw - 2rem, calc((100cqh - 2rem) / ${layout.heightPerWidth}))`,
             }}
           >
-            <div
-              data-testid="photo-frame"
-              style={{
-                background: frame?.color,
-                padding: `${layout.paddingY}% ${layout.paddingX}%`,
-              }}
-            >
-              <ViewerImage photo={photo} quality={quality} />
-            </div>
+            {highlight && highlightRatio ? (
+              <div
+                data-testid="photo-highlight"
+                className="relative overflow-hidden"
+                style={{ aspectRatio: `${highlightRatio}` }}
+              >
+                <ViewerImage
+                  photo={photo}
+                  quality={quality}
+                  crop={highlight.crop}
+                />
+              </div>
+            ) : (
+              <div
+                data-testid="photo-frame"
+                style={{
+                  background: frame?.color,
+                  padding: `${layout.paddingY}% ${layout.paddingX}%`,
+                }}
+              >
+                <ViewerImage photo={photo} quality={quality} />
+              </div>
+            )}
             <figcaption
               data-position={photo.getTitlePosition()}
               className={`photo-viewer__title ${TITLE_CORNER_CLASS[photo.getTitlePosition()]} ${fade}`}
@@ -308,6 +367,48 @@ export default function PhotoViewer({
             />
           </svg>
         </Link>
+
+        {highlight && (
+          <button
+            type="button"
+            className={`photo-viewer__highlight-chip ${fade}`}
+            onClick={() => chooseHighlight(null)}
+          >
+            <span>{highlight.label} highlight</span>
+            <span aria-hidden="true">·</span>
+            <span>Show the whole photo</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+              <path
+                d="M6 6l12 12M18 6 6 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+
+        {/* The administrator goes straight from a photo to its editor in Curator. */}
+        {isAdmin && (
+          <Link
+            href={`/curator?section=Photos&photo=${encodeURIComponent(photoId)}`}
+            aria-label="Edit this photo in Curator"
+            title="Edit in Curator → Photos"
+            className={`photo-viewer__control absolute right-16 top-4 z-20 ${fade}`}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+              <path
+                d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+        )}
 
         <button
           type="button"
@@ -380,6 +481,8 @@ export default function PhotoViewer({
           <PhotoInfoPanel
             photo={photo}
             onClose={() => setViewerPanelOpen(false)}
+            highlight={highlight?.key ?? null}
+            onHighlightChange={chooseHighlight}
           />
         ) : (
           // Holds the panel's place while the next photo loads, so nothing jumps.

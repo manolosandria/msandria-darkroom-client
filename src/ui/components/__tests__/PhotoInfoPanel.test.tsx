@@ -31,29 +31,42 @@ const shot = (id: string, extra: Partial<ConstructorParameters<typeof Photo>[0]>
   });
 
 describe("PhotoInfoPanel highlights", () => {
-  it("shows each highlight and opens the chosen one large", async () => {
-    render(
-      <PhotoInfoPanel
-        photo={shot("a", {
-          highlights: {
-            square: { x: 0, y: 0, width: 0.5, height: 0.8 },
-            custom: [
-              { id: "sky", name: "Sky", crop: { x: 0, y: 0, width: 1, height: 0.3 } },
-            ],
-          },
-        })}
-        onClose={() => {}}
-      />,
+  it("shows each highlight and hands the chosen one to the viewer", async () => {
+    const choose = vi.fn();
+    const photo = shot("a", {
+      highlights: {
+        square: { x: 0, y: 0, width: 0.5, height: 0.8 },
+        custom: [
+          { id: "sky", name: "Sky", crop: { x: 0, y: 0, width: 1, height: 0.3 } },
+        ],
+      },
+    });
+    const { rerender } = render(
+      <PhotoInfoPanel photo={photo} onClose={() => {}} onHighlightChange={choose} />,
     );
     const section = screen.getByRole("region", { name: "Highlights" });
     expect(within(section).getByText("Square")).toBeInTheDocument();
     expect(within(section).getByText("Sky")).toBeInTheDocument();
-    const sky = within(section).getByRole("button", { name: "Show the Sky highlight" });
-    await userEvent.click(sky);
-    expect(sky).toHaveAttribute("aria-pressed", "true");
-    expect(within(section).getByRole("figure")).toHaveTextContent("Sky");
-    await userEvent.click(sky);
+    await userEvent.click(
+      within(section).getByRole("button", { name: "Show the Sky highlight in the viewer" }),
+    );
+    expect(choose).toHaveBeenLastCalledWith("custom:sky");
+    // Nothing large inside the panel: the viewer shows it instead of the photo.
     expect(within(section).queryByRole("figure")).not.toBeInTheDocument();
+    rerender(
+      <PhotoInfoPanel
+        photo={photo}
+        onClose={() => {}}
+        highlight="custom:sky"
+        onHighlightChange={choose}
+      />,
+    );
+    const shown = within(section).getByRole("button", {
+      name: "Show the whole photo instead of the Sky highlight",
+    });
+    expect(shown).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(shown);
+    expect(choose).toHaveBeenLastCalledWith(null);
   });
 
   it("leaves the section out when the photo has no highlights", () => {

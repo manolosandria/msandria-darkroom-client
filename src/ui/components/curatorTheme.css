@@ -518,14 +518,34 @@
     transform: translateY(10px) scale(0.96);
   }
 }
+/* With a failure to tell, the pill becomes a card: the reason takes a row of its own. */
+.curator-savebar[data-error] {
+  flex-wrap: wrap;
+  max-width: min(520px, calc(100vw - 2rem));
+  padding: 0.5rem 0.5rem 0.6rem 0.8rem;
+  border-radius: 18px;
+}
 .curator-savebar__summary {
   display: inline-flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
   font-weight: 600;
 }
+.curator-savebar__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #fff5dc;
+  color: #8a5d0b;
+  white-space: nowrap;
+}
 .curator-savebar__text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -548,18 +568,29 @@
   }
 }
 .curator-savebar__error {
-  color: #7a2a20;
+  order: 3;
+  flex: 1 0 100%;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid #b0443a;
+  border-radius: 0.3rem;
+  background: #fdf0ee;
+  color: #6f2a22;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 .curator-savebar__actions {
   display: flex;
   flex: none;
   gap: 0.3rem;
 }
+/* As large as its neighbours, so the bar does not grow, and drawn so it is seen. */
 .curator-savebar .curator-savebar__hide {
-  width: 28px;
-  height: 28px;
-  border-color: transparent;
-  background: transparent;
+  border-color: #c6cfbb;
+  background: #eef2e7;
+  color: #2f3d29;
+}
+.curator-savebar .curator-savebar__hide:hover {
+  background: #dfe8d2;
 }
 .curator-savebar.is-folded {
   padding: 0;

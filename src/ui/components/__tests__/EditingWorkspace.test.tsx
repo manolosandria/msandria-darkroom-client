@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import {
   EditingWorkspace,
+  saveFailureMessage,
+  type SaveOutcome,
   useEditingWorkspace,
   usePendingEdits,
   useUnsavedEditor,
@@ -108,7 +110,7 @@ describe("EditingWorkspace", () => {
       await screen.findByRole("button", { name: "Save all and leave" }),
     );
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Some changes could not be saved",
+      "“First draft” was not saved. Its editor says why. Your drafts are still here. Cancel to fix it in its editor.",
     );
     expect(navigate).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -179,5 +181,66 @@ describe("EditingWorkspace", () => {
     // Typing re-renders the editor with fresh callbacks; the list stays the same.
     expect(renders).toHaveBeenCalledTimes(settled);
     expect(screen.getByText("Only draft", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("says which editor, which fields and why a save failed, steadily while retrying", async () => {
+    let settle: (outcome: SaveOutcome) => void = () => {};
+    const save = vi
+      .fn<() => Promise<SaveOutcome>>()
+      .mockResolvedValueOnce({
+        error: "The API rejected the photo: highlights must contain crops",
+      })
+      .mockImplementationOnce(
+        () => new Promise<SaveOutcome>((resolve) => (settle = resolve)),
+      );
+    const navigate = vi.fn();
+    function Titled() {
+      const original = { title: "Araña", highlights: {} };
+      const [draft, setDraft] = useState(original);
+      useUnsavedEditor(draft.title !== original.title, {
+        label: "Araña",
+        save,
+        discard: () => setDraft(original),
+        document: { original, draft, restore: (value) => setDraft(value as typeof original) },
+      });
+      return (
+        <input
+          aria-label="Title"
+          value={draft.title}
+          onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+        />
+      );
+    }
+    render(
+      <EditingWorkspace navigate={navigate}>
+        <Titled />
+        <a href="/gallery">Leave editor</a>
+      </EditingWorkspace>,
+    );
+    await userEvent.type(screen.getByLabelText("Title"), "s");
+    await userEvent.click(screen.getByRole("link", { name: "Leave editor" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Unsaved changes in “Araña”.");
+    await userEvent.click(screen.getByRole("button", { name: "Save all and leave" }));
+    const message =
+      "“Araña” (Title) was not saved: The API rejected the photo: highlights must contain crops. Your drafts are still here. Cancel to fix it in its editor.";
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    // Trying again keeps the last failure on screen until the new outcome arrives.
+    await userEvent.click(screen.getByRole("button", { name: "Save all and leave" }));
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    settle(true);
+    await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("saveFailureMessage", () => {
+  it("names the editor and its fields, with or without a reason", () => {
+    expect(saveFailureMessage("Home banner", [], "")).toBe(
+      "“Home banner” was not saved. Its editor says why.",
+    );
+    expect(
+      saveFailureMessage("Araña", ["Highlights", "Title"], "The session ended."),
+    ).toBe("“Araña” (Highlights, Title) was not saved: The session ended.");
   });
 });

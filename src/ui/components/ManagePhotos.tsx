@@ -57,8 +57,10 @@ import { PhotoSectionBar } from "./PhotoSectionBar";
 import {
   InspectorView,
   readHiddenSections,
+  readFolded,
   readInspectorView,
   writeHiddenSections,
+  writeFolded,
   writeInspectorView,
 } from "@/src/ui/photoSectionPreference";
 import {
@@ -74,6 +76,7 @@ import {
   EditingBoundary,
   useEditingWorkspace,
   useUnsavedEditor,
+  type SaveOutcome,
 } from "./EditingWorkspace";
 
 const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
@@ -212,10 +215,49 @@ function PhotoLibrary({
       },
     }));
   }
+  // A link from the viewer names the photo to open (`?photo=<id>`): it opens once the
+  // library has loaded, and the address forgets it so a reload starts at the library.
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    try {
+      asked.current = new URLSearchParams(window.location.search).get("photo");
+    } catch {
+      asked.current = null;
+    }
+  }, []);
+  useEffect(() => {
+    const id = asked.current;
+    if (!id || !data) return;
+    asked.current = null;
+    const entry = all.find((item) => item.photo.getId() === id);
+    if (entry) queueMicrotask(() => open(entry));
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("photo");
+      window.history.replaceState(window.history.state, "", url);
+    } catch {
+      /* The address keeps the id; nothing else depends on it. */
+    }
+    // Only when the library arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+  // While a photo is open, its strip of neighbours can fold away to give the stage room.
+  const [stripFolded, setStripFolded] = useState(() =>
+    readFolded("photoStripFolded"),
+  );
+  const foldStrip = (next: boolean) => {
+    setStripFolded(next);
+    writeFolded("photoStripFolded", next);
+  };
+  const folded = Boolean(selected) && stripFolded;
   const mode = selected ? "strip" : view;
+  const stripId = useId();
   return (
     <div className={`photo-studio ${selected ? "photo-studio--editing" : ""}`}>
-      <div className="studio-card photo-studio__library">
+      <div
+        className="studio-card photo-studio__library"
+        data-folded={folded ? "" : undefined}
+      >
         <div className="photo-studio__toolbar">
           {selected && (
             <button
@@ -224,6 +266,28 @@ function PhotoLibrary({
               onClick={() => setSelected(null)}
             >
               <LibraryIcon view="grid" /> Library
+            </button>
+          )}
+          {selected && (
+            <button
+              type="button"
+              className="photo-studio__fold"
+              aria-expanded={!stripFolded}
+              aria-controls={stripId}
+              title={stripFolded ? "Show the strip of photos" : "Fold the strip of photos away"}
+              onClick={() => foldStrip(!stripFolded)}
+            >
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path
+                  d={stripFolded ? "M5 8l5 5 5-5" : "M5 12l5-5 5 5"}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {stripFolded ? "Show photos" : "Hide photos"}
             </button>
           )}
           <PhotoFilters
@@ -367,6 +431,8 @@ function PhotoLibrary({
           </fieldset>
         )}
         <nav
+          id={stripId}
+          hidden={folded}
           className={`photo-browser photo-browser--${mode}`}
           aria-label="Published photos"
           style={{ "--photo-browser-size": `${size}px` } as React.CSSProperties}
@@ -741,11 +807,13 @@ function PhotoEditor({
     setConflict(false);
     setSaved(false);
   }
-  async function persist(): Promise<boolean> {
-    if (saving) return false;
+  // Says why when it fails, so the save bar and the leaving dialog can tell the curator.
+  async function persist(): Promise<SaveOutcome> {
+    if (saving) return { error: "it is still being saved" };
     if (!title.trim()) {
-      setError("Give the photograph a title before saving.");
-      return false;
+      const missing = "Give the photograph a title before saving.";
+      setError(missing);
+      return { error: missing };
     }
     setSaving(true);
     setError("");
@@ -787,8 +855,9 @@ function PhotoEditor({
       setConflict(
         failure instanceof PhotoUploadError && failure.failure === "conflict",
       );
-      setError(apiFailureMessage(failure));
-      return false;
+      const message = apiFailureMessage(failure);
+      setError(message);
+      return { error: message };
     } finally {
       setSaving(false);
     }
@@ -973,7 +1042,6 @@ function PhotoEditor({
               <h2>{title || photo.getTitle()}</h2>
               {dirty && <span className="studio-dirty">Unsaved</span>}
             </div>
-            {actions()}
           </div>
           <PhotoSectionBar
             sections={SECTIONS.map((item) => ({

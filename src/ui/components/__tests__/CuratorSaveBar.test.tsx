@@ -130,7 +130,9 @@ describe("CuratorSaveBar", () => {
     );
     expect(
       (await screen.findAllByRole("alert"))[0],
-    ).toHaveTextContent(/could not be saved/);
+    ).toHaveTextContent(
+      "“Home banner” was not saved. Its editor says why. Your drafts are still here.",
+    );
     expect(screen.getByLabelText("Home banner")).toHaveValue("x");
   });
 

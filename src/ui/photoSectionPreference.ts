@@ -54,6 +54,34 @@ export function writeInspectorView(view: InspectorView) {
   }
 }
 
+/**
+ * Parts of Photos a curator can fold out of the way: the inspector's grid of section
+ * tabs (`photoInspectorTabsFolded`) and the library's strip of photos while one is open
+ * (`photoStripFolded`). Kept per visitor, guarded like the rest.
+ */
+export type FoldablePart = "photoInspectorTabsFolded" | "photoStripFolded";
+const foldedInMemory = new Map<FoldablePart, boolean>();
+
+export function readFolded(part: FoldablePart): boolean {
+  const remembered = foldedInMemory.get(part);
+  if (remembered !== undefined) return remembered;
+  try {
+    return window.localStorage.getItem(part) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function writeFolded(part: FoldablePart, folded: boolean) {
+  foldedInMemory.set(part, folded);
+  try {
+    window.localStorage.setItem(part, String(folded));
+  } catch {
+    // Kept in memory only.
+  }
+}
+
 export function resetHiddenSectionsForTests() {
   hiddenInMemory = null;
+  foldedInMemory.clear();
 }

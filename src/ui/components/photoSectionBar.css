@@ -196,6 +196,31 @@
   border: 1px solid var(--studio-line);
   background: #fff;
 }
+/* Folds the grid of tabs away; folded, it names the section on show. */
+.section-bar__fold-tabs {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.9rem;
+  padding: 0 0.75rem 0 0.55rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--studio-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.section-bar__fold-tabs:hover,
+.section-bar__fold-tabs[aria-expanded="false"] {
+  background: #e7eddc;
+}
+.section-bar__nav[hidden] {
+  display: none;
+}
 .section-bar__menu-button:hover,
 .section-bar__menu-button[aria-expanded="true"] {
   background: #e7eddc;
