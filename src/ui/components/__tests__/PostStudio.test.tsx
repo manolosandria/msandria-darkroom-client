@@ -23,7 +23,8 @@ vi.mock("../EditingWorkspace", () => ({
   useUnsavedEditor: vi.fn(() => ({ review: vi.fn() })),
 }));
 vi.mock("../ClassificationCatalog", () => ({
-  useClassificationCatalog: () => ({ catalog: {} }),
+  ClassificationCatalogBoundary: ({ children }: { children: React.ReactNode }) => children,
+  useClassificationCatalog: () => ({ catalog: { categories: [], collections: [], works: [], photos: [] } }),
 }));
 // The picker has its own tests; here it offers each photo as a button.
 vi.mock("../PhotoPicker", () => ({
@@ -119,6 +120,8 @@ function setup(posts: Post[] = []) {
 beforeEach(() => {
   vi.clearAllMocks();
   confirm.mockResolvedValue(true);
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+  URL.revokeObjectURL = vi.fn();
 });
 
 describe("PostStudio helpers", () => {
@@ -203,6 +206,9 @@ describe("PostStudio", () => {
     await userEvent.upload(
       document.querySelector('input[type="file"]') as HTMLInputElement,
       new File(["x"], "forest.jpg", { type: "image/jpeg" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Upload" }),
     );
     expect(screen.getByRole("button", { name: /A walk/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
@@ -326,7 +332,7 @@ describe("PostStudio", () => {
     expect(
       screen.getByRole("textbox", { name: "Text of block 1" }),
     ).toHaveValue("Hello");
-    expect(vi.mocked(useUnsavedEditor)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(useUnsavedEditor)).toHaveBeenCalledWith(
       false,
       expect.anything(),
     );
@@ -334,7 +340,7 @@ describe("PostStudio", () => {
     const title = screen.getByPlaceholderText("A title for the post");
     await userEvent.clear(title);
     await userEvent.type(title, "Renamed");
-    expect(vi.mocked(useUnsavedEditor)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(useUnsavedEditor)).toHaveBeenCalledWith(
       true,
       expect.objectContaining({ label: "Post “Renamed”" }),
     );
@@ -403,29 +409,79 @@ describe("PostStudio", () => {
     const input = document.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
+    expect(screen.queryByText("Uploaded photo goes to")).toBeNull();
     await userEvent.upload(
       input,
       new File(["x"], "my_trip-1.jpg", { type: "image/jpeg" }),
     );
+    expect(ports.upload.execute).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: /Organization/ }));
+    expect(screen.getByRole("radio", { name: "Only in posts" })).toBeChecked();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Upload" }),
+    );
     await waitFor(() =>
-      expect(ports.upload.execute).toHaveBeenCalledWith({
-        file: expect.any(File),
-        title: "my trip 1",
-        visibility: "POSTS_ONLY",
-      }),
+      expect(ports.upload.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: expect.any(File),
+          title: "my trip 1",
+          visibility: "POSTS_ONLY",
+        }),
+      ),
     );
     expect(await screen.findByText("Photo up-my trip 1")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText(/To the gallery too/));
     ports.upload.execute.mockRejectedValueOnce(new Error("offline"));
     await userEvent.upload(
       input,
       new File(["x"], "b.jpg", { type: "image/jpeg" }),
     );
+    const card = screen.getByRole("article", { name: /b.jpg/ });
+    await userEvent.click(within(card).getByLabelText(/To the gallery too/));
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Upload" }),
+    );
     expect(await screen.findByRole("alert")).toHaveTextContent("b.jpg");
     expect(ports.upload.execute).toHaveBeenLastCalledWith(
       expect.objectContaining({ visibility: "PUBLIC" }),
     );
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Upload" }),
+    );
+    await waitFor(() => expect(ports.upload.execute).toHaveBeenCalledTimes(3));
+    expect(
+      ports.upload.execute.mock.calls.filter(
+        ([draft]) => draft.title === "my trip 1",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("keeps prepared photo edits through preview and asks before leaving them", async () => {
+    const ports = setup([saved()]);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New post" }),
+    );
+    await userEvent.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      new File(["x"], "forest.jpg", { type: "image/jpeg" }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Description / optional" }),
+      "At dusk",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      screen.getByRole("textbox", { name: "Description / optional" }),
+    ).toHaveValue("At dusk");
+    expect(screen.getByRole("button", { name: "Save post" })).toBeDisabled();
+    confirm.mockResolvedValueOnce(false);
+    await userEvent.click(screen.getByRole("button", { name: /A walk/ }));
+    expect(confirm).toHaveBeenCalled();
+    expect(
+      screen.getByRole("article", { name: /forest.jpg/ }),
+    ).toBeInTheDocument();
+    expect(ports.upload.execute).not.toHaveBeenCalled();
   });
 
   it("does not upload files that cannot fit in the remaining block slots", async () => {
@@ -451,10 +507,11 @@ describe("PostStudio", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Only 1 more photo fits in this post. Extra files were not uploaded.",
     );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Upload" }),
+    );
     expect(ports.upload.execute).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole("button", { name: /^Text/ }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Text/ })).toBeDisabled();
   }, 15000);
 
   it("reorders, restyles, captions and removes blocks, and previews the post", async () => {
@@ -492,7 +549,9 @@ describe("PostStudio", () => {
     );
     expect(screen.getByRole("heading", { name: "A walk" })).toBeInTheDocument();
     expect(screen.getByText("Dusk")).toBeInTheDocument();
-    expect(screen.getByText("#trip")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("article")).getByText("#trip"),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     await userEvent.click(
@@ -501,7 +560,7 @@ describe("PostStudio", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Remove Text block" }),
     );
-    expect(screen.getByText(/The post is empty/)).toBeInTheDocument();
+    expect(screen.getByText(/Add text or photos to begin/)).toBeInTheDocument();
   });
 
   it("explains a list that cannot load and retries", async () => {

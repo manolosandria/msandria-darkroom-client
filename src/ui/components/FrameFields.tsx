@@ -30,6 +30,7 @@ export function FrameFields({
   width,
   height,
   disabled = false,
+  showPreview = true,
 }: {
   value: PhotoFrame | null;
   onChange: (frame: PhotoFrame | null) => void;
@@ -37,6 +38,7 @@ export function FrameFields({
   width: number;
   height: number;
   disabled?: boolean;
+  showPreview?: boolean;
 }) {
   const frame = value ?? DEFAULT_FRAME;
   const update = (fields: Partial<PhotoFrame>) => onChange({ ...frame, ...fields });
@@ -88,19 +90,21 @@ export function FrameFields({
           />
         </div>
       )}
-      <div className="frame-fields__preview" aria-hidden="true">
-        <div
-          data-testid="frame-preview"
-          style={{
-            background: value?.color,
-            padding: `${layout.paddingY}% ${layout.paddingX}%`,
-            width: `min(100%, ${(180 / layout.heightPerWidth).toFixed(1)}px)`,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- A local preview or an API rendition, used verbatim. */}
-          <img src={src} alt="" width={width} height={height} />
+      {showPreview && (
+        <div className="frame-fields__preview" aria-hidden="true">
+          <div
+            data-testid="frame-preview"
+            style={{
+              background: value?.color,
+              padding: `${layout.paddingY}% ${layout.paddingX}%`,
+              width: `min(100%, ${(180 / layout.heightPerWidth).toFixed(1)}px)`,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- A local preview or an API rendition, used verbatim. */}
+            <img src={src} alt="" width={width} height={height} />
+          </div>
         </div>
-      </div>
+      )}
     </fieldset>
   );
 }

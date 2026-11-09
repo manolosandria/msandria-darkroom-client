@@ -38,6 +38,7 @@ import { PhotoPicker } from "./PhotoPicker";
 import { CollectionCanvas, isHiddenFromPublic } from "./CollectionCanvas";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
+import UploadPanel from "./UploadPanel";
 import { EmptyState } from "./EmptyState";
 
 /** The editor keeps photos and text blocks in one reading order. */
@@ -306,7 +307,7 @@ function CollectionEditor({
   id,
   collection,
   catalog,
-  photos,
+  photos: libraryPhotos,
   refresh,
   onClose,
   onCreated,
@@ -323,6 +324,11 @@ function CollectionEditor({
   onDeleted: () => void;
   active: boolean;
 }) {
+  const [uploadedPhotos, setUploadedPhotos] = useState<Photo[]>([]);
+  const [pendingUploads, setPendingUploads] = useState(false);
+  const [showUploads, setShowUploads] = useState(false);
+  const [uploadsOpened, setUploadsOpened] = useState(false);
+  const photos = [...libraryPhotos, ...uploadedPhotos.filter((photo) => !libraryPhotos.some((item) => item.getId() === photo.getId()))];
   const [baseline, setBaseline] = useState(() => fromCollection(collection));
   const [conflict, setConflict] = useState(false);
   const [draft, setDraft] = useState(() => fromCollection(collection));
@@ -428,12 +434,19 @@ function CollectionEditor({
     setNotice("");
   }
   function discard() {
+    setUploadsOpened(false);
+    setShowUploads(false);
+    setPendingUploads(false);
     setDraft(baseline);
     setExcluded([]);
     setError("");
     setNotice("");
   }
   async function persist(): Promise<boolean> {
+    if (pendingUploads) {
+      setError("Upload or remove the prepared photos before saving the collection.");
+      return false;
+    }
     if (busy) return false;
     if (!draft.title.trim()) {
       setError("Give this collection a title before saving.");
@@ -492,7 +505,7 @@ function CollectionEditor({
       setBusy(false);
     }
   }
-  const { review } = useUnsavedEditor(dirty, {
+  const { review } = useUnsavedEditor(dirty || pendingUploads, {
     label: draft.title || "New collection",
     save: persist,
     discard,
@@ -502,7 +515,7 @@ function CollectionEditor({
       restore: (value) => setDraft(value as typeof draft),
     },
   });
-  if (!active) return null;
+
   const index = draft.blocks.findIndex((block) => block.key === selected);
   const block = draft.blocks[index];
   const entry = block?.kind === "photo" ? block : undefined;
@@ -549,6 +562,7 @@ function CollectionEditor({
   const hiddenSection = (key: string) => only !== null && only !== key;
   return (
     <form
+      hidden={!active}
       className="studio-editor collection-develop"
       onSubmit={async (event) => {
         event.preventDefault();
@@ -660,6 +674,20 @@ function CollectionEditor({
             toggleSection("photo", true);
           }}
         />
+        <div className="collection-upload">
+          <button type="button" className="upload-secondary" aria-expanded={showUploads} onClick={() => { setUploadsOpened(true); setShowUploads(!showUploads); }}>Upload new photos…</button>
+          <div hidden={!showUploads}>
+          <p>Uploaded photos are stored immediately. Save collection to keep them in this composition.</p>
+          {uploadsOpened && <UploadPanel embedded onPendingChange={setPendingUploads} onPublished={({ photo }) => {
+            setUploadedPhotos((previous) => [...previous, photo]);
+            const key = `photo:${photo.getId()}`;
+            setDraft((previous) => ({ ...previous, blocks: [...previous.blocks, {
+              kind: "photo", key, photoId: photo.getId(), ...DEFAULT_PHOTO_SIZE, showTitle: true,
+            }] }));
+            setSelected(key);
+          }} />}
+          </div>
+        </div>
         <div className="collection-develop__layout">
           <section
             className="collection-develop__stage"

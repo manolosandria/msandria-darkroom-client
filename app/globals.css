@@ -725,3 +725,20 @@ p.upload-muted { line-height: 1.65; margin: 16px 0; }
 .upload-steps small { max-width: 14rem; font-size: .78rem; line-height: 1.45; color: #6b7563; }
 @media (max-width: 600px) { .upload-steps { grid-template-columns: 1fr; text-align: left; } .upload-steps::before { display: none; } .upload-steps li { grid-template-columns: auto 1fr; justify-items: start; column-gap: .8rem; } .upload-steps__number { grid-row: span 2; } }
 .upload-steps li { align-content: start; }
+
+.upload-step-tabs { display:flex; flex-wrap:wrap; gap:8px; padding:16px 24px; border-bottom:1px solid #e9eae4; }
+.upload-step-tabs button { padding:8px 12px; border:1px solid #d9ddd1; border-radius:8px; color:#4b5742; background:#fafbf7; }
+.upload-step-tabs button[aria-selected=true] { background:#465b34; color:white; border-color:#465b34; }
+.upload-step-tabs button:focus-visible { outline:2px solid #465b34; outline-offset:3px; }
+.upload-step-tabs button span { opacity:.7; margin-right:4px; }
+.upload-step-panel:not([hidden]) { display:flex; flex-direction:column; gap:22px; }
+.upload-step-panel[hidden] { display:none; }
+.upload-step-panel > label { font-size:12px; font-weight:600; }
+.upload-card-actions { align-items:center; gap:10px; flex-wrap:wrap; }
+.upload-card-actions > span { margin-right:auto; }
+
+.collection-upload { margin:16px 0; padding:16px; border:1px solid #dedfd8; border-radius:12px; }
+.collection-upload > div > p { margin:12px 0; color:#69745e; }
+.upload-embedded .upload-heading { margin:20px 0; }
+.upload-embedded .upload-container { max-width:none; }
+.upload-embedded .upload-drop-target { padding:24px; }

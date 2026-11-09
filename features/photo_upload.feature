@@ -159,3 +159,38 @@ Feature: Publishing a photo through the API
     Given an administrator choosing a replacement file in Photos
     When they switch on "Remove border" and save
     Then the replacement is sent with its trim
+
+  Scenario: Skip optional preparation steps
+    Given an administrator has selected a photo
+    When they press Next through Details, Appearance, Highlights and Organization
+    Then Review is shown without uploading anything
+    And all defaults and edits are kept
+    And they can upload directly from any step
+
+  Scenario: Reuse preparation inside a collection
+    Given an administrator is editing a collection
+    When they choose Upload new photos and prepare a file
+    Then the same preparation steps are offered
+    And the default visibility is collections-only
+    And saving the collection waits for pending files to be uploaded or removed
+    When the photo uploads successfully
+    Then it joins the collection draft
+    And Save collection persists its placement
+
+  Scenario: Draw on the shared preview and expand without losing edits
+    Given a photo is ready to prepare
+    When the administrator selects Highlights
+    Then the left photo preview becomes the highlight drawing surface
+    And a second full reference photo is not shown
+    When they draw and accept a highlight and expand the photo
+    Then the highlight remains selected on the expanded photo
+    And the properties are placed underneath
+    When they return to Compact view and change steps
+    Then the card and navigation keep the same height
+
+  Scenario: Review the prepared photo before upload
+    Given a photo has metadata, appearance, highlights and classification choices
+    When the administrator opens Review
+    Then the summary shows those choices and the named collections
+    And each summary group links back to its editing step
+    And uploads remain an explicit action

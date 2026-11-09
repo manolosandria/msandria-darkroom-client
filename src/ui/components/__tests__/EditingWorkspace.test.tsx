@@ -60,6 +60,38 @@ function show(
 }
 
 describe("EditingWorkspace", () => {
+  it("recovers a cancelled draft with Ctrl+Z and clears undo when its scope changes", async () => {
+    function ScopedDraft() {
+      const [original, setOriginal] = useState({ title: "Saved", blocks: ["Original block"] });
+      const [draft, setDraft] = useState(original);
+      const pending = usePendingEdits();
+      useUnsavedEditor(draft !== original, {
+        label: "Post", save: async () => true, discard: () => setDraft(original),
+        document: { original, draft, restore: (value) => setDraft(value as typeof original), undoScope: original },
+      });
+      return <>
+        <input aria-label="Post title" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+        <button onClick={() => setDraft({ ...draft, blocks: [] })}>Remove block</button>
+        <output aria-label="Block count">{draft.blocks.length}</output>
+        <button onClick={() => setDraft(original)}>Cancel changes</button>
+        <button onClick={() => { const next = { title: "Other post", blocks: [] }; setOriginal(next); setDraft(next); }}>Other post</button>
+        <span>{pending?.undoLabel ?? "No undo"}</span>
+      </>;
+    }
+    render(<EditingWorkspace><ScopedDraft /></EditingWorkspace>);
+    await userEvent.type(screen.getByLabelText("Post title"), " edited");
+    await userEvent.click(screen.getByRole("button", { name: "Remove block" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel changes" }));
+    expect(screen.getByLabelText("Post title")).toHaveValue("Saved");
+    expect(screen.getByLabelText("Block count")).toHaveTextContent("1");
+    fireEvent.keyDown(document.body, { key: "z", ctrlKey: true });
+    expect(screen.getByLabelText("Post title")).toHaveValue("Saved edited");
+    expect(screen.getByLabelText("Block count")).toHaveTextContent("0");
+    await userEvent.click(screen.getByRole("button", { name: "Other post" }));
+    fireEvent.keyDown(document.body, { key: "z", ctrlKey: true });
+    expect(screen.getByLabelText("Post title")).toHaveValue("Other post");
+    expect(screen.getByText("No undo")).toBeInTheDocument();
+  });
   it("portals confirmations outside inert content and cancels on backdrop click", async () => {
     show();
     await userEvent.type(screen.getByLabelText("First draft"), "pending");

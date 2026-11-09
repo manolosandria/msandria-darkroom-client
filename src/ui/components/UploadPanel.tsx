@@ -7,12 +7,15 @@ import { VariantAssignment } from "./VariantAssignment";
 import { assignPhotoVariant } from "@/src/application/use-cases/AssignPhotoVariant";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { UploadPhoto } from "@/src/application/use-cases/UploadPhoto";
 import { PhotoHighlights } from "@/src/domain/entities/PhotoHighlights";
 import { PublishedPhoto } from "@/src/domain/repositories/PhotoRepository";
 import { uploadPhoto as defaultUploadPhoto } from "@/src/infrastructure/photoServices";
 import { apiFailureMessage } from "@/src/ui/apiFailureMessage";
+import { UploadReview } from "./UploadReview";
+import { framedLayout } from "@/src/ui/framedLayout";
+import "./uploadPreparation.css";
 import { ErrorMessage } from "./ErrorMessage";
 import { HighlightEditor } from "./HighlightEditor";
 import { FrameFields } from "./FrameFields";
@@ -40,7 +43,7 @@ const ACCEPTED_TYPES = [
   "image/gif",
 ];
 const MAX_BYTES = 10 * 1024 * 1024;
-type UploadItem = {
+export type UploadItem = {
   variantTargetId?: string;
   classification: PhotoClassification;
   id: number;
@@ -61,7 +64,13 @@ type UploadItem = {
 
 export default function UploadPanel({
   uploadPhoto = defaultUploadPhoto,
+  embedded = false,
+  onPublished,
+  onPendingChange,
 }: {
+  embedded?: boolean;
+  onPublished?: (photo: PublishedPhoto) => void;
+  onPendingChange?: (pending: boolean) => void;
   uploadPhoto?: Pick<UploadPhoto, "execute">;
 }) {
   const session = useSessionValue();
@@ -86,6 +95,10 @@ export default function UploadPanel({
     };
   }, []);
 
+  useEffect(() => {
+    onPendingChange?.(running || items.some((item) => item.status !== "published"));
+  }, [items, running, onPendingChange]);
+
   const patch = (id: number, fields: Partial<UploadItem>) => {
     if (mounted.current)
       setItems((previous) =>
@@ -109,7 +122,7 @@ export default function UploadPanel({
       const preview = URL.createObjectURL(file);
       urls.current.add(preview);
       additions.push({
-        classification: publicClassification(),
+        classification: { ...publicClassification(), ...(embedded ? { visibility: "COLLECTIONS_ONLY" as const } : {}) },
         id: nextId.current++,
         file,
         preview,
@@ -167,6 +180,7 @@ export default function UploadPanel({
               ...(item.trim ? { trim: item.trim } : {}),
               ...item.classification,
             }));
+          if (!mounted.current) break;
           // Store the successful upload before linking. A failed link retries only the link.
           patch(item.id, { published });
           if (item.variantTargetId)
@@ -177,6 +191,7 @@ export default function UploadPanel({
               item.title,
             );
           patch(item.id, { status: "published", published });
+          onPublished?.(published);
           window.dispatchEvent(new Event("curator:catalog-changed"));
         } catch (failure) {
           patch(item.id, {
@@ -243,9 +258,9 @@ export default function UploadPanel({
     </div>
   );
   return (
-    <Shell>
+    <Shell embedded={embedded}>
       {items.length > 0 && uploadAll()}
-      <div className="flex flex-wrap gap-x-6 gap-y-2">
+      {!embedded && <div className="flex flex-wrap gap-x-6 gap-y-2">
         <Link href="/manage" className="upload-link">
           Manage published photos →
         </Link>
@@ -255,7 +270,7 @@ export default function UploadPanel({
         <Link href="/curator" className="upload-link">
           Manage collections →
         </Link>
-      </div>
+      </div>}
       <div
         className={`upload-dropzone ${dragging ? "is-dragging" : ""}`}
         onDragEnter={(event) => {
@@ -278,7 +293,6 @@ export default function UploadPanel({
       >
         <input
           ref={picker}
-          id="photos"
           type="file"
           multiple
           accept={ACCEPTED_TYPES.join(",")}
@@ -366,13 +380,14 @@ export default function UploadPanel({
   );
 }
 
-function UploadCard({
+export function UploadCard({
   item,
   index,
   onChange,
   onRemove,
   onUpload,
   running,
+  forPost = false,
 }: {
   item: UploadItem;
   index: number;
@@ -380,7 +395,24 @@ function UploadCard({
   onRemove: () => void;
   onUpload: () => void;
   running: boolean;
+  forPost?: boolean;
 }) {
+  const [step, setStep] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [stageContainer, setStageContainer] = useState<HTMLDivElement | null>(null);
+  const inspector = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (inspector.current) inspector.current.scrollTop = 0;
+  }, [step]);
+  const prefix = useId();
+  const steps = ["Details", "Appearance", "Highlights", "Organization", "Review"];
+  const panel = (index: number) => ({
+    role: "tabpanel" as const,
+    id: `${prefix}-panel-${index}`,
+    "aria-labelledby": `${prefix}-tab-${index}`,
+    hidden: step !== index,
+    className: "upload-step-panel",
+  });
   const locked = !!item.published || ["queued", "uploading", "published"].includes(item.status);
   const metadata = item.published?.photo.getMetadata();
   const trimmed = useTrimmedPreview(item.preview, item.trim);
@@ -390,9 +422,11 @@ function UploadCard({
     item.width && item.height
       ? trimmedSize(item.trim, item.width, item.height)
       : undefined;
+  const layout = framedLayout(kept ? kept.width / kept.height : 1.5, item.frame);
   return (
     <article
-      className="upload-card"
+      data-expanded={expanded || undefined}
+      className="upload-card upload-preparation"
       aria-label={`Photo ${index + 1}: ${item.file.name}`}
     >
       <header className="upload-card-header">
@@ -412,34 +446,86 @@ function UploadCard({
           {item.status === "published" ? "Dismiss" : "Remove"}
         </button>
       </header>
+      <div className="upload-step-tabs" role="tablist" aria-label="Photo preparation">
+        {steps.map((label, index) => (
+          <button
+            key={label}
+            type="button"
+            role="tab"
+            id={`${prefix}-tab-${index}`}
+            aria-controls={`${prefix}-panel-${index}`}
+            aria-selected={step === index}
+            tabIndex={step === index ? 0 : -1}
+            onClick={() => setStep(index)}
+            onKeyDown={(event) => {
+              const next = event.key === "ArrowRight" ? (index + 1) % steps.length
+                : event.key === "ArrowLeft" ? (index + steps.length - 1) % steps.length
+                : event.key === "Home" ? 0 : event.key === "End" ? steps.length - 1 : undefined;
+              if (next === undefined) return;
+              event.preventDefault();
+              setStep(next);
+              document.getElementById(`${prefix}-tab-${next}`)?.focus();
+            }}
+          >
+            <span>{index + 1}</span> {label}
+          </button>
+        ))}
+      </div>
       <div className="upload-card-body">
         <div className="upload-visual">
-          <div className="upload-preview">
-            <Image
-              src={src}
-              alt={item.title || item.file.name}
-              fill
-              unoptimized
-              sizes="(max-width: 800px) 100vw, 45vw"
-              style={{ objectFit: "contain" }}
-              onLoad={(event) => {
-                const image = event.currentTarget;
-                if (!item.width)
-                  onChange({
-                    width: image.naturalWidth,
-                    height: image.naturalHeight,
-                  });
-              }}
-              onError={() => {
-                if (!item.published)
-                  onChange({
-                    error:
-                      "This image could not be previewed. Check the file before publishing.",
-                  });
-              }}
-            />
+          <div className="upload-preview-toolbar">
+            <span>{step === 2 ? "Draw on your photograph" : "Photo preview"}</span>
+            <button type="button" className="upload-preview-expand" aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>
+              <span aria-hidden="true">{expanded ? "↙" : "↗"}</span> {expanded ? "Compact view" : "Expand photo"}
+            </button>
           </div>
-          <details className="upload-metadata" open>
+          <div className="upload-photo-surface">
+            <div
+              ref={setStageContainer}
+              className="upload-shared-stage"
+              hidden={step !== 2 || !kept}
+              style={{ "--photo-ratio": kept ? kept.width / kept.height : 1 } as React.CSSProperties}
+            />
+            <div className="upload-preview" hidden={step === 2 && !!kept}>
+              <div
+                className="upload-photo-mat"
+                data-testid="upload-frame-preview"
+                style={{ width: `min(100%, calc(100cqh / ${layout.heightPerWidth}))` }}
+              >
+                <div
+                  className="upload-photo-border"
+                  style={{ background: item.frame?.color, padding: `${layout.paddingY}% ${layout.paddingX}%` }}
+                >
+                  <div className="upload-photo-image" style={{ aspectRatio: kept ? kept.width / kept.height : 1.5 }}>
+                    <Image
+                      src={src}
+                      alt={item.title || item.file.name}
+                      fill
+                      unoptimized
+                      sizes="(max-width: 800px) 100vw, 45vw"
+                      style={{ objectFit: "contain" }}
+                      onLoad={(event) => {
+                        const image = event.currentTarget;
+                        if (!item.width)
+                          onChange({
+                            width: image.naturalWidth,
+                            height: image.naturalHeight,
+                          });
+                      }}
+                      onError={() => {
+                        if (!item.published)
+                          onChange({
+                            error:
+                              "This image could not be previewed. Check the file before publishing.",
+                          });
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <details className="upload-metadata">
             <summary>Photo metadata</summary>
             <dl>
               <div>
@@ -503,101 +589,136 @@ function UploadCard({
               )}
             </dl>
           </details>
-          <VariantAssignment
-            key={item.published?.photo.getId() ?? "draft"}
-            photoId={
-              item.status === "published"
-                ? item.published?.photo.getId()
-                : undefined
-            }
-            title={item.title}
-            targetId={item.variantTargetId}
-            onTargetChange={
-              item.published
-                ? undefined
-                : (variantTargetId) => onChange({ variantTargetId })
-            }
-            disabled={locked || !!item.published}
-          />
-          <PhotoClassificationFields
-            value={item.classification}
-            disabled={locked}
-            onChange={(classification) => onChange({ classification })}
-          />
         </div>
-        <div className="upload-fields">
-          <label htmlFor={`title-${item.id}`}>
-            Title
-            <input
-              id={`title-${item.id}`}
-              value={item.title}
-              required
-              disabled={locked}
-              onChange={(event) => onChange({ title: event.target.value })}
-            />
-          </label>
-          <label htmlFor={`description-${item.id}`}>
-            Description <span className="upload-muted">/ optional</span>
-            <textarea
-              id={`description-${item.id}`}
-              rows={3}
-              value={item.description}
-              disabled={locked}
-              placeholder="The story behind this photograph…"
-              onChange={(event) =>
-                onChange({ description: event.target.value })
-              }
-            />
-          </label>
-          {item.width && item.height && (
-            <BorderTrimFields
-              src={item.preview}
-              width={item.width}
-              height={item.height}
-              value={item.trim}
-              disabled={locked}
-              onChange={(trim) =>
-                onChange({
-                  trim,
-                  highlights: remapHighlights(item.highlights, item.trim, trim),
-                })
-              }
-            />
-          )}
-          {kept && (
-            <FrameFields
-              src={src}
-              width={kept.width}
-              height={kept.height}
-              value={item.frame}
-              disabled={locked}
-              onChange={(frame) => onChange({ frame })}
-            />
-          )}
-          {kept && (
-            <HighlightEditor
-              src={src}
-              width={kept.width}
-              height={kept.height}
-              value={item.highlights}
-              disabled={locked}
-              onChange={(highlights) => onChange({ highlights })}
-            />
-          )}
-          <section className="upload-optimization">
-            <h3>Optimization review</h3>
-            {item.published ? (
-              <OptimizationIssueList
-                issues={item.published.optimizationIssues}
+        <div className="upload-fields" ref={inspector}>
+          <div {...panel(0)}>
+            <label htmlFor={`${prefix}-title`}>
+              Title
+              <input
+                id={`${prefix}-title`}
+                value={item.title}
+                required
+                disabled={locked}
+                onChange={(event) => onChange({ title: event.target.value })}
               />
-            ) : (
-              <p className="upload-muted">
-                The server reviews metadata, size and color when this photo is
-                published. It removes GPS and optimizes the stored image
-                automatically.
-              </p>
+            </label>
+            <label htmlFor={`${prefix}-description`}>
+              Description <span className="upload-muted">/ optional</span>
+              <textarea
+                id={`${prefix}-description`}
+                rows={3}
+                value={item.description}
+                disabled={locked}
+                placeholder="The story behind this photograph…"
+                onChange={(event) =>
+                  onChange({ description: event.target.value })
+                }
+              />
+            </label>
+          </div>
+          <div {...panel(1)}>
+            {item.width && item.height && (
+              <BorderTrimFields
+                src={item.preview}
+                width={item.width}
+                height={item.height}
+                value={item.trim}
+                disabled={locked}
+                onChange={(trim) =>
+                  onChange({
+                    trim,
+                    highlights: remapHighlights(item.highlights, item.trim, trim),
+                  })
+                }
+              />
             )}
-          </section>
+            {kept && (
+              <FrameFields
+                src={src}
+                width={kept.width}
+                height={kept.height}
+                value={item.frame}
+                showPreview={false}
+                disabled={locked}
+                onChange={(frame) => onChange({ frame })}
+              />
+            )}
+          </div>
+          <div {...panel(2)}>
+            {kept && (
+              <HighlightEditor
+                src={src}
+                width={kept.width}
+                height={kept.height}
+                value={item.highlights}
+                stageContainer={stageContainer}
+                disabled={locked}
+                onChange={(highlights) => onChange({ highlights })}
+              />
+            )}
+          </div>
+          <div {...panel(3)}>
+            {!forPost && (
+              <VariantAssignment
+                key={item.published?.photo.getId() ?? "draft"}
+                photoId={
+                  item.status === "published"
+                    ? item.published?.photo.getId()
+                    : undefined
+                }
+                title={item.title}
+                targetId={item.variantTargetId}
+                onTargetChange={
+                  item.published
+                    ? undefined
+                    : (variantTargetId) => onChange({ variantTargetId })
+                }
+                disabled={locked || !!item.published}
+              />
+            )}
+            {forPost ? (
+              <fieldset className="post-studio__destination" disabled={locked}>
+                <legend>Uploaded photo goes to</legend>
+                {(["POSTS_ONLY", "PUBLIC"] as const).map((visibility) => (
+                  <label key={visibility}>
+                    <input
+                      type="radio"
+                      name={`${prefix}-destination`}
+                      checked={item.classification.visibility === visibility}
+                      onChange={() =>
+                        onChange({
+                          classification: { ...item.classification, visibility },
+                        })
+                      }
+                    />
+                    {visibility === "POSTS_ONLY"
+                      ? "Only in posts"
+                      : "To the gallery too"}
+                  </label>
+                ))}
+              </fieldset>
+            ) : (
+              <PhotoClassificationFields
+                value={item.classification}
+                disabled={locked}
+                onChange={(classification) => onChange({ classification })}
+              />
+            )}
+          </div>
+          <div {...panel(4)}>
+            <UploadReview item={item} forPost={forPost} onEdit={setStep} />
+            <section className="upload-optimization">
+              <h3>Optimization review</h3>
+              {!item.published && (
+                <p className="upload-muted">
+                  The server reviews metadata, size and color when this photo is
+                  published. It removes GPS and optimizes the stored image
+                  automatically.
+                </p>
+              )}
+            </section>
+          </div>
+          {item.published && <OptimizationIssueList issues={item.published.optimizationIssues} />}
           {item.error && (
             <p role="alert" className="upload-error">
               {item.error}
@@ -610,7 +731,7 @@ function UploadCard({
                 : "Your edits are kept. Publish again to retry this photo."}
             </p>
           )}
-          {item.published && (
+          {item.published && !forPost && (
             <Link className="upload-link" href="/gallery">
               Published: {item.published.photo.getTitle()} ↗
             </Link>
@@ -618,9 +739,14 @@ function UploadCard({
         </div>
       </div>
       <footer className="upload-card-actions">
+        <span className="upload-muted">Step {step + 1} of {steps.length} · Optional settings can be skipped</span>
+        <button type="button" className="upload-secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</button>
+        {step < steps.length - 1 && (
+          <button type="button" className="upload-primary" onClick={() => setStep(step + 1)}>Next</button>
+        )}
         <button
           type="button"
-          className="upload-primary"
+          className={step === 4 ? "upload-primary" : "upload-secondary"}
           disabled={running || ["queued", "uploading", "published"].includes(item.status)}
           onClick={onUpload}
         >
@@ -636,19 +762,21 @@ function UploadCard({
 }
 
 function Shell({
+  embedded = false,
   children,
   ...rest
-}: { children?: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
+}: { embedded?: boolean; children?: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
   const { user } = useSessionValue();
+  const Container = embedded ? "section" : "main";
   return (
-    <main className="upload-workspace" {...rest}>
+    <Container className={embedded ? "upload-embedded" : "upload-workspace"} {...rest}>
       <div className="upload-container">
         <div className="upload-heading">
-          <h1>A place for your next photographs.</h1>
+          {embedded ? <h3>Upload photos</h3> : <h1>A place for your next photographs.</h1>}
           <p>Select, refine, and give every photograph its own frame.</p>
         </div>
         <ClassificationCatalogBoundary key={user?.getId() ?? "anonymous"}>{children}</ClassificationCatalogBoundary>
       </div>
-    </main>
+    </Container>
   );
 }

@@ -172,6 +172,7 @@ describe("Upload workspace", () => {
   it("sends manually selected highlights with the photo", async () => {
     renderPanel();
     await select();
+    await userEvent.click(screen.getByRole("tab", { name: /Highlights/ }));
     const image = screen.getByAltText("first");
     Object.defineProperties(image, {
       naturalWidth: { value: 1800 },
@@ -182,6 +183,8 @@ describe("Upload workspace", () => {
       await screen.findByRole("button", { name: "New square highlight" }),
     );
     const stage = document.querySelector(".highlight-stage") as HTMLElement;
+    expect(stage.closest(".upload-shared-stage")).not.toBeNull();
+    expect(screen.getByAltText("first")).not.toBeVisible();
     stage.setPointerCapture = vi.fn();
     vi.spyOn(stage, "getBoundingClientRect").mockReturnValue({
       left: 0,
@@ -216,6 +219,7 @@ describe("Upload workspace", () => {
   it("sends the chosen frame with the photo", async () => {
     renderPanel();
     await select();
+    await userEvent.click(screen.getByRole("tab", { name: /Appearance/ }));
     const image = screen.getByAltText("first");
     Object.defineProperties(image, {
       naturalWidth: { value: 1800 },
@@ -226,6 +230,8 @@ describe("Upload workspace", () => {
       await screen.findByRole("checkbox", { name: /show a frame/i }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Black" }));
+    expect(document.querySelector(".frame-fields__preview")).toBeNull();
+    expect(document.querySelector(".upload-photo-border")).toHaveStyle({ background: "#1b1b1b" });
     await userEvent.click(
       screen.getAllByRole("button", { name: "Upload All (1)" })[0],
     );
@@ -240,6 +246,7 @@ describe("Upload workspace", () => {
   it("sends the border to remove and edits the photo without it", async () => {
     renderPanel();
     await select();
+    await userEvent.click(screen.getByRole("tab", { name: /Appearance/ }));
     const image = screen.getByAltText("first");
     Object.defineProperties(image, {
       naturalWidth: { value: 1800 },
@@ -255,7 +262,7 @@ describe("Upload workspace", () => {
     await waitFor(
       () =>
         expect(
-          screen.getByTestId("frame-preview").querySelector("img"),
+          screen.getByTestId("upload-frame-preview").querySelector("img"),
         ).toHaveAttribute("src", "blob:trimmed"),
       { timeout: 2000 },
     );
@@ -289,6 +296,7 @@ it("retries variant linking without uploading a successful file again", async ()
   vi.mocked(manageCatalog.saveWork).mockRejectedValueOnce(new Error("Link unavailable")).mockResolvedValueOnce({id:"work",title:"Work",version:1,variants:[]});
   renderPanel();
   await select();
+  await userEvent.click(screen.getByRole("tab", { name: /Organization/ }));
   await userEvent.click(screen.getByText(/group another interpretation/));
   await userEvent.click(await screen.findByRole("radio", { name: "Original" }));
   await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -299,4 +307,48 @@ it("retries variant linking without uploading a successful file again", async ()
   await screen.findByRole("button", { name: "Uploaded" });
   expect(execute).toHaveBeenCalledTimes(1);
   expect(manageCatalog.saveWork).toHaveBeenCalledTimes(2);
+});
+
+it("moves through optional steps without publishing and keeps details when going back", async () => {
+  renderPanel();
+  await select();
+  await userEvent.clear(screen.getByLabelText("Title"));
+  await userEvent.type(screen.getByLabelText("Title"), "Lake at night");
+  expect(screen.getByRole("tabpanel")).toHaveAccessibleName("1 Details");
+  for (let index = 0; index < 4; index++) await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(screen.getByRole("tabpanel")).toHaveAccessibleName("5 Review");
+  expect(execute).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("tab", { name: /Details/ }));
+  expect(screen.getByLabelText("Title")).toHaveValue("Lake at night");
+  await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+  await waitFor(() => expect(execute).toHaveBeenCalledWith(expect.objectContaining({ title: "Lake at night" })));
+});
+it("supports keyboard navigation between preparation tabs", async () => {
+  renderPanel();
+  await select();
+  screen.getByRole("tab", { name: /Details/ }).focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(screen.getByRole("tab", { name: /Appearance/ })).toHaveFocus();
+  await userEvent.keyboard("{End}");
+  expect(screen.getByRole("tabpanel")).toHaveAccessibleName("5 Review");
+});
+
+it("expands the shared photo without losing edits or highlights", async () => {
+  renderPanel();
+  await select();
+  await userEvent.type(screen.getByLabelText(/Description/), "Night on the lake");
+  await userEvent.click(screen.getByRole("button", { name: /Expand photo/ }));
+  expect(screen.getByRole("article")).toHaveAttribute("data-expanded");
+  await userEvent.click(screen.getByRole("tab", { name: /Review/ }));
+  const summary = screen.getByRole("region", { name: "Upload summary" });
+  expect(summary).toHaveTextContent("Night on the lake");
+  expect(summary).toHaveTextContent("No frame");
+  expect(summary).toHaveTextContent("Public · Gallery");
+  const inspector = document.querySelector(".upload-fields") as HTMLElement;
+  inspector.scrollTop = 100;
+  await userEvent.click(within(summary).getByRole("button", { name: "Edit the photograph" }));
+  expect(inspector.scrollTop).toBe(0);
+  expect(screen.getByLabelText(/Description/)).toHaveValue("Night on the lake");
+  await userEvent.click(screen.getByRole("button", { name: /Compact view/ }));
+  expect(screen.getByRole("article")).not.toHaveAttribute("data-expanded");
 });
