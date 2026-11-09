@@ -14,7 +14,11 @@ import {
 } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { usePathname } from "next/navigation";
-import { diffChanges, revertChange } from "@/src/ui/changeSummary";
+import {
+  changedFields,
+  diffChanges,
+  revertChange,
+} from "@/src/ui/changeSummary";
 import { ChangeReview, decisionKey, ReviewedEditor } from "./ChangeReview";
 
 // What an editor edits, when it can say so: the saved version, the draft and a way to
@@ -25,9 +29,26 @@ export type EditorDocument = {
   draft: unknown;
   restore: (draft: unknown) => void;
 };
+/** What a save reports: `true` once saved; `false`, or why, when it was not. */
+export type SaveOutcome = boolean | { error: string };
+const savedOf = (outcome: SaveOutcome) => outcome === true;
+
+/** The words for a save that failed: which editor, which of its fields and why, so
+ *  the save bar and the leaving dialog never just say that something went wrong. */
+export function saveFailureMessage(
+  label: string,
+  fields: string[],
+  reason: string,
+) {
+  const what = fields.length ? ` (${fields.join(", ")})` : "";
+  const why = reason.trim().replace(/\.$/, "");
+  return why
+    ? `“${label}”${what} was not saved: ${why}.`
+    : `“${label}”${what} was not saved. Its editor says why.`;
+}
 type Editor = {
   label: string;
-  save: () => Promise<boolean>;
+  save: () => Promise<SaveOutcome>;
   discard: () => void;
   document?: EditorDocument;
 };
@@ -147,11 +168,28 @@ export function useUnsavedEditor(dirty: boolean, editor: Editor) {
   }, [draftJson, id, record, forget, consumeSkip]);
   // Nothing pending: nothing to review, and the editor saves as it always did.
   return {
-    review: () => (dirty ? review([id]) : latest.current.save()),
+    review: () =>
+      dirty ? review([id]) : latest.current.save().then(savedOf),
   };
 }
 
 const navigateTo = (url: string) => window.location.assign(url);
+
+// Saves one editor; null when it saved, otherwise what failed in words. The fields are
+// read before saving, while the draft still differs from what was saved.
+async function attemptSave(editor: RegisteredEditor): Promise<string | null> {
+  const document = editor.document();
+  const fields = document ? changedFields(document.original, document.draft) : [];
+  const outcome = await editor.save();
+  if (savedOf(outcome)) return null;
+  return saveFailureMessage(
+    editor.label,
+    fields,
+    typeof outcome === "object" ? outcome.error : "",
+  );
+}
+const KEPT = "Your drafts are still here.";
+const failureText = (failures: string[]) => `${failures.join(" ")} ${KEPT}`;
 
 // Fields whose own undo handles Ctrl+Z.
 const TEXT_FIELDS =
@@ -188,7 +226,6 @@ export function EditingWorkspace({
   const [question, setQuestion] = useState<Question | null>(null);
   const [leaving, setLeaving] = useState<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const allowed = useRef(false);
   const questionRef = useRef<Question | null>(null);
   const [labels, setLabels] = useState<string[]>([]);
@@ -291,31 +328,39 @@ export function EditingWorkspace({
       syncLabels();
     };
   }, [syncLabels]);
+  // Every editor is tried, so one refusal does not hold back the others; the message
+  // names each one that failed. It stays until the next outcome replaces it.
+  const saveEvery = useCallback(async (): Promise<string> => {
+    const failures: string[] = [];
+    try {
+      for (const editor of Array.from(editors.current.values())) {
+        const failure = await attemptSave(editor);
+        if (failure) failures.push(failure);
+      }
+    } catch {
+      failures.push("The changes could not be sent to the API.");
+    }
+    return failures.length ? failureText(failures) : "";
+  }, []);
   const saveAll = useCallback(async () => {
     setSaving(true);
-    setSaveError("");
     try {
-      for (const editor of Array.from(editors.current.values()))
-        if (!(await editor.save())) {
-          setSaveError(
-            "Some changes could not be saved. Your drafts are still here.",
-          );
-          return false;
-        }
-      return true;
-    } catch {
-      setSaveError("Could not save all changes. Your drafts are still here.");
-      return false;
+      const failure = await saveEvery();
+      setSaveError(failure);
+      return !failure;
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [saveEvery]);
+  // Nothing pending, nothing left to report.
+  useEffect(() => {
+    if (!labels.length) queueMicrotask(() => setSaveError(""));
+  }, [labels.length]);
   const requestExit = useCallback((action: () => void) => {
     if (!editors.current.size) {
       action();
       return;
     }
-    setError("");
     setLeaving(() => action);
   }, []);
   const context = useMemo(
@@ -393,7 +438,7 @@ export function EditingWorkspace({
   async function confirmReview() {
     setReviewBusy(true);
     setReviewError("");
-    setSaveError("");
+    const failures: string[] = [];
     try {
       for (const item of reviewed) {
         const editor = editors.current.get(item.id);
@@ -422,16 +467,12 @@ export function EditingWorkspace({
           // Lets the editor render the kept draft before it saves it.
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
-        // A failed save keeps its draft; the editor and the save bar say so.
-        if (!(await editor.save())) {
-          setSaveError(
-            "Some changes could not be saved. Your drafts are still here.",
-          );
-          closeReview(false);
-          return;
-        }
+        // A failed save keeps its draft; the editor and the save bar say why.
+        const failure = await attemptSave(editor);
+        if (failure) failures.push(failure);
       }
-      closeReview(true);
+      setSaveError(failures.length ? failureText(failures) : "");
+      closeReview(!failures.length);
     } catch {
       setReviewError("Could not save the changes. Your drafts are still there.");
       setReviewBusy(false);
@@ -477,7 +518,6 @@ export function EditingWorkspace({
         return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      setError("");
       setLeaving(() => () => {
         navigate(target.href);
       });
@@ -496,7 +536,6 @@ export function EditingWorkspace({
       if (!locationRef.current || target === locationRef.current.url) return;
       event.stopImmediatePropagation();
       history.pushState(locationRef.current.state, "", locationRef.current.url);
-      setError("");
       setLeaving(() => () => {
         navigate(target);
       });
@@ -572,9 +611,15 @@ export function EditingWorkspace({
             </h2>
             <p>
               {question?.message ??
-                "You have unsaved photo or collection changes. Save all before leaving, keep editing, or leave without saving."}
+                `Unsaved changes in ${labels.map((label) => `“${label}”`).join(", ")}. Save them before leaving, keep editing, or leave without saving.`}
             </p>
-            {error && <p role="alert">{error}</p>}
+            {/* The last failure stays put while a new attempt runs, so the dialog
+                never blinks; only the next outcome replaces it. */}
+            {!question && saveError && (
+              <p role="alert" className={styles.failure}>
+                {saveError} Cancel to fix it in its editor.
+              </p>
+            )}
             <div className={styles.actions}>
               {question ? (
                 <button
@@ -593,23 +638,10 @@ export function EditingWorkspace({
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true);
-                    setError("");
                     try {
-                      for (const editor of Array.from(
-                        editors.current.values(),
-                      )) {
-                        if (!(await editor.save())) {
-                          setError(
-                            "Some changes could not be saved. Your drafts are still here. Cancel to review the affected editor.",
-                          );
-                          return;
-                        }
-                      }
-                      leave();
-                    } catch {
-                      setError(
-                        "Could not save all changes. Your drafts are still here.",
-                      );
+                      const failure = await saveEvery();
+                      setSaveError(failure);
+                      if (!failure) leave();
                     } finally {
                       setBusy(false);
                     }

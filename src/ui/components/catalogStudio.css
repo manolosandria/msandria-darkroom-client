@@ -67,7 +67,7 @@
 .studio-thumbnail--private::after { content: "!"; position: absolute; top: 4px; right: 4px; width: 1.2rem; height: 1.2rem; display: grid; place-items: center; border-radius: 50%; background: #d08a12; color: #fff; font-size: .75rem; font-weight: 800; }
 .studio-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .studio-toolbar h3 { flex: 1; min-width: 10rem; }
-.studio-dirty { font-size: .8rem; color: #8a5d0b; background: #fff5dc; padding: .2rem .6rem; border-radius: 1rem; }
+.studio-dirty { flex: none; width: max-content; white-space: nowrap; font-size: .8rem; color: #8a5d0b; background: #fff5dc; padding: .2rem .6rem; border-radius: 1rem; }
 .catalog-editor .studio-back { border: 0; padding: .35rem .2rem; color: #4d6b3a; font-weight: 600; background: none; justify-self: start; }
 .catalog-editor .studio-back:not(:disabled):hover { background: none; text-decoration: underline; }
 .catalog-editor .studio-save { position: relative; overflow: hidden; padding: .7rem 1.4rem; border: 0; border-radius: .6rem; color: #fff; font-weight: 700; letter-spacing: .01em; background: linear-gradient(135deg, #4f7a3c, #2f4f2a); box-shadow: 0 4px 14px -4px #2f4f2aaa; }

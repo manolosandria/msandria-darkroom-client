@@ -46,3 +46,14 @@
   background: #fff5dc;
   color: #65470c;
 }
+
+/* A save that failed: what, where and why, apart from the instructions above it. */
+.failure {
+  margin-top: .75rem;
+  padding: .7rem .8rem;
+  border-left: 3px solid #b0443a;
+  border-radius: .25rem;
+  background: #fdf0ee;
+  color: #6f2a22;
+  overflow-wrap: anywhere;
+}

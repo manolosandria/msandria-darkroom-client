@@ -42,6 +42,12 @@ export function SessionProvider({ children, ports = defaultPorts }: Props) {
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
 }
 
+/** The session when a provider is above, or null: for controls that only add to a page
+ *  that also renders without one. */
+export function useOptionalSessionValue(): Session | null {
+  return useContext(SessionContext);
+}
+
 export function useSessionValue(): Session {
   const session = useContext(SessionContext);
   if (!session) {

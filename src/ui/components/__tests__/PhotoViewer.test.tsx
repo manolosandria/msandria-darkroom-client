@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PhotoViewer from "../PhotoViewer";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -14,6 +14,11 @@ vi.mock("../PhotoComments", () => ({
   PhotoComments: ({ photoId }: { photoId: string }) => <section aria-label="Comments">{photoId}</section>,
 }));
 vi.mock("../PhotoReactions", () => ({ PhotoReactions: () => null }));
+// Signed out by default; a test signs the administrator in.
+const session: { user: { isAdmin: () => boolean } | null } = { user: null };
+vi.mock("../SessionProvider", () => ({
+  useOptionalSessionValue: () => session,
+}));
 
 function makePhoto(id: string, frame?: ReturnType<Photo["getFrame"]>) {
   return new Photo({
@@ -47,6 +52,7 @@ function setup(id = "b", frame?: ReturnType<Photo["getFrame"]>) {
 
 describe("PhotoViewer", () => {
   beforeEach(() => {
+    session.user = null;
     push.mockReset();
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -335,6 +341,58 @@ describe("PhotoViewer", () => {
     await user.click(screen.getByRole("button", { name: "Close photo information" }));
     expect(screen.queryByRole("complementary", { name: "Photo information" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show photo information" })).toBeInTheDocument();
+  });
+
+  it("shows a highlight chosen in the panel instead of the whole photo", async () => {
+    const user = userEvent.setup();
+    // 3000 × 2000: a 2:3 portrait crop is a third of the width and the full height.
+    const photo = new Photo({
+      id: "b",
+      title: "Photo b",
+      width: 3000,
+      height: 2000,
+      renditions: [{ width: 1920, url: "https://cdn/b/1920" }],
+      highlights: { portrait: { x: 0.25, y: 0, width: 4 / 9, height: 1 } },
+    });
+    render(
+      <PhotoViewer
+        photoId="b"
+        getPhoto={{ execute: vi.fn().mockResolvedValue(photo) }}
+        getAllPhotos={{ execute: vi.fn().mockResolvedValue([photo]) }}
+      />,
+    );
+    await screen.findByAltText("Photo b");
+    await user.click(screen.getByRole("button", { name: "Show photo information" }));
+    await user.click(
+      screen.getByRole("button", { name: "Show the Portrait highlight in the viewer" }),
+    );
+    const box = screen.getByTestId("photo-highlight");
+    expect(screen.queryByTestId("photo-frame")).not.toBeInTheDocument();
+    const image = within(box).getByAltText("Photo b");
+    expect(parseFloat(image.style.width)).toBeCloseTo(225);
+    expect(parseFloat(image.style.left)).toBeCloseTo(-56.25);
+    expect(parseFloat(image.style.height)).toBeCloseTo(100);
+
+    await user.click(screen.getByRole("button", { name: /Show the whole photo$/ }));
+    expect(screen.getByTestId("photo-frame")).toBeInTheDocument();
+    expect(screen.queryByTestId("photo-highlight")).not.toBeInTheDocument();
+  });
+
+  it("offers the administrator alone a way to edit the photo in Curator", async () => {
+    setup("b");
+    await screen.findByAltText("Photo b");
+    expect(
+      screen.queryByRole("link", { name: "Edit this photo in Curator" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("links the administrator to the photo's editor in Curator", async () => {
+    session.user = { isAdmin: () => true };
+    setup("b");
+    await screen.findByAltText("Photo b");
+    expect(
+      screen.getByRole("link", { name: "Edit this photo in Curator" }),
+    ).toHaveAttribute("href", "/curator?section=Photos&photo=b");
   });
 
   it("closes the panel with Escape before leaving the photo", async () => {

@@ -171,6 +171,12 @@
   }
 }
 
+/* The pages Curator gathers keep their own top margin when they stand alone; inside a
+   panel the header is right above, so the work starts close under it. */
+.curator-panel .upload-workspace {
+  padding-top: 1.25rem;
+}
+
 /* Inside Curator the tab already names the screen: the big page headings shrink to
    one line so the work starts at the top of the panel. */
 @media (min-width: 900px) {

@@ -35,7 +35,7 @@ Feature: Editing the current version of a photo
 
   Scenario: Arrange the inspector's sections
     Given I am editing a photo
-    Then every section shows as a tile in an even grid under the title and its Save button
+    Then every section shows as a tile in an even grid under the title
     And the tile of the section I am reading is marked as I scroll
     When I hide Frame and Variants from the Sections menu
     Then their tiles and sections disappear without losing their edits
@@ -43,6 +43,14 @@ Feature: Editing the current version of a photo
     And Details cannot be hidden, because it holds the required title
     When I choose Show all sections
     Then every section is back
+
+  Scenario: Fold the section tabs and the strip of photos
+    Given I am editing a photo
+    When I choose Hide tabs
+    Then the grid of section tabs folds away and the button names the section on show
+    When I choose Hide photos
+    Then the strip of photos and its filters fold away above the stage
+    And both stay folded the next time I open the Photos editor in this browser
 
   Scenario: Expand and collapse every section at a glance
     Given I am editing a photo with some sections open

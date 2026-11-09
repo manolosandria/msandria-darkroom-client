@@ -96,6 +96,46 @@ beforeEach(() => {
 });
 
 describe("ManagePhotos", () => {
+  it("opens the photo a link names and forgets it from the address", async () => {
+    resetHiddenSectionsForTests();
+    window.history.replaceState(null, "", "/curator?section=Photos&photo=photo");
+    show();
+    expect(await screen.findByLabelText("Title")).toHaveValue("The coast");
+    expect(window.location.search).toBe("?section=Photos");
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("folds the strip of photos and the section tabs out of the way, and remembers it", async () => {
+    resetHiddenSectionsForTests();
+    window.localStorage.clear();
+    const user = userEvent.setup();
+    show();
+    await user.click(await screen.findByRole("button", { name: "The coast" }));
+    await screen.findByLabelText("Title");
+    const strip = screen.getByRole("button", { name: "Hide photos" });
+    expect(strip).toHaveAttribute("aria-expanded", "true");
+    await user.click(strip);
+    expect(
+      screen.queryByRole("navigation", { name: "Published photos" }),
+    ).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("photoStripFolded")).toBe("true");
+    await user.click(screen.getByRole("button", { name: "Show photos" }));
+    expect(
+      screen.getByRole("navigation", { name: "Published photos" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hide tabs" }));
+    expect(
+      screen.queryByRole("navigation", { name: "Photo sections" }),
+    ).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("photoInspectorTabsFolded")).toBe("true");
+    // Folded, the button names the section on show and unfolds the tabs.
+    await user.click(screen.getByRole("button", { name: /Details, show the section tabs/ }));
+    expect(
+      screen.getByRole("navigation", { name: "Photo sections" }),
+    ).toBeInTheDocument();
+  });
+
   it("filters the library by title, category and camera inside its scrolling card", async () => {
     const shot = (id: string, title: string, make: string, model: string) =>
       new Photo({
@@ -155,9 +195,10 @@ describe("ManagePhotos", () => {
       await screen.findByRole("button", { name: "The coast" }),
     );
     await userEvent.type(await screen.findByLabelText("Title"), " unsaved");
+    // Saving lives in the save bar and at the foot of the form, not over the tabs.
     expect(
       screen.getAllByRole("button", { name: "Save changes" }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Other photo" }));
     expect(await screen.findByLabelText("Title")).toHaveValue("Other photo");
     await userEvent.click(screen.getByRole("button", { name: "The coast" }));

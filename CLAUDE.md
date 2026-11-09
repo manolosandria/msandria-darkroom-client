@@ -276,7 +276,14 @@ draws where they will go. Deploy the API's `20261104000000_photo_variant_positio
 migration before this client.
 
 The info panel also lists the photo's **Highlights**, each crop in its own shape; choosing
-one shows it large under the row, and choosing it again folds it.
+one shows it in the viewer instead of the whole photo (a box of the crop's own proportion,
+without the frame), with a chip over it naming the highlight that brings the whole photo
+back, as does choosing it again. Another photo always opens whole.
+
+For the administrator, a pencil beside the ⓘ button opens
+`/curator?section=Photos&photo=<id>`: Curator's Photos tab with that photo in its editor.
+`ManagePhotos` reads `photo` once the library has loaded and drops it from the address.
+Visitors never see the pencil (`useOptionalSessionValue`; the API decides what is allowed).
 
 ## Responsive photo delivery
 
@@ -468,11 +475,21 @@ still under reduced motion. **Dashboard**
 and each count opens its tab. Older remembered tab names still open their new place.
 
 `CuratorSaveBar` is a small card floating in the bottom-right corner while any editor
-has unsaved changes: it names them and offers **Save** (**Save all** for several) and
+has unsaved changes: an **Unsaved** badge that always reads whole, the editors' names
+(which give way to an ellipsis), and **Save** (**Save all** for several), **Undo** and
 **Cancel** through `EditingWorkspace` (`usePendingEdits`) as colored icons (green saves,
-neutral cancels). Folded, it is one round green button with the count that brings it
-back; the choice is kept in `localStorage` under `curatorSaveBarHidden` (guarded,
-falling back to memory). An editor registers with `useUnsavedEditor` once while dirty
+blue undoes, and Cancel is a cross so it never looks like Undo's arrow). The fold button
+is as large as the others and drawn with a border. Folded, it is one round green button
+with the count that brings it back; the choice is kept in `localStorage` under
+`curatorSaveBarHidden` (guarded, falling back to memory).
+
+A failed save says what failed: an editor's `save` returns `true`, `false` or
+`{ error }`, and `EditingWorkspace` turns that into "“Araña” (Highlights) was not saved:
+<reason>." (`saveFailureMessage`, with the top-level fields the draft changed from
+`changedFields`). Every editor is tried, so one refusal does not hold back the others.
+The save bar shows the message on a row of its own, and the leaving dialog names the
+editors with unsaved changes and keeps the last failure on screen while a new attempt
+runs, until its outcome replaces it. Photos returns the API's own words. An editor registers with `useUnsavedEditor` once while dirty
 and its latest callbacks are read when used, so its renders never churn the bar.
 Home, Gallery and Palettes keep their own **Save**, **Cancel changes** and **Restore
 original** (`EditorActions`) as icons on the line of their heading instead of a block
@@ -657,16 +674,22 @@ Variants, Frame, Highlights, File) show one at a time, as tabs, by default; **Al
 one scroll** shows them all as disclosures instead (kept per visitor in `localStorage`
 under `photoInspectorView`, guarded). Hidden tabs keep their edits, and saving without
 a title returns to Details. Its sticky header (`PhotoSectionBar`)
-puts the title with Save and Cancel on one line, then an even grid of icon tiles, one per
-section, at most two rows: a tile opens and scrolls to its section, the one being read is
+puts the title and the **Unsaved** badge on one line (saving is the save bar's, and the
+form's foot keeps **Save changes** and **Cancel changes**), then an even grid of icon
+tiles, one per section, at most two rows: a tile opens and scrolls to its section, the one being read is
 marked as the page scrolls, and a dot marks each open one. **Expand all**/**Collapse
 all** are icon buttons around a meter of how many are open, each disabled when it would
 change nothing. **Sections** hides the ones a curator does not use (Details, which holds
 the required title, always stays); hidden sections keep their state, the choice is kept
 per visitor in `localStorage` under `photoInspectorHiddenSections` (guarded, falling back
 to memory), and pending file issues in a hidden section show on that button. Arrow keys,
-Home and End move between tiles. On phones the header scrolls with the form. Variants
-mounts on first opening, so its catalog loads only then.
+Home and End move between tiles. **Hide tabs** folds the grid away (the button then
+names the section on show and unfolds it), kept under `photoInspectorTabsFolded`; while a
+photo is open, **Hide photos** folds the library's strip and its filters, kept under
+`photoStripFolded` (both guarded, `readFolded`/`writeFolded`). On phones the header
+scrolls with the form. Variants mounts on first opening, so its catalog loads only then.
+Inside Curator the gathered pages start close under the header (`.curator-panel
+.upload-workspace`).
 
 `PhotoClassificationFields` exports its parts (`PhotoVisibilityField`,
 `PhotoCategoryField`, `PhotoCollectionField`); Upload still uses the whole set.
@@ -1015,7 +1038,8 @@ properties stays under **Containers and keyboard arrangement**, and the category
 page menu beside the account. Curator's tabs show and hide from one button
 naming the current group and tab; every screen starts with them hidden (the pill's **Show Curator's tabs** opens them; narrow screens show them as
 a centered column, every group with its tabs, and choosing one folds them again.
-`/curator?section=<tab>` opens that tab: the account menu's **Admin** label opens
+`/curator?section=<tab>` opens that tab (with `&photo=<id>` on Photos, that photo's
+editor): the account menu's **Admin** label opens
 Dashboard.
 
 Folded, the tabs leave nothing behind: the lit pill beside the account names the open

@@ -76,6 +76,20 @@ Feature: Photo viewer
     When the visitor presses Escape
     Then the panel closes and the photo stays open
 
+  Scenario: Showing a highlight instead of the photo
+    Given a photo with a portrait highlight is open with its info panel
+    When the visitor chooses Portrait under Highlights
+    Then the viewer shows exactly that crop, in its 2:3 proportion, instead of the whole photo
+    And a chip over it names the highlight and brings the whole photo back
+    When the visitor chooses Portrait again
+    Then the whole photo returns in its frame
+
+  Scenario: The administrator edits the photo from the viewer
+    Given the administrator is signed in and a photo is open
+    When they press the pencil beside the information button
+    Then Curator opens on Photos with that photo in its editor
+    And visitors never see the pencil
+
   Scenario: The info panel stays open between photos
     Given the info panel is open
     When the visitor moves to the next photo

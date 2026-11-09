@@ -87,3 +87,15 @@ export function previewValue(value: unknown): string {
 /** Whether a value looks like a colour, to show a swatch beside it. */
 export const isColor = (value: unknown): value is string =>
   typeof value === "string" && /^#[0-9a-f]{3,8}$/i.test(value);
+
+/** The top-level fields a draft changed, in words ("Highlights", "Title"), to say what
+ *  a failed save was carrying. */
+export function changedFields(original: unknown, draft: unknown): string[] {
+  return [
+    ...new Set(
+      diffChanges(original, draft)
+        .filter((change) => change.path.length)
+        .map((change) => words(change.path[0])),
+    ),
+  ];
+}

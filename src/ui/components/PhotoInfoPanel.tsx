@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { Photo } from "@/src/domain/entities/Photo";
 import { photoDetails } from "@/src/ui/photoDetails";
 import { HighlightView, highlightViews } from "@/src/ui/highlightViews";
@@ -10,12 +9,20 @@ import { PhotoReactions } from "./PhotoReactions";
 interface PhotoInfoPanelProps {
   photo: Photo;
   onClose: () => void;
+  /** The highlight the viewer shows instead of the whole photo, if any. */
+  highlight?: string | null;
+  onHighlightChange?: (key: string | null) => void;
 }
 
 // The viewer's side panel, a white column of its own beside the photo, top to bottom:
 // title, description, the details recorded when the photo was taken and the comments.
 // Ratings will go between the details and the comments when they exist.
-export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
+export function PhotoInfoPanel({
+  photo,
+  onClose,
+  highlight = null,
+  onHighlightChange = () => {},
+}: PhotoInfoPanelProps) {
   const description = photo.getDescription();
   const details = photoDetails(photo.getMetadata());
 
@@ -61,20 +68,31 @@ export function PhotoInfoPanel({ photo, onClose }: PhotoInfoPanelProps) {
         )}
       </section>
 
-      <PhotoHighlightsSection key={`highlights:${photo.getId()}`} photo={photo} />
+      <PhotoHighlightsSection
+        photo={photo}
+        open={highlight}
+        onChoose={onHighlightChange}
+      />
 
       <PhotoComments key={photo.getId()} photoId={photo.getId()} />
     </aside>
   );
 }
 
-// The crops the photographer chose for the thumbnails, each in its own shape. Choosing one
-// shows it large under the row; choosing it again folds it.
-function PhotoHighlightsSection({ photo }: { photo: Photo }) {
+// The crops the photographer chose for the thumbnails, each in its own shape. Choosing
+// one shows it in the viewer instead of the whole photo; choosing it again brings the
+// whole photo back.
+function PhotoHighlightsSection({
+  photo,
+  open,
+  onChoose,
+}: {
+  photo: Photo;
+  open: string | null;
+  onChoose: (key: string | null) => void;
+}) {
   const views = highlightViews(photo.getHighlights());
-  const [open, setOpen] = useState<string | null>(null);
   if (!views.length) return null;
-  const shown = views.find((view) => view.key === open);
   const ratio = (view: HighlightView) =>
     (photo.getAspectRatio() * view.crop.width) / view.crop.height;
   return (
@@ -86,8 +104,12 @@ function PhotoHighlightsSection({ photo }: { photo: Photo }) {
             <button
               type="button"
               aria-pressed={open === view.key}
-              aria-label={`Show the ${view.label} highlight`}
-              onClick={() => setOpen(open === view.key ? null : view.key)}
+              aria-label={
+                open === view.key
+                  ? `Show the whole photo instead of the ${view.label} highlight`
+                  : `Show the ${view.label} highlight in the viewer`
+              }
+              onClick={() => onChoose(open === view.key ? null : view.key)}
             >
               <span
                 className="photo-viewer__highlight-image"
@@ -106,20 +128,6 @@ function PhotoHighlightsSection({ photo }: { photo: Photo }) {
           </li>
         ))}
       </ul>
-      {shown && (
-        <figure className="photo-viewer__highlight-large">
-          <span style={{ aspectRatio: `${ratio(shown)}` }}>
-            <PhotoImage
-              photo={photo}
-              maxWidth={960}
-              fallbackSizes="360px"
-              className="object-cover"
-              crop={shown.crop}
-            />
-          </span>
-          <figcaption>{shown.label}</figcaption>
-        </figure>
-      )}
     </section>
   );
 }

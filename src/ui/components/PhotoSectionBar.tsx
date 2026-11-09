@@ -1,6 +1,7 @@
 "use client";
 import "./photoSectionBar.css";
 import { useEffect, useId, useRef, useState } from "react";
+import { readFolded, writeFolded } from "@/src/ui/photoSectionPreference";
 
 export type SectionBarItem = {
   id: string;
@@ -109,6 +110,14 @@ export function PhotoSectionBar({
   const menu = useRef<HTMLDivElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  const gridId = useId();
+  // The grid of tabs can fold away to give the form the room; the choice is kept.
+  const [folded, setFolded] = useState(() => readFolded("photoInspectorTabsFolded"));
+  const fold = (next: boolean) => {
+    setFolded(next);
+    writeFolded("photoInspectorTabsFolded", next);
+  };
+  const currentLabel = sections.find((item) => item.id === current)?.label;
   const hiddenBadges = sections
     .filter((item) => hidden.includes(item.id))
     .reduce((sum, item) => sum + (item.badge ?? 0), 0);
@@ -160,7 +169,12 @@ export function PhotoSectionBar({
 
   return (
     <div className="section-bar">
-      <nav className="section-bar__nav" aria-label="Photo sections">
+      <nav
+        id={gridId}
+        className="section-bar__nav"
+        aria-label="Photo sections"
+        hidden={folded}
+      >
         <ul
           className="section-bar__grid"
           // Two even rows at most: eight sections make four columns, never a ragged wrap.
@@ -207,6 +221,22 @@ export function PhotoSectionBar({
         role="group"
         aria-label="Section display"
       >
+        <button
+          type="button"
+          className="section-bar__fold-tabs"
+          aria-expanded={!folded}
+          aria-controls={gridId}
+          title={folded ? "Show the section tabs" : "Fold the section tabs away"}
+          onClick={() => fold(!folded)}
+        >
+          <Icon>
+            <path d={folded ? "M5 8l5 5 5-5" : "M5 12l5-5 5 5"} />
+          </Icon>
+          <span>{folded ? (currentLabel ?? "Sections") : "Hide tabs"}</span>
+          <span className="sr-only">
+            {folded ? ", show the section tabs" : ""}
+          </span>
+        </button>
         {onViewChange && (
           <div
             className="section-bar__view"
