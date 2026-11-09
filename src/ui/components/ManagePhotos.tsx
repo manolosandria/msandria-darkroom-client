@@ -1,5 +1,6 @@
 "use client";
 import "./catalogStudio.css";
+import "./photoBrowser.css";
 import "./photoStudio.css";
 
 import styles from "./EditorFeedback.module.css";
@@ -69,6 +70,7 @@ import {
   PhotoVisibilityField,
 } from "./PhotoClassificationFields";
 import { EmptyState } from "./EmptyState";
+import { VISIBILITY_LABELS, VisibilityBadge } from "./PhotoBadges";
 import { FileBorderTrim } from "./BorderTrimFields";
 import { BorderTrim } from "@/src/domain/borderTrim";
 import { highlightViews, missingHighlights } from "@/src/ui/highlightViews";
@@ -86,13 +88,6 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   TOP_RIGHT: "Top right",
 };
 
-const VISIBILITY_LABELS: Record<PhotoVisibility, string> = {
-  PUBLIC: "Public",
-  COLLECTIONS_ONLY: "Collections only",
-  POSTS_ONLY: "Posts only",
-  PRIVATE: "Private",
-  SELECT: "Select",
-};
 
 export default function ManagePhotos() {
   const session = useSessionValue();
@@ -580,18 +575,7 @@ function LibraryItem({
   const pending = alerts.length;
   const badges = (
     <span className="photo-browser__badges" aria-hidden="true">
-      {visibility !== "PUBLIC" && (
-        <span
-          data-visibility={visibility}
-          title={VISIBILITY_LABELS[visibility]}
-        >
-          {visibility === "PRIVATE"
-            ? "🔒"
-            : visibility === "SELECT"
-              ? "★"
-              : "▣"}
-        </span>
-      )}
+      <VisibilityBadge visibility={visibility} />
       {pending > 0 && (
         <span
           data-warning

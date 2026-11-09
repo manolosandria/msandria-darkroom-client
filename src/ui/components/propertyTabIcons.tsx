@@ -70,6 +70,31 @@ export const propertyTabIcons: Record<string, ReactNode> = {
     </>,
   ),
   Introduction: icon(<path d="M5 5h14M5 9h14M5 13h9M5 17h6" />),
+  Piece: icon(
+    <>
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      <rect x="13" y="13" width="8" height="8" rx="1" strokeDasharray="2 2" />
+      <path d="M14 7h5m0 0-2-2m2 2-2 2" />
+    </>,
+  ),
+  Details: icon(
+    <>
+      <path d="M6 3h9l4 4v14H6Z" />
+      <path d="M14 3v5h5M9 12h7M9 16h5" />
+    </>,
+  ),
+  Categories: icon(
+    <>
+      <path d="M3 12V4h8l10 10-8 8L3 12Z" />
+      <circle cx="7.5" cy="8" r="1.4" />
+    </>,
+  ),
+  Display: icon(
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+    </>,
+  ),
   Visitors: icon(
     <>
       <circle cx="9" cy="8" r="3" />

@@ -1,9 +1,11 @@
 "use client";
 import "./catalogStudio.css";
+import "./photoBrowser.css";
 import "./photoStudio.css";
 import { useEffect, useId, useRef, useState } from "react";
 import { Catalog, WorkDraft } from "@/src/domain/entities/Catalog";
 import { Photo, PhotoVisibility } from "@/src/domain/entities/Photo";
+import { VISIBILITY_LABELS, VisibilityBadge } from "./PhotoBadges";
 import { useLiveSort } from "@/src/ui/hooks/useLiveSort";
 import { PhotoImage } from "./PhotoImage";
 import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
@@ -22,14 +24,6 @@ const LIBRARY_VIEWS: { value: LibraryView; label: string }[] = [
   { value: "list", label: "List" },
   { value: "strip", label: "Filmstrip" },
 ];
-
-const VISIBILITY_LABELS: Record<PhotoVisibility, string> = {
-  PUBLIC: "Public",
-  COLLECTIONS_ONLY: "Collections only",
-  POSTS_ONLY: "Posts only",
-  PRIVATE: "Private",
-  SELECT: "Select",
-};
 
 /**
  * Works on the left, the open work in the middle and the photo library below. Photos
@@ -127,10 +121,7 @@ export function VariantStudio({
     const current = latest.current;
     change({
       ...current,
-      photoIds: [
-        ...ids,
-        ...current.photoIds.filter((id) => !ids.includes(id)),
-      ],
+      photoIds: [...ids, ...current.photoIds.filter((id) => !ids.includes(id))],
     });
   }
   function moveTo(from: number, to: number) {
@@ -144,7 +135,9 @@ export function VariantStudio({
   }
   function makeMain(photoId: string) {
     reorder([photoId, ...memberIds.filter((id) => id !== photoId)]);
-    setAnnouncement(`${photoOf(photoId)?.getTitle() ?? "Photo"} is now the main variant.`);
+    setAnnouncement(
+      `${photoOf(photoId)?.getTitle() ?? "Photo"} is now the main variant.`,
+    );
   }
   function addFiles(files: File[]) {
     const { added, refused } = uploads.add(files, {
@@ -165,8 +158,15 @@ export function VariantStudio({
   }
 
   const disabled = busy;
-  const { order, dragging, attachList, attachItem, itemStyle, gripProps, takeDrop } =
-    useLiveSort({ keys: memberIds, onMove: moveTo, disabled });
+  const {
+    order,
+    dragging,
+    attachList,
+    attachItem,
+    itemStyle,
+    gripProps,
+    takeDrop,
+  } = useLiveSort({ keys: memberIds, onMove: moveTo, disabled });
   const library = filterPhotos(photos, filter, catalog);
   const filePicker = (
     <input
@@ -192,7 +192,9 @@ export function VariantStudio({
           aria-pressed={!workId}
           onClick={() => onOpen("")}
         >
-          <span className="variant-studio__work-cover variant-card__new">＋</span>
+          <span className="variant-studio__work-cover variant-card__new">
+            ＋
+          </span>
           <span>
             <strong>New work</strong>
             <small>Bring photographs together</small>
@@ -241,7 +243,9 @@ export function VariantStudio({
               maxLength={160}
               value={work.title}
               placeholder="Name the work"
-              onChange={(event) => onChange({ ...work, title: event.target.value })}
+              onChange={(event) =>
+                onChange({ ...work, title: event.target.value })
+              }
             />
           </label>
           <span className="variant-studio__count" aria-live="polite">
@@ -309,7 +313,9 @@ export function VariantStudio({
                       {index + 1}
                     </span>
                     {main && (
-                      <span className="variant-studio__cover-badge">★ Main</span>
+                      <span className="variant-studio__cover-badge">
+                        ★ Main
+                      </span>
                     )}
                   </button>
                   <div className="variant-studio__member-caption">
@@ -451,7 +457,9 @@ export function VariantStudio({
                 <li
                   key={photo.getId()}
                   draggable={!grouped && !chosen && !disabled}
-                  data-state={grouped ? "grouped" : chosen ? "chosen" : undefined}
+                  data-state={
+                    grouped ? "grouped" : chosen ? "chosen" : undefined
+                  }
                   onDragStart={(event) => {
                     event.dataTransfer.setData(PHOTO_DRAG, photo.getId());
                     event.dataTransfer.effectAllowed = "copy";
@@ -474,7 +482,18 @@ export function VariantStudio({
                         className="object-cover"
                         crop={photo.getHighlights().square}
                       />
-                      <span className="variant-studio__pick-mark" aria-hidden="true">
+                      <span
+                        className="photo-browser__badges"
+                        aria-hidden="true"
+                      >
+                        <VisibilityBadge
+                          visibility={photo.getClassification().visibility}
+                        />
+                      </span>
+                      <span
+                        className="variant-studio__pick-mark"
+                        aria-hidden="true"
+                      >
                         {chosen ? "✓" : grouped ? "⛓" : "+"}
                       </span>
                     </span>
@@ -486,7 +505,11 @@ export function VariantStudio({
                       {view === "list" && (
                         <>
                           <span className="variant-studio__pick-meta">
-                            {VISIBILITY_LABELS[photo.getClassification().visibility]}
+                            {
+                              VISIBILITY_LABELS[
+                                photo.getClassification().visibility
+                              ]
+                            }
                           </span>
                           <span className="variant-studio__pick-meta">
                             {grouped

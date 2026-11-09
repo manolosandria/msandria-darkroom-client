@@ -1,8 +1,9 @@
 "use client";
 
 import styles from "./EditorFeedback.module.css";
+import "./photoStudio.css";
 
-import { KeyboardEvent, useId, useState } from "react";
+import { ReactNode, useId, useState } from "react";
 import {
   Catalog,
   CatalogCollection,
@@ -13,26 +14,32 @@ import {
   CollectionTextStyle,
 } from "@/src/domain/entities/Catalog";
 import {
+  arrangePieces,
   CollectionBlock,
   DEFAULT_PHOTO_SIZE,
   DEFAULT_TEXT_SIZE,
+  flowPieces,
   MOBILE_MOSAIC_COLUMNS,
   MOSAIC_COLUMNS,
   MOSAIC_MAX_ROWS,
   mergeBlocks,
   mobileSpan,
+  MosaicCell,
   MosaicLayout,
   newTextKey,
   BlockPatch,
   PhotoBlock,
+  placePieces,
   splitBlocks,
+  spanIn,
   TextBlock,
-  fitColumn,
 } from "@/src/domain/collectionLayout";
 import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { PhotoImage } from "./PhotoImage";
-import { InspectorSection } from "./InspectorSection";
+import { PropertyTabs, propertyPanel } from "./PropertyTabs";
+import { DeviceFrame, DeviceSwitch } from "./DeviceSwitch";
+import { VISIBILITY_LABELS } from "./PhotoBadges";
 import { VariantThumbs } from "./VariantThumbs";
 import { PhotoPicker } from "./PhotoPicker";
 import { CollectionCanvas, isHiddenFromPublic } from "./CollectionCanvas";
@@ -303,6 +310,10 @@ function CollectionSummary({
   );
 }
 
+// The inspector's tabs, as Home and Gallery show theirs.
+const COLLECTION_TABS = ["Piece", "Details", "Categories", "Display"] as const;
+type CollectionTab = (typeof COLLECTION_TABS)[number];
+
 function CollectionEditor({
   id,
   collection,
@@ -328,7 +339,12 @@ function CollectionEditor({
   const [pendingUploads, setPendingUploads] = useState(false);
   const [showUploads, setShowUploads] = useState(false);
   const [uploadsOpened, setUploadsOpened] = useState(false);
-  const photos = [...libraryPhotos, ...uploadedPhotos.filter((photo) => !libraryPhotos.some((item) => item.getId() === photo.getId()))];
+  const photos = [
+    ...libraryPhotos,
+    ...uploadedPhotos.filter(
+      (photo) => !libraryPhotos.some((item) => item.getId() === photo.getId()),
+    ),
+  ];
   const [baseline, setBaseline] = useState(() => fromCollection(collection));
   const [conflict, setConflict] = useState(false);
   const [draft, setDraft] = useState(() => fromCollection(collection));
@@ -338,14 +354,7 @@ function CollectionEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [openSections, setOpenSections] = useState<string[]>([
-    "photo",
-    "details",
-    "categories",
-    "display",
-  ]);
-  // A section tab shows that section alone; View all brings every one back.
-  const [only, setOnly] = useState<string | null>(null);
+  const [tab, setTab] = useState<CollectionTab>("Details");
   const prefix = useId();
   const { confirm } = useEditingWorkspace();
   const composition = toPayload(draft, excluded);
@@ -386,24 +395,40 @@ function CollectionEditor({
     }));
     setNotice("");
   }
-  // A size set in the phone layout becomes the piece's own; the wide one stays.
-  function resize(key: string, columns: number, rows: number) {
-    updateBlock(
-      key,
-      layout === "mobile"
-        ? { mobileColumns: columns, mobileRows: rows }
-        : { columns, rows },
-    );
-  }
-  function move(from: number, to: number) {
-    setDraft((previous) => {
-      if (to < 0 || to >= previous.blocks.length) return previous;
-      const blocks = [...previous.blocks];
-      const [block] = blocks.splice(from, 1);
-      blocks.splice(to, 0, block);
-      return { ...previous, blocks };
-    });
+  // A piece moved on the wide grid keeps its cell; the ones it lands on step down.
+  function place(key: string, cell: MosaicCell) {
+    setDraft((previous) => ({
+      ...previous,
+      blocks: arrangePieces(previous.blocks, key, cell),
+    }));
     setNotice("");
+  }
+  // A wide resize pushes down what it now covers; a phone size is the piece's own.
+  function resizeWide(key: string, columns: number, rows: number) {
+    setDraft((previous) => ({
+      ...previous,
+      blocks: arrangePieces(
+        previous.blocks.map((block) =>
+          block.key === key ? { ...block, columns, rows } : block,
+        ),
+        key,
+      ),
+    }));
+    setNotice("");
+  }
+  function resize(key: string, columns: number, rows: number) {
+    if (layout === "mobile")
+      updateBlock(key, { mobileColumns: columns, mobileRows: rows });
+    else resizeWide(key, columns, rows);
+  }
+  function select(key: string | null) {
+    setSelected(key);
+    if (key) setTab("Piece");
+  }
+  // Leaving a piece returns to the collection's own details.
+  function deselect() {
+    setSelected(null);
+    setTab("Details");
   }
   // A new text block goes right after the selected piece, or at the end.
   function addText() {
@@ -421,9 +446,8 @@ function CollectionEditor({
       });
       return { ...previous, blocks };
     });
-    setSelected(key);
+    select(key);
     setNotice("");
-    toggleSection("photo", true);
   }
   function removeText(key: string) {
     setDraft((previous) => ({
@@ -444,12 +468,15 @@ function CollectionEditor({
   }
   async function persist(): Promise<boolean> {
     if (pendingUploads) {
-      setError("Upload or remove the prepared photos before saving the collection.");
+      setError(
+        "Upload or remove the prepared photos before saving the collection.",
+      );
       return false;
     }
     if (busy) return false;
     if (!draft.title.trim()) {
       setError("Give this collection a title before saving.");
+      setTab("Details");
       return false;
     }
     if (payload.texts?.some((text) => !text.text.trim())) {
@@ -518,6 +545,7 @@ function CollectionEditor({
 
   const index = draft.blocks.findIndex((block) => block.key === selected);
   const block = draft.blocks[index];
+  const cell = block ? placePieces(draft.blocks)[index] : undefined;
   const entry = block?.kind === "photo" ? block : undefined;
   const photoCount = draft.blocks.filter(
     (item) => item.kind === "photo",
@@ -525,6 +553,7 @@ function CollectionEditor({
   const photoIndex = draft.blocks
     .slice(0, Math.max(index, 0))
     .filter((item) => item.kind === "photo").length;
+  const pinned = draft.blocks.some((item) => item.row);
   const work = entry
     ? catalog.works.find((item) =>
         item.variants.some((v) => v.photoId === entry.photoId),
@@ -545,21 +574,28 @@ function CollectionEditor({
     );
     setSelected(key);
   }
-  const sectionOpen = (key: string) => openSections.includes(key);
-  function toggleSection(key: string, open: boolean) {
-    setOpenSections((previous) =>
-      open
-        ? previous.includes(key)
-          ? previous
-          : [...previous, key]
-        : previous.filter((item) => item !== key),
-    );
-  }
-  function jump(key: string) {
-    toggleSection(key, true);
-    setOnly(key);
-  }
-  const hiddenSection = (key: string) => only !== null && only !== key;
+  const canvasNode = (
+    <CollectionCanvas
+      blocks={draft.blocks}
+      photos={photos}
+      layout={layout}
+      selectedKey={selected}
+      coverId={payload.coverPhotoId ?? null}
+      excluded={excluded}
+      onSelect={select}
+      onPlace={place}
+      onResize={resize}
+    />
+  );
+  const layoutFields = block && cell && (
+    <PieceLayoutFields
+      size={block}
+      cell={cell}
+      onWide={(columns, rows) => resizeWide(block.key, columns, rows)}
+      onPlace={(next) => place(block.key, next)}
+      onPhone={(next) => updateBlock(block.key, next)}
+    />
+  );
   return (
     <form
       hidden={!active}
@@ -670,22 +706,50 @@ function CollectionEditor({
                 },
               ],
             });
-            setSelected(key);
-            toggleSection("photo", true);
+            select(key);
           }}
         />
         <div className="collection-upload">
-          <button type="button" className="upload-secondary" aria-expanded={showUploads} onClick={() => { setUploadsOpened(true); setShowUploads(!showUploads); }}>Upload new photos…</button>
+          <button
+            type="button"
+            className="upload-secondary"
+            aria-expanded={showUploads}
+            onClick={() => {
+              setUploadsOpened(true);
+              setShowUploads(!showUploads);
+            }}
+          >
+            Upload new photos…
+          </button>
           <div hidden={!showUploads}>
-          <p>Uploaded photos are stored immediately. Save collection to keep them in this composition.</p>
-          {uploadsOpened && <UploadPanel embedded onPendingChange={setPendingUploads} onPublished={({ photo }) => {
-            setUploadedPhotos((previous) => [...previous, photo]);
-            const key = `photo:${photo.getId()}`;
-            setDraft((previous) => ({ ...previous, blocks: [...previous.blocks, {
-              kind: "photo", key, photoId: photo.getId(), ...DEFAULT_PHOTO_SIZE, showTitle: true,
-            }] }));
-            setSelected(key);
-          }} />}
+            <p>
+              Uploaded photos are stored immediately. Save collection to keep
+              them in this composition.
+            </p>
+            {uploadsOpened && (
+              <UploadPanel
+                embedded
+                onPendingChange={setPendingUploads}
+                onPublished={({ photo }) => {
+                  setUploadedPhotos((previous) => [...previous, photo]);
+                  const key = `photo:${photo.getId()}`;
+                  setDraft((previous) => ({
+                    ...previous,
+                    blocks: [
+                      ...previous.blocks,
+                      {
+                        kind: "photo",
+                        key,
+                        photoId: photo.getId(),
+                        ...DEFAULT_PHOTO_SIZE,
+                        showTitle: true,
+                      },
+                    ],
+                  }));
+                  setSelected(key);
+                }}
+              />
+            )}
           </div>
         </div>
         <div className="collection-develop__layout">
@@ -694,40 +758,36 @@ function CollectionEditor({
             aria-label="Composition"
           >
             <div className="collection-develop__bar">
-              <div
-                className="collection-layout-switch"
-                role="group"
-                aria-label="Layout"
-              >
+              <DeviceSwitch
+                label="Layout"
+                tone="dark"
+                value={layout}
+                onChange={setLayout}
+              />
+              <div className="collection-develop__tools">
+                {pinned && layout === "desktop" && (
+                  <button
+                    type="button"
+                    className="collection-add-text"
+                    title="Let every piece follow the one before, without empty cells"
+                    onClick={() => update({ blocks: flowPieces(draft.blocks) })}
+                  >
+                    <GapIcon /> Close gaps
+                  </button>
+                )}
                 <button
                   type="button"
-                  aria-pressed={layout === "desktop"}
-                  onClick={() => setLayout("desktop")}
+                  className="collection-add-text"
+                  onClick={addText}
                 >
-                  <LayoutIcon kind="desktop" />
-                  Wide screens
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={layout === "mobile"}
-                  onClick={() => setLayout("mobile")}
-                >
-                  <LayoutIcon kind="mobile" />
-                  Phones
+                  <span aria-hidden="true">T+</span> Add text block
                 </button>
               </div>
-              <button
-                type="button"
-                className="collection-add-text"
-                onClick={addText}
-              >
-                <span aria-hidden="true">T+</span> Add text block
-              </button>
             </div>
             <p className="collection-develop__hint">
               {layout === "desktop"
-                ? `Drag a piece to change its place, or pull its edges or corner to resize it, on a ${MOSAIC_COLUMNS}-column grid.`
-                : `Phones show ${MOBILE_MOSAIC_COLUMNS} columns in the same order. Resizing here gives a piece its own phone size; the others follow their wide size.`}
+                ? `Drag a piece to any cell of the ${MOSAIC_COLUMNS}-column grid, under another or with empty cells around it; the pieces in its way step down. Pull its edges or corner to resize it, or use the arrow keys on a selected piece.`
+                : `Phones show ${MOBILE_MOSAIC_COLUMNS} columns, reading the wide layout from top to bottom. Resizing here gives a piece its own phone size; the others follow their wide size.`}
             </p>
             {privatePhotos.length > 0 && (
               <p role="alert" className={styles.warning}>
@@ -737,70 +797,33 @@ function CollectionEditor({
               </p>
             )}
             {draft.blocks.length ? (
-              <div
-                className={`collection-develop__device collection-develop__device--${layout}`}
-              >
-                <CollectionCanvas
-                  blocks={draft.blocks}
-                  photos={photos}
-                  layout={layout}
-                  selectedKey={selected}
-                  coverId={payload.coverPhotoId ?? null}
-                  excluded={excluded}
-                  onSelect={(key) => {
-                    setSelected(key);
-                    toggleSection("photo", true);
-                  }}
-                  onMove={move}
-                  onResize={(position, columns, rows) =>
-                    resize(draft.blocks[position].key, columns, rows)
-                  }
-                />
-              </div>
+              layout === "mobile" ? (
+                <DeviceFrame
+                  device="mobile"
+                  className="collection-develop__phone"
+                >
+                  {canvasNode}
+                </DeviceFrame>
+              ) : (
+                canvasNode
+              )
             ) : (
               <p className="studio-empty">
                 Add photos or a text block to start the composition.
               </p>
             )}
           </section>
-          <div className="photo-develop__inspector collection-develop__inspector">
-            <nav
-              className="photo-develop__tabs"
-              aria-label="Collection sections"
-            >
-              {COLLECTION_SECTIONS.map((section) => (
-                <button
-                  type="button"
-                  key={section.id}
-                  aria-pressed={only === section.id}
-                  onClick={() => jump(section.id)}
-                >
-                  {section.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                aria-pressed={only === null}
-                onClick={() => setOnly(null)}
-              >
-                View all
-              </button>
-            </nav>
-            <InspectorSection
-              id={`${prefix}-photo`}
-              label={
-                block?.kind === "text" ? "Selected text" : "Selected photo"
-              }
-              summary={
-                entry
-                  ? `${photoIndex + 1} of ${photoCount}`
-                  : block
-                    ? "Text"
-                    : "None"
-              }
-              open={sectionOpen("photo")}
-              onToggle={(open) => toggleSection("photo", open)}
-              hidden={hiddenSection("photo")}
+          <div className="collection-develop__inspector">
+            <PropertyTabs
+              label="Collection properties"
+              idPrefix={prefix}
+              tabs={COLLECTION_TABS}
+              value={tab}
+              onChange={setTab}
+            />
+            <div
+              className="collection-panel"
+              {...propertyPanel(prefix, "Piece", tab)}
             >
               <aside
                 aria-label={
@@ -812,12 +835,16 @@ function CollectionEditor({
                 }
               >
                 {entry ? (
-                  <>
-                    {work && (
-                      <div className="studio-fields">
-                        <span className="collection-develop__label">
-                          Collection variant
-                        </span>
+                  <EntryDetails
+                    entry={entry}
+                    index={photoIndex}
+                    count={photoCount}
+                    photo={findPhoto(photos, entry.photoId)}
+                    isCover={payload.coverPhotoId === entry.photoId}
+                    removed={excluded.includes(entry.photoId)}
+                    layoutFields={layoutFields}
+                    variants={
+                      work && (
                         <VariantThumbs
                           className="collection-develop__variants"
                           label="Collection variant"
@@ -836,52 +863,40 @@ function CollectionEditor({
                           selectedId={entry.photoId}
                           onSelect={chooseVariant}
                         />
-                      </div>
-                    )}
-                    <EntryDetails
-                      entry={entry}
-                      index={photoIndex}
-                      count={photoCount}
-                      first={index === 0}
-                      last={index === draft.blocks.length - 1}
-                      photo={findPhoto(photos, entry.photoId)}
-                      isCover={payload.coverPhotoId === entry.photoId}
-                      removed={excluded.includes(entry.photoId)}
-                      onBack={() => setSelected(null)}
-                      onMove={(offset) => move(index, index + offset)}
-                      onChange={(next) => updateBlock(entry.key, next)}
-                      onCover={(cover) =>
-                        update({ coverPhotoId: cover ? entry.photoId : null })
-                      }
-                      onToggleRemoved={() =>
-                        setExcluded(toggle(excluded, entry.photoId))
-                      }
-                    />
-                  </>
+                      )
+                    }
+                    onBack={deselect}
+                    onChange={(next) => updateBlock(entry.key, next)}
+                    onCover={(cover) =>
+                      update({ coverPhotoId: cover ? entry.photoId : null })
+                    }
+                    onToggleRemoved={() =>
+                      setExcluded(toggle(excluded, entry.photoId))
+                    }
+                  />
                 ) : block?.kind === "text" ? (
                   <TextDetails
                     block={block}
-                    first={index === 0}
-                    last={index === draft.blocks.length - 1}
-                    onBack={() => setSelected(null)}
-                    onMove={(offset) => move(index, index + offset)}
+                    layoutFields={layoutFields}
+                    onBack={deselect}
                     onChange={(next) => updateBlock(block.key, next)}
                     onRemove={() => removeText(block.key)}
                   />
                 ) : (
-                  <p className="upload-muted">
-                    Select a piece in the composition to resize it, give a photo
-                    its own text, hide its title or use it as the cover.
-                  </p>
+                  <EmptyState
+                    picture="collections"
+                    title="No piece selected"
+                    quiet
+                  >
+                    Choose a photo or a text block in the composition to place
+                    it, resize it, give it its own text or make it the cover.
+                  </EmptyState>
                 )}
               </aside>
-            </InspectorSection>
-            <InspectorSection
-              id={`${prefix}-details`}
-              label="Details"
-              open={sectionOpen("details")}
-              onToggle={(open) => toggleSection("details", open)}
-              hidden={hiddenSection("details")}
+            </div>
+            <div
+              className="collection-panel"
+              {...propertyPanel(prefix, "Details", tab)}
             >
               <div className="studio-fields">
                 <label>
@@ -905,48 +920,72 @@ function CollectionEditor({
                   />
                 </label>
               </div>
-            </InspectorSection>
-            <InspectorSection
-              id={`${prefix}-categories`}
-              label="Categories"
-              summary={String(existingCategoryIds(draft.categoryIds).length)}
-              open={sectionOpen("categories")}
-              onToggle={(open) => toggleSection("categories", open)}
-              hidden={hiddenSection("categories")}
-            >
-              <fieldset className="studio-fields">
-                <legend className="sr-only">Categories</legend>
-                <div className="studio-checks">
-                  {catalog.categories.map((category) => (
-                    <label key={category.id} className="studio-check">
-                      <input
-                        type="checkbox"
-                        checked={draft.categoryIds.includes(category.id)}
-                        onChange={() =>
-                          update({
-                            categoryIds: toggle(draft.categoryIds, category.id),
-                          })
-                        }
-                      />
-                      {category.name}
-                    </label>
-                  ))}
-                </div>
-                {!catalog.categories.length && (
+              {id && (
+                <div className="collection-panel__danger">
                   <p className="upload-muted">
-                    Create one in the Categories tab to classify this
-                    collection.
+                    Deleting the collection keeps its photos and their comments.
                   </p>
-                )}
-              </fieldset>
-            </InspectorSection>
-            <InspectorSection
-              id={`${prefix}-display`}
-              label="Display"
-              summary={draft.showVariants ? "Variants" : undefined}
-              open={sectionOpen("display")}
-              onToggle={(open) => toggleSection("display", open)}
-              hidden={hiddenSection("display")}
+                  <button
+                    type="button"
+                    className="studio-danger"
+                    onClick={async () => {
+                      if (
+                        !(await confirm(
+                          "Delete collection?",
+                          "Remove this collection? Photo files and comments will remain.",
+                        ))
+                      )
+                        return;
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await manageCatalog.remove("collections", id);
+                        onDeleted();
+                        await refresh();
+                      } catch {
+                        setError(
+                          "Could not delete or refresh this collection.",
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Delete collection
+                  </button>
+                </div>
+              )}
+            </div>
+            <fieldset
+              className="collection-panel"
+              {...propertyPanel(prefix, "Categories", tab)}
+            >
+              <legend className="sr-only">Categories</legend>
+              <div className="studio-checks">
+                {catalog.categories.map((category) => (
+                  <label key={category.id} className="studio-check">
+                    <input
+                      type="checkbox"
+                      checked={draft.categoryIds.includes(category.id)}
+                      onChange={() =>
+                        update({
+                          categoryIds: toggle(draft.categoryIds, category.id),
+                        })
+                      }
+                    />
+                    {category.name}
+                  </label>
+                ))}
+              </div>
+              {!catalog.categories.length && (
+                <p className="upload-muted">
+                  Create one in the Categories tab to classify this collection.
+                </p>
+              )}
+            </fieldset>
+            <div
+              className="collection-panel"
+              {...propertyPanel(prefix, "Display", tab)}
             >
               <label className="studio-check">
                 <input
@@ -962,43 +1001,7 @@ function CollectionEditor({
                 Works with several variants show small thumbnails under their
                 photo in the public mosaic.
               </p>
-            </InspectorSection>
-            {id && (
-              <InspectorSection
-                id={`${prefix}-danger`}
-                label="Delete"
-                open={sectionOpen("danger")}
-                onToggle={(open) => toggleSection("danger", open)}
-              hidden={hiddenSection("danger")}
-              >
-                <button
-                  type="button"
-                  className="studio-danger"
-                  onClick={async () => {
-                    if (
-                      !(await confirm(
-                        "Delete collection?",
-                        "Remove this collection? Photo files and comments will remain.",
-                      ))
-                    )
-                      return;
-                    setBusy(true);
-                    setError("");
-                    try {
-                      await manageCatalog.remove("collections", id);
-                      onDeleted();
-                      await refresh();
-                    } catch {
-                      setError("Could not delete or refresh this collection.");
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Delete collection
-                </button>
-              </InspectorSection>
-            )}
+            </div>
           </div>
         </div>
       </fieldset>
@@ -1006,24 +1009,16 @@ function CollectionEditor({
   );
 }
 
-const COLLECTION_SECTIONS = [
-  { id: "photo", label: "Selection" },
-  { id: "details", label: "Details" },
-  { id: "categories", label: "Categories" },
-  { id: "display", label: "Display" },
-] as const;
-
 function EntryDetails({
   entry,
   index,
   count,
-  first,
-  last,
   photo,
   isCover,
   removed,
+  layoutFields,
+  variants,
   onBack,
-  onMove,
   onChange,
   onCover,
   onToggleRemoved,
@@ -1031,13 +1026,12 @@ function EntryDetails({
   entry: PhotoBlock;
   index: number;
   count: number;
-  first: boolean;
-  last: boolean;
   photo?: Photo;
   isCover: boolean;
   removed: boolean;
+  layoutFields: ReactNode;
+  variants: ReactNode;
   onBack: () => void;
-  onMove: (offset: number) => void;
   onChange: (next: Partial<PhotoBlock>) => void;
   onCover: (cover: boolean) => void;
   onToggleRemoved: () => void;
@@ -1045,74 +1039,100 @@ function EntryDetails({
   const hidden = isHiddenFromPublic(photo);
   return (
     <div className="studio-fields">
-      <button type="button" className="studio-back" onClick={onBack}>
-        ← Collection details
-      </button>
-      <div
-        className={`studio-summary__cover studio-summary__cover--contain${hidden ? " studio-thumbnail--private" : ""}`}
-      >
-        {photo && (
-          <PhotoImage
-            photo={photo}
-            className="object-contain"
-            fallbackSizes="360px"
-            maxWidth={640}
-          />
-        )}
+      <div className="piece-heading">
+        <div
+          className={`piece-heading__thumb${hidden ? " studio-thumbnail--private" : ""}`}
+        >
+          {photo && (
+            <PhotoImage
+              photo={photo}
+              className="object-cover"
+              fallbackSizes="96px"
+              maxWidth={160}
+              crop={photo.getHighlights().square}
+            />
+          )}
+        </div>
+        <div>
+          <h3>{photo?.getTitle() ?? "Unavailable photo"}</h3>
+          <p className="upload-muted">
+            Photo {index + 1} of {count}
+            {photo &&
+              ` · ${VISIBILITY_LABELS[photo.getClassification().visibility]}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="piece-heading__close"
+          aria-label="Back to the collection"
+          title="Deselect"
+          onClick={onBack}
+        >
+          ×
+        </button>
       </div>
-      <h3>{photo?.getTitle() ?? "Unavailable photo"}</h3>
-      <p className="upload-muted">
-        Photo {index + 1} of {count}
-        {photo && ` · ${photo.getClassification().visibility.toLowerCase()}`}
-      </p>
       {hidden && (
         <p className={styles.warning}>
           This photo is private or reserved: it keeps its place here but will
           not be shown in the public collection.
         </p>
       )}
-      <MoveButtons first={first} last={last} onMove={onMove} />
-      <SizeFields size={entry} onChange={onChange} />
-      <label className="studio-caption-field">
-        Text with the photo
-        <textarea
-          maxLength={500}
-          rows={3}
-          value={entry.caption ?? ""}
-          placeholder="A line that travels with this photo, shown under it"
-          onChange={(event) => onChange({ caption: event.target.value })}
-        />
-        <small className="upload-muted">
-          Shown under the photo, in the same piece. Leave empty for none.
-        </small>
-      </label>
-      <label className="studio-check">
-        <input
-          type="checkbox"
-          checked={entry.showTitle !== false}
-          onChange={(event) => onChange({ showTitle: event.target.checked })}
-        />
-        Show title in the collection
-      </label>
-      {isCover ? (
-        <div className="studio-row">
-          <span className="studio-chip">★ Collection cover</span>
-          <button type="button" onClick={() => onCover(false)}>
-            Use the first photo instead
-          </button>
+      {variants && (
+        <div className="piece-group">
+          <span className="piece-group__title">Variant shown</span>
+          {variants}
         </div>
-      ) : (
-        <button type="button" disabled={removed} onClick={() => onCover(true)}>
-          Use as collection cover
-        </button>
       )}
-      <button
-        type="button"
-        className={removed ? "" : "studio-danger"}
-        onClick={onToggleRemoved}
-      >
-        {removed ? "Keep in collection" : "Remove from collection"}
-      </button>
+      {layoutFields}
+      <div className="piece-group">
+        <label className="studio-caption-field">
+          <span className="piece-group__title">Text with the photo</span>
+          <textarea
+            maxLength={500}
+            rows={3}
+            value={entry.caption ?? ""}
+            placeholder="A line that travels with this photo, shown under it"
+            onChange={(event) => onChange({ caption: event.target.value })}
+          />
+        </label>
+        <label className="studio-check">
+          <input
+            type="checkbox"
+            checked={entry.showTitle !== false}
+            onChange={(event) => onChange({ showTitle: event.target.checked })}
+          />
+          Show title in the collection
+        </label>
+      </div>
+      <div className="piece-actions">
+        {isCover ? (
+          <button
+            type="button"
+            className="piece-actions__cover"
+            aria-pressed="true"
+            onClick={() => onCover(false)}
+          >
+            <span aria-hidden="true">★</span> Collection cover
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="piece-actions__cover"
+            aria-pressed="false"
+            disabled={removed}
+            onClick={() => onCover(true)}
+          >
+            <span aria-hidden="true">☆</span> Use as collection cover
+          </button>
+        )}
+        <button
+          type="button"
+          className={removed ? "" : "studio-danger"}
+          onClick={onToggleRemoved}
+        >
+          {removed ? "Keep in collection" : "Remove from collection"}
+        </button>
+      </div>
       {removed && (
         <span className="upload-muted">Will be removed when you save</span>
       )}
@@ -1120,28 +1140,11 @@ function EntryDetails({
   );
 }
 
-function MoveButtons({
-  first,
-  last,
-  onMove,
-}: {
-  first: boolean;
-  last: boolean;
-  onMove: (offset: number) => void;
-}) {
-  return (
-    <div className="studio-row">
-      <button type="button" disabled={first} onClick={() => onMove(-1)}>
-        ← Move earlier
-      </button>
-      <button type="button" disabled={last} onClick={() => onMove(1)}>
-        Move later →
-      </button>
-    </div>
-  );
-}
-
-function CellSelect({
+/**
+ * A size in cells, changed one cell at a time: − and + around the number, which
+ * says how many of the most it may take.
+ */
+function CellStepper({
   label,
   device,
   value,
@@ -1156,169 +1159,221 @@ function CellSelect({
   disabled?: boolean;
   onChange: (value: number) => void;
 }) {
-  // A bar of cells, filled up to the size: a click picks a size, the arrow keys
-  // grow or shrink it, and the number beside it says the size in words.
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const by = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[
-      event.key
-    ];
-    if (!by || disabled) return;
-    event.preventDefault();
-    const next = Math.min(max, Math.max(1, value + by));
-    if (next !== value) onChange(next);
-    event.currentTarget
-      .querySelector<HTMLElement>(`[data-cells="${next}"]`)
-      ?.focus();
-  }
+  const name = label.toLowerCase();
   return (
-    <div className="cell-size">
-      <span className="cell-size__label" aria-hidden="true">
-        {label} <b>{value}</b>
-      </span>
-      <div
-        role="radiogroup"
-        aria-label={`${label} on ${device}`}
-        aria-disabled={disabled || undefined}
-        className="cell-size__bar"
-        onKeyDown={onKeyDown}
+    <div
+      className="cell-stepper"
+      role="group"
+      aria-label={`${label} on ${device}`}
+      data-disabled={disabled || undefined}
+    >
+      <span className="cell-stepper__label">{label}</span>
+      <button
+        type="button"
+        aria-label={`Less ${name}`}
+        disabled={disabled || value <= 1}
+        onClick={() => onChange(value - 1)}
       >
-        {Array.from({ length: max }, (_, cell) => (
-          <button
-            key={cell + 1}
-            type="button"
-            role="radio"
-            data-cells={cell + 1}
-            data-filled={cell < value || undefined}
-            aria-checked={cell + 1 === value}
-            aria-label={String(cell + 1)}
-            title={`${cell + 1} ${cell ? "cells" : "cell"}`}
-            tabIndex={cell + 1 === value ? 0 : -1}
-            disabled={disabled}
-            onClick={() => cell + 1 !== value && onChange(cell + 1)}
-          />
-        ))}
-      </div>
+        −
+      </button>
+      <output aria-label={`${label} in cells`}>{value}</output>
+      <button
+        type="button"
+        aria-label={`More ${name}`}
+        disabled={disabled || value >= max}
+        onClick={() => onChange(value + 1)}
+      >
+        +
+      </button>
     </div>
   );
 }
 
+/** A small drawing of the grid with the piece's cells lit. */
+function Footprint({
+  columns,
+  width,
+  height,
+  start = 1,
+}: {
+  columns: number;
+  width: number;
+  height: number;
+  start?: number;
+}) {
+  return (
+    <span
+      className="cell-footprint"
+      aria-hidden="true"
+      style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+    >
+      {Array.from({ length: columns * height }, (_, cell) => {
+        const column = (cell % columns) + 1;
+        return (
+          <span
+            key={cell}
+            data-on={(column >= start && column < start + width) || undefined}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
+const MOVES: { label: string; arrow: string; step: MosaicCell }[] = [
+  { label: "Move up", arrow: "↑", step: { row: -1, column: 0 } },
+  { label: "Move left", arrow: "←", step: { row: 0, column: -1 } },
+  { label: "Move right", arrow: "→", step: { row: 0, column: 1 } },
+  { label: "Move down", arrow: "↓", step: { row: 1, column: 0 } },
+];
+
 /**
- * Wide size in cells of the eight-column grid, and the phone size: derived from the
- * wide one unless the piece has its own.
+ * Where a piece sits and how large it is: its wide size and cell, moved one cell at
+ * a time, and its phone size, its own or derived from the wide one.
  */
-function SizeFields({
+function PieceLayoutFields({
   size,
-  onChange,
+  cell,
+  onWide,
+  onPlace,
+  onPhone,
 }: {
   size: PhotoBlock | TextBlock;
-  onChange: (next: BlockPatch) => void;
+  cell: MosaicCell;
+  onWide: (columns: number, rows: number) => void;
+  onPlace: (cell: MosaicCell) => void;
+  onPhone: (next: BlockPatch) => void;
 }) {
+  const wide = spanIn(size, "desktop");
   const phone = mobileSpan(size);
   return (
-    <fieldset className="studio-size">
-      <legend>Size in cells</legend>
-      <div className="studio-size__row">
-        <span className="studio-size__device">
-          <LayoutIcon kind="desktop" /> Wide
-        </span>
-        <CellSelect
-          label="Width"
-          device="wide screens"
-          value={size.columns}
-          max={MOSAIC_COLUMNS}
-          onChange={(columns) => onChange({ columns })}
-        />
-        <CellSelect
-          label="Height"
-          device="wide screens"
-          value={size.rows}
-          max={MOSAIC_MAX_ROWS}
-          onChange={(rows) => onChange({ rows })}
-        />
-      </div>
+    <div className="piece-layout">
       <div
-        className="studio-start"
-        role="radiogroup"
-        aria-label="Starts at column on wide screens"
+        className="piece-layout__card"
+        role="group"
+        aria-label="On wide screens"
       >
-        <span className="studio-size__device">Starts at</span>
-        {[0, ...Array.from({ length: MOSAIC_COLUMNS }, (_, i) => i + 1)].map(
-          (column) => {
-            const current = (fitColumn(size) ?? 0) === column;
-            const fits = column + size.columns - 1 <= MOSAIC_COLUMNS;
-            return (
-              <button
-                key={column}
-                type="button"
-                role="radio"
-                aria-checked={current}
-                aria-label={column ? `Column ${column}` : "After the piece before"}
-                title={
-                  column
-                    ? fits
-                      ? `Start at column ${column}`
-                      : "Too wide to start here"
-                    : "Follow the piece before"
-                }
-                disabled={!fits}
-                onClick={() => onChange({ column: column || null })}
-              >
-                {column || "Auto"}
-              </button>
-            );
-          },
+        <header>
+          <LayoutIcon kind="desktop" />
+          <strong>Wide screens</strong>
+          <small>
+            {wide.columns} × {wide.rows} cells
+          </small>
+        </header>
+        <Footprint
+          columns={MOSAIC_COLUMNS}
+          width={wide.columns}
+          height={wide.rows}
+          start={cell.column}
+        />
+        <div className="piece-layout__steppers">
+          <CellStepper
+            label="Width"
+            device="wide screens"
+            value={wide.columns}
+            max={MOSAIC_COLUMNS}
+            onChange={(columns) => onWide(columns, wide.rows)}
+          />
+          <CellStepper
+            label="Height"
+            device="wide screens"
+            value={wide.rows}
+            max={MOSAIC_MAX_ROWS}
+            onChange={(rows) => onWide(wide.columns, rows)}
+          />
+        </div>
+        <div className="piece-layout__place">
+          <div
+            className="piece-pad"
+            role="group"
+            aria-label="Place on wide screens"
+          >
+            {MOVES.map(({ label, arrow, step }) => {
+              const next = {
+                row: cell.row + step.row,
+                column: cell.column + step.column,
+              };
+              const blocked =
+                next.row < 1 ||
+                next.column < 1 ||
+                next.column + wide.columns - 1 > MOSAIC_COLUMNS;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  data-step={label.split(" ")[1]}
+                  disabled={blocked}
+                  onClick={() => onPlace(next)}
+                >
+                  {arrow}
+                </button>
+              );
+            })}
+          </div>
+          <p className="piece-layout__cell">
+            <span>Row</span> <b>{cell.row}</b>
+            <span>Column</span> <b>{cell.column}</b>
+          </p>
+        </div>
+      </div>
+      <div className="piece-layout__card" role="group" aria-label="On phones">
+        <header>
+          <LayoutIcon kind="mobile" />
+          <strong>Phones</strong>
+          <small>
+            {phone.columns} × {phone.rows} cells
+          </small>
+        </header>
+        <label className="studio-check">
+          <input
+            type="checkbox"
+            checked={phone.custom}
+            onChange={(event) =>
+              onPhone(
+                event.target.checked
+                  ? { mobileColumns: phone.columns, mobileRows: phone.rows }
+                  : { mobileColumns: null, mobileRows: null },
+              )
+            }
+          />
+          Own size on phones
+        </label>
+        {phone.custom ? (
+          <div className="piece-layout__steppers">
+            <Footprint
+              columns={MOBILE_MOSAIC_COLUMNS}
+              width={phone.columns}
+              height={phone.rows}
+            />
+            <CellStepper
+              label="Width"
+              device="phones"
+              value={phone.columns}
+              max={MOBILE_MOSAIC_COLUMNS}
+              onChange={(mobileColumns) =>
+                onPhone({ mobileColumns, mobileRows: phone.rows })
+              }
+            />
+            <CellStepper
+              label="Height"
+              device="phones"
+              value={phone.rows}
+              max={MOSAIC_MAX_ROWS}
+              onChange={(mobileRows) =>
+                onPhone({ mobileColumns: phone.columns, mobileRows })
+              }
+            />
+          </div>
+        ) : (
+          <small className="upload-muted">
+            Follows the wide size on the {MOBILE_MOSAIC_COLUMNS}-column phone
+            grid.
+          </small>
         )}
       </div>
-      <small className="upload-muted">
-        Start a piece at the same column as the one before it to put it
-        underneath, such as a text under a photograph.
-      </small>
-      <div className="studio-size__row">
-        <span className="studio-size__device">
-          <LayoutIcon kind="mobile" /> Phone
-        </span>
-        <CellSelect
-          label="Width"
-          device="phones"
-          value={phone.columns}
-          max={MOBILE_MOSAIC_COLUMNS}
-          disabled={!phone.custom}
-          onChange={(mobileColumns) =>
-            onChange({ mobileColumns, mobileRows: phone.rows })
-          }
-        />
-        <CellSelect
-          label="Height"
-          device="phones"
-          value={phone.rows}
-          max={MOSAIC_MAX_ROWS}
-          disabled={!phone.custom}
-          onChange={(mobileRows) =>
-            onChange({ mobileColumns: phone.columns, mobileRows })
-          }
-        />
-      </div>
-      <label className="studio-check">
-        <input
-          type="checkbox"
-          checked={phone.custom}
-          onChange={(event) =>
-            onChange(
-              event.target.checked
-                ? { mobileColumns: phone.columns, mobileRows: phone.rows }
-                : { mobileColumns: null, mobileRows: null },
-            )
-          }
-        />
-        Own size on phones
-      </label>
-      {!phone.custom && (
-        <small className="upload-muted">
-          Follows the wide size on the {MOBILE_MOSAIC_COLUMNS}-column phone
-          grid.
-        </small>
-      )}
-    </fieldset>
+    </div>
   );
 }
 
@@ -1335,18 +1390,14 @@ const ALIGN_LABELS: Record<CollectionTextAlign, string> = {
 
 function TextDetails({
   block,
-  first,
-  last,
+  layoutFields,
   onBack,
-  onMove,
   onChange,
   onRemove,
 }: {
   block: TextBlock;
-  first: boolean;
-  last: boolean;
+  layoutFields: ReactNode;
   onBack: () => void;
-  onMove: (offset: number) => void;
   onChange: (next: Partial<TextBlock>) => void;
   onRemove: () => void;
 }) {
@@ -1354,9 +1405,24 @@ function TextDetails({
   const align = block.align ?? "START";
   return (
     <div className="studio-fields">
-      <button type="button" className="studio-back" onClick={onBack}>
-        ← Collection details
-      </button>
+      <div className="piece-heading">
+        <div className="piece-heading__thumb piece-heading__thumb--text">
+          <span aria-hidden="true">T</span>
+        </div>
+        <div>
+          <h3>Text block</h3>
+          <p className="upload-muted">{STYLE_LABELS[style]}</p>
+        </div>
+        <button
+          type="button"
+          className="piece-heading__close"
+          aria-label="Back to the collection"
+          title="Deselect"
+          onClick={onBack}
+        >
+          ×
+        </button>
+      </div>
       <label>
         Text
         <textarea
@@ -1396,11 +1462,12 @@ function TextDetails({
           </button>
         ))}
       </div>
-      <MoveButtons first={first} last={last} onMove={onMove} />
-      <SizeFields size={block} onChange={onChange} />
-      <button type="button" className="studio-danger" onClick={onRemove}>
-        Remove text block
-      </button>
+      {layoutFields}
+      <div className="piece-actions">
+        <button type="button" className="studio-danger" onClick={onRemove}>
+          Remove text block
+        </button>
+      </div>
     </div>
   );
 }
@@ -1421,6 +1488,24 @@ function AlignIcon({ align }: { align: CollectionTextAlign }) {
           fill="currentColor"
         />
       ))}
+    </svg>
+  );
+}
+
+function GapIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="7" height="14" rx="1" />
+      <rect x="14" y="5" width="7" height="14" rx="1" />
+      <path d="M10.5 12h3M12 10.5 13.5 12 12 13.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -24,7 +24,7 @@ import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
 import { GALLERY_SETTINGS_SAVED } from "./PaletteManager";
-import { DisplayIcon } from "./DisplayIcon";
+import { DeviceFrame, DeviceSwitch } from "./DeviceSwitch";
 import { ChoiceMenu } from "./ChoiceMenu";
 import { SegmentedChoice } from "./SegmentedChoice";
 import { choiceIcons } from "./choiceIcons";
@@ -248,9 +248,7 @@ function Editor() {
             : "Gallery settings are unavailable."}
         </p>
       ) : (
-        <div
-          className="banner-editor__workspace"
-        >
+        <div className="banner-editor__workspace">
           <form
             id="gallery-settings-form"
             className="banner-editor__properties"
@@ -537,39 +535,24 @@ function Editor() {
           >
             <div className="device-preview__bar">
               <h2>Live preview</h2>
-              <div
-                className="device-switch"
-                role="radiogroup"
-                aria-label="Preview device"
-              >
-                {(["desktop", "mobile"] as const).map((device) => (
-                  <button
-                    key={device}
-                    type="button"
-                    role="radio"
-                    aria-checked={mobile === (device === "mobile")}
-                    title={device === "mobile" ? "Phone" : "Desktop monitor"}
-                    onClick={() => setMobile(device === "mobile")}
-                  >
-                    <DisplayIcon kind={device} />
-                    <span>{device === "mobile" ? "Phone" : "Desktop"}</span>
-                  </button>
-                ))}
-              </div>
+              <DeviceSwitch
+                value={mobile ? "mobile" : "desktop"}
+                onChange={(device) => setMobile(device === "mobile")}
+              />
               {dirty && <span>Unsaved preview</span>}
             </div>
-            <div
-              className={`device-frame device-frame--${mobile ? "mobile" : "desktop"}`}
-            >
+            <DeviceFrame device={mobile ? "mobile" : "desktop"}>
               <div
                 className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
               >
                 <Gallery
                   settings={draft}
-                  onArrangeFilters={tab === "Filters" ? changeFilterLayout : undefined}
+                  onArrangeFilters={
+                    tab === "Filters" ? changeFilterLayout : undefined
+                  }
                 />
               </div>
-            </div>
+            </DeviceFrame>
           </section>
         </div>
       )}

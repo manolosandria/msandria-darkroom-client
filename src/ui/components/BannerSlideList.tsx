@@ -8,14 +8,10 @@ import { enabledPhotoViews } from "@/src/domain/photoPresentation";
 import { PhotoImage } from "./PhotoImage";
 import { useLiveSort } from "../hooks/useLiveSort";
 import { SlideDestination, useSlideCatalog } from "./BannerSlideLink";
+import { PhotoPicker } from "./PhotoPicker";
 
 type Slides = NonNullable<HomeBanner["slides"]>;
 const MAX_SLIDES = 8;
-const fold = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
 
 // The photographs Home shows, in order, managed like a collection: thumbnails to add,
 // cards to drag into order, and a title and link per slide. With none, Home picks
@@ -43,7 +39,6 @@ export function BannerSlideList({
 }) {
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const { catalog, error: catalogError } = useSlideCatalog();
   useEffect(() => {
@@ -66,8 +61,7 @@ export function BannerSlideList({
   const available = (photos ?? []).filter(
     (photo) =>
       photo.getClassification().visibility === "PUBLIC" &&
-      !slides.some((slide) => slide.photoId === photo.getId()) &&
-      fold(photo.getTitle()).includes(fold(search.trim())),
+      !slides.some((slide) => slide.photoId === photo.getId()),
   );
   const moveTo = (from: number, to: number) => {
     if (from === to || to < 0 || to >= slides.length) return;
@@ -257,65 +251,21 @@ export function BannerSlideList({
         {announcement}
       </p>
       {error && <p role="alert">{error}</p>}
-      <div className="slide-studio__library">
-        <div className="slide-studio__library-bar">
-          <h4>{full ? "Eight slides chosen" : "Add photographs"}</h4>
-          <label>
-            <span className="sr-only">Search public photographs</span>
-            <input
-              type="search"
-              placeholder="Search by title"
-              value={search}
-              disabled={!photos}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
-        </div>
-        {!photos ? (
-          <p>{error ? "" : "Loading photographs…"}</p>
-        ) : available.length ? (
-          <ul className="slide-studio__strip">
-            {available.map((photo) => (
-              <li key={photo.getId()}>
-                <button
-                  type="button"
-                  disabled={disabled || full}
-                  aria-label={`Add ${photo.getTitle()} to Home`}
-                  title={
-                    full ? "Remove a slide first" : `Add ${photo.getTitle()}`
-                  }
-                  onClick={() => add(photo)}
-                >
-                  <span className="slide-studio__strip-thumb">
-                    <PhotoImage
-                      photo={photo}
-                      crop={photo.getHighlights().square}
-                      className="object-cover"
-                      maxWidth={160}
-                      fallbackSizes="96px"
-                    />
-                    <span className="slide-studio__plus" aria-hidden="true">
-                      +
-                    </span>
-                  </span>
-                  <span className="slide-studio__strip-title">
-                    {photo.getTitle()}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>
-            {search
-              ? "No public photograph matches that title."
-              : "Every public photograph is already a slide."}
-          </p>
-        )}
-        <p className="slide-studio__note">
+      <PhotoPicker
+        photos={available}
+        catalog={catalog}
+        heading={full ? "Eight slides chosen" : "Add photographs"}
+        addLabel={(photo) => `Add ${photo.getTitle()} to Home`}
+        disabled={disabled || full}
+        disabledTitle={full ? "Remove a slide first" : undefined}
+        loading={!photos && !error}
+        emptyText="Every public photograph is already a slide."
+        onPick={add}
+      >
+        <p className="photo-picker__note">
           Only public photographs are offered: visitors cannot see the others.
         </p>
-      </div>
+      </PhotoPicker>
     </section>
   );
 }

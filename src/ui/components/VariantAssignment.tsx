@@ -6,8 +6,10 @@ import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { getManagedPhotos } from "@/src/infrastructure/photoServices";
 import { assignPhotoVariant } from "@/src/application/use-cases/AssignPhotoVariant";
 import { PhotoImage } from "./PhotoImage";
-import { filterPhotos } from "./PhotoFilters";
+import { VisibilityBadge } from "./PhotoBadges";
+import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
 import "./catalogStudio.css";
+import "./photoBrowser.css";
 export function VariantAssignment({
   photoId,
   title,
@@ -27,7 +29,7 @@ export function VariantAssignment({
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [selection, setSelection] = useState("");
-  const [query, setQuery] = useState("");
+  const [filter, setFilter] = usePhotoFilter();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,10 +64,8 @@ export function VariantAssignment({
     if (onTargetChange) onTargetChange(id);
     else setSelection(id);
   };
-  const candidates = filterPhotos(
-    photos.filter((p) => p.getId() !== photoId),
-    { query, categoryId: "", camera: "" },
-  );
+  const others = photos.filter((p) => p.getId() !== photoId);
+  const candidates = filterPhotos(others, filter, catalog);
   const content = (
     <>
       {busy && <p role="status">Loading…</p>}
@@ -80,30 +80,32 @@ export function VariantAssignment({
       {own ? (
         <>
           <strong>{own.title}</strong>
-          <div className="variant-library">
+          <ul className="photo-browser photo-browser--strip">
             {own.variants.map((v) => {
               const photo = photos.find((p) => p.getId() === v.photoId);
               return (
                 photo && (
-                  <div
-                    className="variant-card"
+                  <li
                     key={v.photoId}
-                    data-current={v.photoId === photoId ? "" : undefined}
+                    className="photo-browser__item"
+                    title={photo.getTitle()}
+                    aria-current={v.photoId === photoId ? "true" : undefined}
                   >
-                    <span className="variant-card__image">
+                    <span className="photo-browser__thumb">
                       <PhotoImage
                         photo={photo}
                         maxWidth={160}
-                        fallbackSizes="140px"
+                        fallbackSizes="84px"
                         className="object-cover"
+                        crop={photo.getHighlights().square}
                       />
                     </span>
-                    <small>{photo.getTitle()}</small>
-                  </div>
+                    <span className="sr-only">{photo.getTitle()}</span>
+                  </li>
                 )
               );
             })}
-          </div>
+          </ul>
           <p className="upload-muted">
             Manage the whole group in Curator → Variants.
           </p>
@@ -112,52 +114,68 @@ export function VariantAssignment({
         <>
           <div className="variant-picker__header">
             <span>Variant of</span>
-            <input
-              type="search"
-              aria-label="Search photos to group with"
-              placeholder="Search by title…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+            <PhotoFilters
+              label="Photos to group with"
+              photos={others}
+              catalog={catalog}
+              filter={filter}
+              onChange={setFilter}
             />
           </div>
           <div
-            className="variant-picker"
+            className="photo-browser photo-browser--strip variant-picker"
             role="radiogroup"
             aria-label="Variant of"
           >
-            <label className="variant-picker__item">
+            <label
+              className="photo-browser__item"
+              title="Standalone photograph"
+            >
               <input
                 type="radio"
+                className="sr-only"
                 name={name}
                 disabled={disabled || busy || !catalog}
                 checked={!chosen}
                 onChange={() => choose("")}
               />
-              <span className="variant-picker__thumb variant-picker__none" aria-hidden="true">
+              <span
+                className="photo-browser__thumb variant-picker__none"
+                aria-hidden="true"
+              >
                 ⊘
               </span>
-              <small>Standalone photograph</small>
+              <span className="sr-only">Standalone photograph</span>
             </label>
             {candidates.map((photo) => (
-              <label className="variant-picker__item" key={photo.getId()}>
+              <label
+                className="photo-browser__item"
+                key={photo.getId()}
+                title={photo.getTitle()}
+              >
                 <input
                   type="radio"
+                  className="sr-only"
                   name={name}
                   disabled={disabled || busy || !catalog}
                   aria-label={photo.getTitle()}
                   checked={chosen === photo.getId()}
                   onChange={() => choose(photo.getId())}
                 />
-                <span className="variant-picker__thumb">
+                <span className="photo-browser__thumb">
                   <PhotoImage
                     photo={photo}
                     maxWidth={160}
-                    fallbackSizes="96px"
+                    fallbackSizes="84px"
                     className="object-cover"
                     crop={photo.getHighlights().square}
                   />
+                  <span className="photo-browser__badges" aria-hidden="true">
+                    <VisibilityBadge
+                      visibility={photo.getClassification().visibility}
+                    />
+                  </span>
                 </span>
-                <small>{photo.getTitle()}</small>
               </label>
             ))}
           </div>
@@ -206,7 +224,9 @@ export function VariantAssignment({
     </>
   );
   return inline ? (
-    <div className="variant-assignment variant-assignment--inline">{content}</div>
+    <div className="variant-assignment variant-assignment--inline">
+      {content}
+    </div>
   ) : (
     <details
       className="variant-assignment"

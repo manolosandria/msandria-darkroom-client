@@ -749,6 +749,16 @@
     padding-right: calc(var(--site-corner-width, 15rem) + 1.5rem);
   }
 }
+/* With the header docked and the tabs folded, only the floating pills sit on top: every
+   panel starts under them, so no editor scrolls its controls (sticky tabs included)
+   beneath the logo or the Curator pill. */
+@media (min-width: 900px) {
+  .curator-page:has(.site-header[data-docked])
+    .curator-workspace:has(> .curator-tabs[hidden])
+    > .curator-panel {
+    margin-top: 4rem;
+  }
+}
 /* Narrow, the floating pills keep a row of their own above the menu button. */
 @media (max-width: 899px) {
   .curator-page:has(.site-header[data-docked]) .curator-workspace {

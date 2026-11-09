@@ -12,6 +12,7 @@ import { rateLimitMessage } from "@/src/ui/rateLimitMessage";
 import { PhotoImage } from "./PhotoImage";
 import { ProfileAvatar, ProfilePhotos } from "./ProfileParts";
 import "./profiles.css";
+import "./photoBrowser.css";
 
 export type ProfilePorts = {
   mine: () => Promise<OwnProfile>;
@@ -234,21 +235,26 @@ function GalleryPicker({
       {photos === null ? (
         <p role="status">Loading photographs…</p>
       ) : photos.length ? (
-        <ul className="profile-photos">
+        <ul className="photo-browser photo-browser--strip profile-photo-strip">
           {photos.map((photo) => (
             <li key={photo.getId()}>
               <button
                 type="button"
+                className="photo-browser__item"
                 disabled={disabled}
                 aria-label={`Use ${photo.getTitle()}`}
+                title={photo.getTitle()}
                 onClick={() => onPick(photo)}
               >
-                <PhotoImage
-                  photo={photo}
-                  fallbackSizes="120px"
-                  maxWidth={320}
-                  crop={photo.getHighlights()?.square}
-                />
+                <span className="photo-browser__thumb">
+                  <PhotoImage
+                    photo={photo}
+                    fallbackSizes="84px"
+                    maxWidth={160}
+                    className="object-cover"
+                    crop={photo.getHighlights()?.square}
+                  />
+                </span>
               </button>
             </li>
           ))}

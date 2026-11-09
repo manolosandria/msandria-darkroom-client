@@ -15,6 +15,7 @@ import { bannerFonts, bannerPalettes } from "../bannerPresets";
 import { BannerPhotoSettings } from "./BannerPhotoSettings";
 import { BannerSlideList } from "./BannerSlideList";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
+import { DeviceFrame, DeviceSwitch } from "./DeviceSwitch";
 import { EditorActions } from "./EditorActions";
 import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
@@ -582,88 +583,78 @@ function Editor() {
           >
             <div className="banner-editor__preview-bar">
               <h2>Live preview</h2>
-              <div
-                className="display-choice"
-                role="group"
-                aria-label="Preview display"
-              >
-                <VisualChoice
-                  label="Desktop preview"
-                  icon="▰"
-                  active={!mobile}
-                  onClick={() => setMobile(false)}
-                />
-                <VisualChoice
-                  label="Mobile preview"
-                  icon="▯"
-                  active={mobile}
-                  onClick={() => setMobile(true)}
-                />
-              </div>
+              <DeviceSwitch
+                value={mobile ? "mobile" : "desktop"}
+                onChange={(device) => setMobile(device === "mobile")}
+              />
               {dirty && <span>Unsaved preview</span>}
             </div>
-            <div
-              className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
-            >
-              <HomePage
-                banner={draft}
-                onEditPhoto={async (photo) => {
-                  if (editingPhoto?.getId() === photo.getId()) return;
-                  if (
-                    !highlightDirty ||
-                    (await confirm(
-                      "Discard highlight changes?",
-                      "Switching photos will discard your unsaved photo highlight edits.",
-                    ))
-                  ) {
-                    setEditingPhoto(photo);
-                    setPropertyTab("Highlight");
-                  }
-                }}
-                editedPhoto={editingPhoto}
-                onArrange={busy ? undefined : arrange}
-                focusSlide={focusSlide}
-                onActiveChange={onActiveChange}
-                onPlaceWelcome={
-                  busy
-                    ? undefined
-                    : ({ x, y, width, fontSize }, photoId) => {
-                        setDraft((previous) => {
-                          const free =
-                            x !== undefined && y !== undefined ? { x, y } : {};
-                          if (photoId)
+            <DeviceFrame device={mobile ? "mobile" : "desktop"}>
+              <div
+                className={`banner-editor__viewport ${mobile ? "banner-editor__viewport--mobile" : ""}`}
+              >
+                <HomePage
+                  banner={draft}
+                  onEditPhoto={async (photo) => {
+                    if (editingPhoto?.getId() === photo.getId()) return;
+                    if (
+                      !highlightDirty ||
+                      (await confirm(
+                        "Discard highlight changes?",
+                        "Switching photos will discard your unsaved photo highlight edits.",
+                      ))
+                    ) {
+                      setEditingPhoto(photo);
+                      setPropertyTab("Highlight");
+                    }
+                  }}
+                  editedPhoto={editingPhoto}
+                  onArrange={busy ? undefined : arrange}
+                  focusSlide={focusSlide}
+                  onActiveChange={onActiveChange}
+                  onPlaceWelcome={
+                    busy
+                      ? undefined
+                      : ({ x, y, width, fontSize }, photoId) => {
+                          setDraft((previous) => {
+                            const free =
+                              x !== undefined && y !== undefined
+                                ? { x, y }
+                                : {};
+                            if (photoId)
+                              return {
+                                ...previous,
+                                slides: previous.slides?.map((item) =>
+                                  item.photoId === photoId && item.heading
+                                    ? {
+                                        ...item,
+                                        heading: {
+                                          ...item.heading,
+                                          ...free,
+                                          width,
+                                          fontSize,
+                                        },
+                                      }
+                                    : item,
+                                ),
+                              };
                             return {
                               ...previous,
-                              slides: previous.slides?.map((item) =>
-                                item.photoId === photoId && item.heading
-                                  ? {
-                                      ...item,
-                                      heading: {
-                                        ...item.heading,
-                                        ...free,
-                                        width,
-                                        fontSize,
-                                      },
-                                    }
-                                  : item,
-                              ),
+                              fontSize,
+                              welcome: {
+                                ...defaultWelcomePanel,
+                                ...previous.welcome,
+                                ...free,
+                                width,
+                              },
                             };
-                          return {
-                            ...previous,
-                            fontSize,
-                            welcome: {
-                              ...defaultWelcomePanel,
-                              ...previous.welcome,
-                              ...free,
-                              width,
-                            },
-                          };
-                        });
-                        setNotice("");
-                      }
-                }
-              />
-            </div>
+                          });
+                          setNotice("");
+                        }
+                  }
+                />
+              </div>
+            </DeviceFrame>
             <BannerSlideList
               slides={draft.slides ?? []}
               disabled={busy}

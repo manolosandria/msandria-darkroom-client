@@ -1,9 +1,20 @@
 Feature: Curated collections
   Scenario: Arrange a collection
     Given I am signed in as the administrator
-    When I add photos, drag them into a new order and pull their edges to resize them
+    When I add photos, drag them to cells of the grid and pull their edges to resize them
     Then the canvas shows the composition before saving
-    And the same four-column composition scales down on a phone
+    And a phone shows the same pieces in reading order on four columns
+
+  Scenario: Place a piece under another or apart from it
+    Given I am editing a collection on wide screens
+    When I drag a photo to the cell under another photo
+    Then it stays there and is saved with its row and column
+    When I drag it to a cell with empty cells around it
+    Then the empty cells stay empty, in the editor and in the public mosaic
+    When I drop it onto another piece
+    Then that piece steps down out of its way and nothing else moves
+    And the arrow keys on a piece, or the arrows in its Piece tab, move it one cell
+    And Close gaps lets every piece follow the one before again
 
   Scenario: Browse collections
     Given I open the Collections tab of the catalog editor
@@ -16,12 +27,13 @@ Feature: Curated collections
     Given I am editing a collection
     When I search the Add photos strip by title or choose a category
     Then only matching photos that are not already in the collection are offered
-    And the strip scrolls sideways, loading 160-pixel thumbnails with their titles as they appear
+    And the strip is the Photos filmstrip: square 160-pixel thumbnails with their visibility, loaded as they appear
+    And Hide photos folds it away, remembered for the next visit
 
   Scenario: Edit a photo from the side panel
     Given I am editing a collection
     When I click one of its photos
-    Then the side panel shows its position, size and whether its title is shown
+    Then the Piece tab shows its cell, its size on each device and whether its title is shown
     And I can use it as the collection cover or remove it
     And the same changes are possible without dragging
 
