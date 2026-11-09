@@ -39,7 +39,9 @@ let viewInMemory: InspectorView | null = null;
 export function readInspectorView(): InspectorView {
   if (viewInMemory) return viewInMemory;
   try {
-    return window.localStorage.getItem(VIEW_KEY) === "scroll" ? "scroll" : "tabs";
+    return window.localStorage.getItem(VIEW_KEY) === "scroll"
+      ? "scroll"
+      : "tabs";
   } catch {
     return "tabs";
   }
@@ -57,9 +59,11 @@ export function writeInspectorView(view: InspectorView) {
 /**
  * Parts of Photos a curator can fold out of the way: the inspector's grid of section
  * tabs (`photoInspectorTabsFolded`) and the library's strip of photos while one is open
- * (`photoStripFolded`). Kept per visitor, guarded like the rest.
+ * (`photoStripFolded`), and the strip of photos to add to a collection or a post
+ * (`photoPickerFolded`). Kept per visitor, guarded like the rest.
  */
-export type FoldablePart = "photoInspectorTabsFolded" | "photoStripFolded";
+export type FoldablePart =
+  "photoInspectorTabsFolded" | "photoStripFolded" | "photoPickerFolded";
 const foldedInMemory = new Map<FoldablePart, boolean>();
 
 export function readFolded(part: FoldablePart): boolean {

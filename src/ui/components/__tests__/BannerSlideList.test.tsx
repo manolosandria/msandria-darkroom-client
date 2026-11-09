@@ -93,7 +93,7 @@ describe("BannerSlideList", () => {
     expect(
       screen.queryByRole("button", { name: "Add Photo p to Home" }),
     ).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("Search by title"), {
+    fireEvent.change(screen.getByPlaceholderText("Search by title…"), {
       target: { value: "medano" },
     });
     expect(

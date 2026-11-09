@@ -1,12 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionProvider } from "../SessionProvider";
 import { User } from "@/src/domain/entities/User";
 import { CatalogEditor } from "../ManageCollections";
 import { CollectionMosaic } from "../CollectionMosaic";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
-import { getManagedPhotos, uploadPhoto } from "@/src/infrastructure/photoServices";
+import {
+  getManagedPhotos,
+  uploadPhoto,
+} from "@/src/infrastructure/photoServices";
 import { Photo } from "@/src/domain/entities/Photo";
 import { Catalog } from "@/src/domain/entities/Catalog";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
@@ -43,7 +53,13 @@ const catalog = (collections: Catalog["collections"] = []): Catalog => ({
 });
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(manageCatalog.saveCollection).mockResolvedValue({ id: "saved", title: "City", version: 2, categories: [], entries: [] });
+  vi.mocked(manageCatalog.saveCollection).mockResolvedValue({
+    id: "saved",
+    title: "City",
+    version: 2,
+    categories: [],
+    entries: [],
+  });
   vi.mocked(manageCatalog.load).mockResolvedValue(catalog());
   vi.mocked(getManagedPhotos.execute).mockResolvedValue(photos);
 });
@@ -67,26 +83,51 @@ async function saveAndAccept(user: ReturnType<typeof userEvent.setup>) {
     await user.click(within(review).getByRole("button", { name: "Save all" }));
 }
 
-// The size a cell bar shows: the name of its chosen cell.
+// The size a cell stepper shows.
 const cells = (label: string) =>
-  within(screen.getByLabelText(label))
-    .getByRole("radio", { checked: true })
-    .getAttribute("aria-label");
+  within(screen.getByRole("group", { name: label })).getByLabelText(/in cells/)
+    .textContent;
+// The catalog's own tabs, apart from the inspector's.
+const catalogTab = (name: string) =>
+  within(screen.getByRole("tablist", { name: "Catalog" })).getByRole("tab", {
+    name,
+  });
 
 describe("catalog tabs", () => {
   it("keeps a stale draft and offers an explicit reload without retrying the write", async () => {
-    vi.mocked(manageCatalog.load).mockResolvedValue(catalog([{ id: "c", version: 4, title: "City", categories: [], entries: [] }]));
-    vi.mocked(manageCatalog.saveCollection).mockRejectedValueOnce(new CatalogConflictError());
-    const user = userEvent.setup(); render(<CatalogEditor />);
+    vi.mocked(manageCatalog.load).mockResolvedValue(
+      catalog([
+        { id: "c", version: 4, title: "City", categories: [], entries: [] },
+      ]),
+    );
+    vi.mocked(manageCatalog.saveCollection).mockRejectedValueOnce(
+      new CatalogConflictError(),
+    );
+    const user = userEvent.setup();
+    render(<CatalogEditor />);
     await user.click(await screen.findByRole("button", { name: /City/ }));
-    await user.click(await screen.findByRole("button", { name: "Edit collection" }));
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " at night");
+    await user.click(
+      await screen.findByRole("button", { name: "Edit collection" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      " at night",
+    );
     await saveAndAccept(user);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Your edits are kept");
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("City at night");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Your edits are kept",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("City at night");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
-    expect(manageCatalog.saveCollection).toHaveBeenCalledWith(expect.objectContaining({ version: 4 }), "c");
-    expect(screen.getByRole("button", { name: "Reload state" })).toBeInTheDocument();
+    expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ version: 4 }),
+      "c",
+    );
+    expect(
+      screen.getByRole("button", { name: "Reload state" }),
+    ).toBeInTheDocument();
   });
   it("shows collection categories separately from the top-level variants panel", async () => {
     const user = userEvent.setup();
@@ -98,7 +139,9 @@ describe("catalog tabs", () => {
     await user.click(screen.getByRole("tab", { name: "Categories" }));
     expect(screen.getByLabelText("Category name")).toBeInTheDocument();
     expect(screen.queryByLabelText("Work title")).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Variants" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Variants" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("tabpanel")).toHaveClass("studio-card");
   });
 
@@ -106,10 +149,15 @@ describe("catalog tabs", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Harbour");
-    await user.click(screen.getByRole("tab", { name: "Categories" }));
-    await user.click(screen.getByRole("tab", { name: "Collections" }));
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Harbour");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      "Harbour",
+    );
+    await user.click(catalogTab("Categories"));
+    await user.click(catalogTab("Collections"));
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("Harbour");
   });
 });
 
@@ -145,7 +193,9 @@ describe("collection browser", () => {
     await user.click(
       within(panel).getByRole("button", { name: "Edit collection" }),
     );
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("City");
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("City");
     expect(screen.getByLabelText("Description")).toHaveValue(
       "Streets after the rain",
     );
@@ -165,13 +215,21 @@ describe("collection browser", () => {
       await user.click(screen.getByRole("button", { name: "Edit collection" }));
     };
     await open(/One/);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " edited");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      " edited",
+    );
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/Two/);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), " pending");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      " pending",
+    );
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/One/);
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("One edited");
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("One edited");
     await saveAndAccept(user);
     await screen.findByText("Saved.");
     expect(manageCatalog.saveCollection).toHaveBeenCalledTimes(1);
@@ -181,12 +239,14 @@ describe("collection browser", () => {
     );
     await user.click(screen.getByRole("button", { name: "← All collections" }));
     await open(/Two/);
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue(
-      "Two pending",
-    );
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("Two pending");
     await user.click(screen.getByRole("button", { name: "Cancel changes" }));
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Two");
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("Two");
     // Many typed edits across three editors: slow when the whole suite runs at once.
   }, 15000);
 });
@@ -196,7 +256,10 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Pending");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      "Pending",
+    );
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     vi.mocked(getManagedPhotos.execute).mockResolvedValue([
       photo("Color", "PRIVATE"),
@@ -209,9 +272,11 @@ describe("collection editor", () => {
       "will not appear in the public collection",
     );
     await user.click(
-      screen.getByRole("button", { name: "← Collection details" }),
+      screen.getByRole("button", { name: "Back to the collection" }),
     );
-    expect(screen.getByRole("textbox", { name: "Collection title" })).toHaveValue("Pending");
+    expect(
+      screen.getByRole("textbox", { name: "Collection title" }),
+    ).toHaveValue("Pending");
   });
 
   it("frames a private photo and warns above the composition", async () => {
@@ -241,19 +306,27 @@ describe("collection editor", () => {
   it("keeps the composition after a failed save and retries only on request", async () => {
     vi.mocked(manageCatalog.saveCollection)
       .mockRejectedValueOnce(new Error("Offline"))
-      .mockResolvedValueOnce({ id: "new", title: "City", version: 2, categories: [], entries: [] });
+      .mockResolvedValueOnce({
+        id: "new",
+        title: "City",
+        version: 2,
+        categories: [],
+        entries: [],
+      });
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      "City",
+    );
     await user.type(screen.getByLabelText("Description"), "  At night ");
     await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.click(
-      within(screen.getByLabelText("Width on wide screens")).getByRole(
-        "radio",
-        { name: "4" },
-      ),
+    const width = within(
+      screen.getByRole("group", { name: "Width on wide screens" }),
     );
+    await user.click(width.getByRole("button", { name: "More width" }));
+    await user.click(width.getByRole("button", { name: "More width" }));
     await saveAndAccept(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Offline");
     expect(cells("Width on wide screens")).toBe("4");
@@ -276,6 +349,8 @@ describe("collection editor", () => {
             rows: 2,
             mobileColumns: null,
             mobileRows: null,
+            column: 1,
+            row: 1,
             showTitle: true,
             caption: null,
           },
@@ -290,13 +365,21 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      "City",
+    );
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
-    await user.click(screen.getByRole("button", { name: "← Move earlier" }));
+    // Moved onto Color's cell, Monochrome comes first and Color steps down.
+    await user.click(screen.getByRole("button", { name: "Move left" }));
+    await user.click(screen.getByRole("button", { name: "Move left" }));
     expect(
       screen.getByRole("button", { name: "Photo 1: Monochrome" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Photo 2: Color" }),
+    ).toHaveAttribute("title", expect.stringMatching(/^Row 3, column 1/));
     await user.click(
       screen.getByRole("checkbox", { name: "Show title in the collection" }),
     );
@@ -329,6 +412,8 @@ describe("collection editor", () => {
             rows: 2,
             mobileColumns: null,
             mobileRows: null,
+            column: 1,
+            row: 1,
             showTitle: false,
             caption: null,
           },
@@ -349,7 +434,9 @@ describe("collection editor", () => {
     await startNewCollection(user);
     const picker = screen.getByRole("region", { name: "Add photos" });
     await user.type(within(picker).getByRole("searchbox"), "colo");
-    expect(within(picker).getAllByRole("button", { name: /^Add / })).toHaveLength(1);
+    expect(
+      within(picker).getAllByRole("button", { name: /^Add / }),
+    ).toHaveLength(1);
     await user.clear(within(picker).getByRole("searchbox"));
     await user.click(within(picker).getByLabelText("Category"));
     await user.click(within(picker).getByRole("option", { name: "Street" }));
@@ -359,40 +446,90 @@ describe("collection editor", () => {
     expect(
       within(picker).queryByRole("button", { name: "Add Color" }),
     ).not.toBeInTheDocument();
-    await user.click(within(picker).getByRole("button", { name: "Add Monochrome" }));
-    expect(within(picker).getByText("No photos match these filters.")).toBeInTheDocument();
+    await user.click(
+      within(picker).getByRole("button", { name: "Add Monochrome" }),
+    );
+    expect(
+      within(picker).getByText("No photos match these filters."),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Photo 1: Monochrome" }),
     ).toBeInTheDocument();
   });
 
-  it("reorders by dragging a photo onto another one", async () => {
+  it("drops a dragged photo in any cell, under another or pushing it down", async () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
     await user.click(screen.getByRole("button", { name: "Photo 1: Color" }));
-    const dragged = screen.getByRole("button", { name: "Photo 2: Monochrome" });
-    // Laid out side by side: Color at the left, Monochrome at the right.
-    [
-      screen.getByRole("button", { name: "Photo 1: Color" }).closest("li")!,
-      dragged.closest("li")!,
-    ].forEach((piece, index) => {
-      piece.getBoundingClientRect = () =>
-        ({ left: index * 160, top: 0, width: 150, height: 150 }) as DOMRect;
-    });
-    fireEvent.pointerDown(dragged, { button: 0, clientX: 200, clientY: 10 });
-    fireEvent.pointerMove(dragged, { clientX: 20, clientY: 10 });
-    fireEvent.pointerUp(dragged);
-    fireEvent.click(dragged);
-    expect(
-      screen.getByRole("button", { name: "Photo 1: Monochrome" }),
-    ).toBeInTheDocument();
+    const position = (name: string) =>
+      screen.getByRole("button", { name }).getAttribute("title");
+    // Side by side as they were added: Monochrome starts at the third column.
+    expect(position("Photo 2: Monochrome")).toMatch(/^Row 1, column 3/);
+    // jsdom lays nothing out: an 800-pixel grid makes each cell 100 pixels. Held by
+    // its first cell, Monochrome goes under Color, two rows down.
+    Object.defineProperty(
+      screen.getByRole("list", { name: "Collection composition" }),
+      "clientWidth",
+      { value: 800, configurable: true },
+    );
+    const drag = (name: string, from: number[], to: number[]) => {
+      const piece = screen.getByRole("button", { name });
+      fireEvent.pointerDown(piece, {
+        button: 0,
+        clientX: from[0],
+        clientY: from[1],
+      });
+      fireEvent.pointerMove(piece, { clientX: to[0], clientY: to[1] });
+      fireEvent.pointerUp(piece);
+      fireEvent.click(piece);
+    };
+    drag("Photo 2: Monochrome", [250, 50], [50, 250]);
+    expect(position("Photo 2: Monochrome")).toMatch(/^Row 3, column 1/);
     // The click that ends a drag does not select the dragged photo.
     expect(
       screen.getByRole("complementary", { name: "Photo details" }),
     ).toHaveTextContent("Color");
+    // Dropped onto Color, Monochrome reads first and Color steps down out of its way.
+    drag("Photo 2: Monochrome", [50, 250], [50, 50]);
+    expect(position("Photo 1: Monochrome")).toMatch(/^Row 1, column 1/);
+    expect(position("Photo 2: Color")).toMatch(/^Row 3, column 1/);
+    // The arrow keys move a piece one cell, leaving an empty one behind it.
+    fireEvent.keyDown(screen.getByRole("button", { name: "Photo 2: Color" }), {
+      key: "ArrowRight",
+    });
+    expect(position("Photo 2: Color")).toMatch(/^Row 3, column 2/);
+    // Close gaps lets every piece follow the one before again.
+    await user.click(screen.getByRole("button", { name: /Close gaps/ }));
+    expect(position("Photo 2: Color")).toMatch(/^Row 1, column 3/);
+    expect(
+      screen.queryByRole("button", { name: /Close gaps/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("ignores a press that never moves and an Escape mid-drag", async () => {
+    const user = userEvent.setup();
+    render(<CatalogEditor />);
+    await startNewCollection(user);
+    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    const piece = screen.getByRole("button", { name: "Photo 2: Monochrome" });
+    fireEvent.pointerDown(piece, { button: 0, clientX: 2, clientY: 0 });
+    fireEvent.pointerMove(piece, { clientX: 3, clientY: 1 });
+    fireEvent.pointerUp(piece);
+    expect(piece).toHaveAttribute("title", expect.stringMatching(/column 3/));
+    fireEvent.pointerDown(piece, { button: 0, clientX: 2, clientY: 0 });
+    fireEvent.pointerMove(piece, { clientX: 2, clientY: 9 });
+    expect(piece).toHaveAttribute("title", expect.stringMatching(/^Row 10/));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(piece).toHaveAttribute("title", expect.stringMatching(/^Row 1,/));
+    // A right press or a phone layout never starts a drag.
+    fireEvent.pointerDown(piece, { button: 2, clientX: 2, clientY: 0 });
+    fireEvent.pointerMove(piece, { clientX: 2, clientY: 9 });
+    fireEvent.pointerUp(piece);
+    expect(piece).toHaveAttribute("title", expect.stringMatching(/^Row 1,/));
   });
 
   it("resizes a photo by dragging its corner", async () => {
@@ -421,11 +558,10 @@ describe("collection editor", () => {
     expect(
       screen.getByRole("checkbox", { name: "Own size on phones" }),
     ).not.toBeChecked();
-    for (const cell of within(
-      screen.getByLabelText("Width on phones"),
-    ).getAllByRole("radio"))
-      expect(cell).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /Phones/ }));
+    expect(
+      screen.queryByRole("group", { name: "Width on phones" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Phone/ }));
     expect(
       screen.getByRole("list", { name: "Collection composition on phones" }),
     ).toBeInTheDocument();
@@ -455,7 +591,10 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.type(screen.getByRole("textbox", { name: "Collection title" }), "City");
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection title" }),
+      "City",
+    );
     await user.click(screen.getByRole("button", { name: "Add Color" }));
     await user.type(
       screen.getByLabelText(/Text with the photo/),
@@ -475,7 +614,9 @@ describe("collection editor", () => {
     await user.type(screen.getByLabelText("Text"), "Night falls");
     await user.click(screen.getByRole("button", { name: /Heading/ }));
     await user.click(screen.getByRole("button", { name: "Center" }));
-    await user.click(screen.getByRole("button", { name: "← Move earlier" }));
+    // Moved onto the photo's row, the text reads first and the photo steps down.
+    await user.click(screen.getByRole("button", { name: "Move left" }));
+    await user.click(screen.getByRole("button", { name: "Move left" }));
     expect(
       screen.getByRole("button", { name: "Text block: Night falls" }),
     ).toBeInTheDocument();
@@ -500,6 +641,8 @@ describe("collection editor", () => {
             rows: 1,
             mobileColumns: null,
             mobileRows: null,
+            column: 1,
+            row: 1,
           },
         ],
       }),
@@ -583,19 +726,47 @@ describe("collection mosaic", () => {
 });
 
 it("opens an existing work from its cover in the standalone variants panel", async () => {
-  vi.mocked(manageCatalog.load).mockResolvedValue({ ...catalog(), works: [{ id: "w", title: "Two expressions", variants: [{ photoId: "Color" }, { photoId: "Monochrome" }] }] });
+  vi.mocked(manageCatalog.load).mockResolvedValue({
+    ...catalog(),
+    works: [
+      {
+        id: "w",
+        title: "Two expressions",
+        variants: [{ photoId: "Color" }, { photoId: "Monochrome" }],
+      },
+    ],
+  });
   render(<CatalogEditor variants />);
-  await userEvent.click(await screen.findByRole("button", { name: /Two expressions/ }));
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Two expressions/ }),
+  );
   expect(screen.getByLabelText("Work title")).toHaveValue("Two expressions");
-  expect(screen.getAllByRole("checkbox").filter(input => (input as HTMLInputElement).checked)).toHaveLength(2);
-  expect(screen.queryByRole("tab", { name: "Variants" })).not.toBeInTheDocument();
+  expect(
+    screen
+      .getAllByRole("checkbox")
+      .filter((input) => (input as HTMLInputElement).checked),
+  ).toHaveLength(2);
+  expect(
+    screen.queryByRole("tab", { name: "Variants" }),
+  ).not.toBeInTheDocument();
 });
 
 it("adds a library photo to a new work and uploads dropped files with the work's visibility", async () => {
-  vi.mocked(getManagedPhotos.execute).mockResolvedValue([photo("Color", "PRIVATE"), photo("Monochrome")]);
+  vi.mocked(getManagedPhotos.execute).mockResolvedValue([
+    photo("Color", "PRIVATE"),
+    photo("Monochrome"),
+  ]);
   const uploaded = photo("Infrared");
-  vi.mocked(uploadPhoto.execute).mockResolvedValue({ photo: uploaded, optimizationIssues: [] });
-  vi.mocked(manageCatalog.saveWork).mockResolvedValue({ id: "w", title: "Night", version: 1, variants: [] });
+  vi.mocked(uploadPhoto.execute).mockResolvedValue({
+    photo: uploaded,
+    optimizationIssues: [],
+  });
+  vi.mocked(manageCatalog.saveWork).mockResolvedValue({
+    id: "w",
+    title: "Night",
+    version: 1,
+    variants: [],
+  });
   render(<CatalogEditor variants />);
   const library = await screen.findByRole("region", { name: "Photo library" });
   await userEvent.click(within(library).getAllByRole("checkbox")[0]);
@@ -608,13 +779,17 @@ it("adds a library photo to a new work and uploads dropped files with the work's
   );
   // The file waits as a card with its own fields, starting from the work's visibility.
   const queue = screen.getByRole("region", { name: "Files to upload" });
-  expect(within(queue).getByLabelText("Title of night_infrared.jpg")).toHaveValue("night infrared");
+  expect(
+    within(queue).getByLabelText("Title of night_infrared.jpg"),
+  ).toHaveValue("night infrared");
   await userEvent.type(
     within(queue).getByLabelText("Description of night_infrared.jpg"),
     "Shot after dark",
   );
   expect(uploadPhoto.execute).not.toHaveBeenCalled();
-  await userEvent.click(within(queue).getByRole("button", { name: "Upload all (1)" }));
+  await userEvent.click(
+    within(queue).getByRole("button", { name: "Upload all (1)" }),
+  );
   expect(await within(zone).findByText("Infrared")).toBeInTheDocument();
   expect(uploadPhoto.execute).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -635,18 +810,36 @@ it("adds a library photo to a new work and uploads dropped files with the work's
 });
 
 it("reorders a work's variants and makes another one the main", async () => {
-  vi.mocked(manageCatalog.saveWork).mockResolvedValue({ id: "w", title: "Two", version: 1, variants: [] });
+  vi.mocked(manageCatalog.saveWork).mockResolvedValue({
+    id: "w",
+    title: "Two",
+    version: 1,
+    variants: [],
+  });
   render(<CatalogEditor variants />);
   const library = await screen.findByRole("region", { name: "Photo library" });
-  for (const box of within(library).getAllByRole("checkbox")) await userEvent.click(box);
+  for (const box of within(library).getAllByRole("checkbox"))
+    await userEvent.click(box);
   const zone = screen.getByRole("group", { name: "Variants of this work" });
   expect(within(zone).getByText("★ Main")).toBeInTheDocument();
-  await userEvent.click(within(zone).getByRole("button", { name: "Make Monochrome the main variant" }));
-  expect(within(zone).getByRole("button", { name: "Monochrome is the main variant" })).toBeDisabled();
+  await userEvent.click(
+    within(zone).getByRole("button", {
+      name: "Make Monochrome the main variant",
+    }),
+  );
+  expect(
+    within(zone).getByRole("button", {
+      name: "Monochrome is the main variant",
+    }),
+  ).toBeDisabled();
   // The arrow keys on a photo move it one place.
-  within(zone).getByRole("button", { name: /^Monochrome, variant 1 of 2/ }).focus();
+  within(zone)
+    .getByRole("button", { name: /^Monochrome, variant 1 of 2/ })
+    .focus();
   await userEvent.keyboard("{ArrowRight}");
-  expect(within(zone).getByRole("button", { name: /^Color, variant 1 of 2, main/ })).toBeInTheDocument();
+  expect(
+    within(zone).getByRole("button", { name: /^Color, variant 1 of 2, main/ }),
+  ).toBeInTheDocument();
   await userEvent.type(screen.getByLabelText("Work title"), "Two");
   await userEvent.click(screen.getByRole("button", { name: "Save variants" }));
   await waitFor(() =>
@@ -673,26 +866,52 @@ it("cancels an upload on its way and keeps the file to try again", async () => {
     new File(["b"], "second.jpg", { type: "image/jpeg" }),
   ]);
   const queue = screen.getByRole("region", { name: "Files to upload" });
-  await userEvent.click(within(queue).getByRole("button", { name: "Upload all (2)" }));
+  await userEvent.click(
+    within(queue).getByRole("button", { name: "Upload all (2)" }),
+  );
   // Both travel at once.
   expect(uploadPhoto.execute).toHaveBeenCalledTimes(2);
-  await userEvent.click(within(queue).getByRole("button", { name: "Cancel all" }));
-  expect(await within(queue).findByRole("listitem", { name: "first.jpg: Cancelled" })).toBeInTheDocument();
-  expect(within(queue).getByRole("listitem", { name: "second.jpg: Cancelled" })).toBeInTheDocument();
-  expect(within(queue).getAllByRole("button", { name: "Try again" })).toHaveLength(2);
+  await userEvent.click(
+    within(queue).getByRole("button", { name: "Cancel all" }),
+  );
+  expect(
+    await within(queue).findByRole("listitem", {
+      name: "first.jpg: Cancelled",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(queue).getByRole("listitem", { name: "second.jpg: Cancelled" }),
+  ).toBeInTheDocument();
+  expect(
+    within(queue).getAllByRole("button", { name: "Try again" }),
+  ).toHaveLength(2);
   expect(screen.getByRole("button", { name: "Save variants" })).toBeDisabled();
 });
 
 it("adds a photo dragged from the library and refuses files that are not images", async () => {
   render(<CatalogEditor variants />);
-  const zone = await screen.findByRole("group", { name: "Variants of this work" });
-  const data = new Map<string, string>([["application/x-darkroom-photo", "Monochrome"]]);
-  fireEvent.drop(zone, { dataTransfer: { getData: (type: string) => data.get(type) ?? "", files: [] } });
+  const zone = await screen.findByRole("group", {
+    name: "Variants of this work",
+  });
+  const data = new Map<string, string>([
+    ["application/x-darkroom-photo", "Monochrome"],
+  ]);
+  fireEvent.drop(zone, {
+    dataTransfer: {
+      getData: (type: string) => data.get(type) ?? "",
+      files: [],
+    },
+  });
   expect(within(zone).getByText("Monochrome")).toBeInTheDocument();
   fireEvent.drop(zone, {
-    dataTransfer: { getData: () => "", files: [new File(["x"], "notes.txt", { type: "text/plain" })] },
+    dataTransfer: {
+      getData: () => "",
+      files: [new File(["x"], "notes.txt", { type: "text/plain" })],
+    },
   });
-  expect(await screen.findByRole("alert")).toHaveTextContent("Drop JPEG, PNG or WebP images.");
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Drop JPEG, PNG or WebP images.",
+  );
   expect(uploadPhoto.execute).not.toHaveBeenCalled();
 });
 
@@ -789,19 +1008,40 @@ describe("collection mosaic with text", () => {
 it("prepares photos with the shared steps and adds uploads to the collection draft", async () => {
   const user = userEvent.setup();
   const uploaded = photo("New lake");
-  vi.mocked(uploadPhoto.execute).mockResolvedValue({ photo: uploaded, optimizationIssues: [] });
+  vi.mocked(uploadPhoto.execute).mockResolvedValue({
+    photo: uploaded,
+    optimizationIssues: [],
+  });
   const createObjectURL = vi.fn(() => "blob:collection");
   const revokeObjectURL = vi.fn();
-  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL }));
+  vi.stubGlobal(
+    "URL",
+    Object.assign(URL, { createObjectURL, revokeObjectURL }),
+  );
   const ports = {
-    getCurrentUser: vi.fn().mockResolvedValue(new User({ id: "admin", email: "admin@example.com", role: "ADMIN" })),
-    signIn: vi.fn(), signOut: vi.fn(),
+    getCurrentUser: vi
+      .fn()
+      .mockResolvedValue(
+        new User({ id: "admin", email: "admin@example.com", role: "ADMIN" }),
+      ),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
   };
-  render(<SessionProvider ports={ports}><CatalogEditor /></SessionProvider>);
+  render(
+    <SessionProvider ports={ports}>
+      <CatalogEditor />
+    </SessionProvider>,
+  );
   await startNewCollection(user);
-  await user.type(screen.getByRole("textbox", { name: "Collection title" }), "Lakes");
+  await user.type(
+    screen.getByRole("textbox", { name: "Collection title" }),
+    "Lakes",
+  );
   await user.click(screen.getByRole("button", { name: "Upload new photos…" }));
-  await user.upload(await screen.findByLabelText("Photos"), new File(["x"], "lake.jpg", { type: "image/jpeg" }));
+  await user.upload(
+    await screen.findByLabelText("Photos"),
+    new File(["x"], "lake.jpg", { type: "image/jpeg" }),
+  );
   expect(screen.getByRole("tab", { name: "1 Details" })).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Upload new photos…" }));
   expect(screen.queryByRole("article", { name: /lake.jpg/ })).toBeNull();
@@ -809,14 +1049,22 @@ it("prepares photos with the shared steps and adds uploads to the collection dra
   expect(screen.getByRole("article", { name: /lake.jpg/ })).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Save collection" }));
   const review = screen.queryByRole("dialog", { name: "Review changes" });
-  if (review) await user.click(within(review).getByRole("button", { name: "Save all" }));
+  if (review)
+    await user.click(within(review).getByRole("button", { name: "Save all" }));
   expect(manageCatalog.saveCollection).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Upload" }));
-  await waitFor(() => expect(uploadPhoto.execute).toHaveBeenCalledWith(expect.objectContaining({ visibility: "COLLECTIONS_ONLY" })));
+  await waitFor(() =>
+    expect(uploadPhoto.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "COLLECTIONS_ONLY" }),
+    ),
+  );
   await screen.findByRole("button", { name: "Uploaded" });
   await saveAndAccept(user);
-  expect(manageCatalog.saveCollection).toHaveBeenCalledWith(expect.objectContaining({
-    entries: [expect.objectContaining({ photoId: "New lake" })],
-  }), undefined);
+  expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
+    expect.objectContaining({
+      entries: [expect.objectContaining({ photoId: "New lake" })],
+    }),
+    undefined,
+  );
   vi.unstubAllGlobals();
 });

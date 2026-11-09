@@ -439,10 +439,10 @@ form data. Drafts and replacement files remain in memory only.
 
 `ManageCollections` splits the catalog editor into Collections and Categories tabs; Collections stays mounted so its drafts survive the other tabs.
 `CollectionWorkspace` shows the collection grid with its side panel and owns the
-collection editors; `CollectionCanvas` is the editable mosaic (drag to reorder,
-edges and corner to resize, click to select), and every pointer gesture has a
-side-panel equivalent. Photos are added from `PhotoPicker`, a horizontal strip of
-lazily loaded thumbnails capped at 160 px, and the Photos tab's library is a grid, list or
+collection editors; `CollectionCanvas` is the editable mosaic (drag a piece to any
+cell, edges and corner to resize, click to select), and every pointer gesture has a
+keyboard and side-panel equivalent. Photos are added from `PhotoPicker`, the Photos
+filmstrip of lazily loaded square thumbnails capped at 160 px, and the Photos tab's library is a grid, list or
 filmstrip; both use `PhotoFilters` (title search ignoring case and accents,
 category from the catalog, and on Photos the camera from the admin listing). Their
 administrative images are capped at 160 px for thumbnails (the API's smallest
@@ -512,8 +512,8 @@ arrow keys, Home and End between tabs), one segmented row of drawings over short
 (`propertyTabIcons`) that light under the pointer, the chosen one raised: Home has Text,
 Palette, Typography, Highlight, Carousel and Composition; Gallery has Style, Page,
 Filters, Photos, Introduction and Visitors. The controls column is a size container, so
-Composition's drawings and Welcome controls rearrange to its width. Home's preview bar
-is see-through, with Desktop and Mobile as glass pills, the chosen one dark. Gallery's
+Composition's drawings and Welcome controls rearrange to its width. Home previews inside
+a monitor or a phone, chosen with the shared `DeviceSwitch`, as Gallery does. Gallery's
 Filters tab widens the controls column so the bar is built near its real width. Upload, Photos and Collections stay mounted once visited, so switching tabs
 does not lose unsaved edits. The older routes still work on their own.
 
@@ -726,7 +726,7 @@ one the main variant, the first one and the cover. The work is saved only with *
 variants**, which waits while uploads run.
 
 Gallery's visitor controls are segmented icon buttons (native radios), and the Gallery
-studio previews inside a monitor or a phone chosen with two device buttons. In Curator →
+studio previews inside a monitor or a phone (`DeviceSwitch` and `DeviceFrame`). In Curator →
 Gallery → Visitors, the layouts and grid proportions offered are tiles with the same
 drawings (`galleryOptionIcons`), lit when offered.
 
@@ -814,7 +814,7 @@ colors; the introduction texts are numbered cards.
 In Photos → Categories, typing narrows the existing categories shown as buttons and
 offers **Create** for a new name; there is no dropdown. The Collections editor follows the
 Photos layout: the photo strip on top, the composition on a dark stage and an inspector
-of sections (Selected photo, Details, Categories, Display).
+of property tabs (Piece, Details, Categories, Display).
 
 ## Home slides, Welcome over the photograph and arranging
 
@@ -893,7 +893,18 @@ the pointer the same way:
   (`choiceIcons`): each has a tooltip and an accessible name, the chosen one is raised,
   one line names the current choice, and arrow keys move it. Home's alignment, shape,
   navigation and controls, Gallery's photo arrangement and the filter bar builder's
-  alignment use it. Collection pieces choose their size on a bar of cells.
+  alignment use it. Collection pieces choose their size with − and + steppers.
+- **`DeviceSwitch`** and **`DeviceFrame`** (`deviceSwitch.css`): the choice between a
+  desktop monitor and a phone, two radios with their drawings (arrow keys switch them;
+  `tone="dark"` on a dark stage), and the monitor with its stand or the phone the preview
+  sits in. Home, Gallery and Collections use them; Posts still has its own.
+- **The photo library** (`photoBrowser.css`): Photos' card, toolbar, **Hide photos** and
+  browser as a grid, a list or a filmstrip of square thumbnails with their badges
+  (`VisibilityBadge` and `VISIBILITY_LABELS` in `PhotoBadges`). `PhotoPicker` is that
+  filmstrip to add from (Collections, Posts and Home's slides: heading, labels, disabled
+  state and a note are its options); **Variant of** (`VariantAssignment`) picks on it as
+  radios with the same filters, a work's variants show on it, Account's profile photo
+  and cover are chosen from it, and Variants' library shares its badges and labels.
 - **`EmptyState`**: a drawing in a soft circle, a title and an optional line, for lists
   with nothing to show (Inbox, Comments, Photos, Collections).
 - Checkboxes, radios and sliders are drawn by `globals.css` with zero-specificity
@@ -1058,12 +1069,33 @@ tab, opens every group and ends with **Show Curator's tabs** to bring the row ba
 While the tabs show, an arrow (**Hide the tabs**) at the end of their row folds them.
 From 900 px Home's preview and properties sit side by side even below 1100 px.
 
-**Collections editor.** The inspector's section buttons show that section alone, with
-**View all** to show them all. Each piece can start at a chosen wide-screen column
-(`column`, **Starts at** under its size): starting at the same column as the piece before
-puts it underneath, such as a text under a photograph. Without it, a piece follows the
-one before. The API must accept `column` (migration `20261103000000_collection_column`)
-before this client saves it.
+**Collections editor.** The inspector uses Home's property tabs (`PropertyTabs`):
+**Piece**, **Details** (title, description and, for a saved collection, Delete),
+**Categories** and **Display**; choosing a piece in the composition opens Piece. The
+wide-screen grid is free: a piece is dragged to any cell, under another or with empty
+cells around it, and while it moves the pieces it lands on step down out of its way
+(`arrangePieces`); nothing else moves, so gaps stay. The arrow keys move a focused piece
+one cell, and Piece offers the same with a cross of arrows beside its row and column.
+Its size is two steppers per device, each with a drawing of the cells it takes, and the
+phone size is the piece's own only with **Own size on phones**. A moved piece is saved
+with its cell, `column` and `row` (`row` only with `column`); a piece without them follows
+the one before (`placePieces` reproduces CSS grid's flow, so older collections look as
+they did). Pieces are kept in reading order, top to bottom and left to right, which is
+the order phones show, so the phone layout only resizes. **Close gaps** drops every
+cell and lets the pieces flow again. Two empty rows under the composition take a piece
+dropped below the last one. The API must accept `row` (migration
+`20261109000000_collection_row`) before this client saves it.
+
+Photographs in a collection, public or in the editor, show at their own proportion as
+large as their piece allows (`.mosaic-photo`, sized from `--photo-ratio` against the
+piece as a size container), with no box or band around them; a photo's own text is a
+centred italic line under it. The public mosaic places every piece in its cell, a later
+page starting at its own first row. The Add photos strip (`PhotoPicker`, also used by
+Posts) is the Photos filmstrip: the same card, **Hide photos** (kept under
+`photoPickerFolded`), filters, count and square thumbnails with their visibility badge
+(`VisibilityBadge`, shared with Photos). With the header folded and Curator's tabs
+hidden, Curator's panels start under the floating logo and pill, so no editor scrolls
+beneath them.
 
 **Home gestures and the photo link.** Over the photograph (`text-overlay`), the Welcome
 title takes the carousel's own gestures: sliding over it changes the slide, and pressing

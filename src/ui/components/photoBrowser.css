@@ -1,0 +1,340 @@
+/* The photo library as Photos draws it, shared wherever photos are browsed or picked:
+   the card with its toolbar and fold button, and the browser as a grid, a list or a
+   filmstrip of square thumbnails with their badges. */
+:where(.photo-studio__library, .photo-browser) {
+  --studio-ink: #263021;
+  --studio-muted: #72786b;
+  --studio-accent: #4d6b3a;
+  --studio-line: #d9ddd1;
+}
+.photo-studio__library {
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, #fbfaf5, #f4f2ea);
+}
+.photo-studio__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+.photo-studio__toolbar .photo-filters {
+  flex: 1 1 26rem;
+}
+.photo-studio__toolbar .photo-library-count {
+  margin-left: auto;
+}
+.photo-studio__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--studio-ink);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.photo-studio__back:hover {
+  background: #e7ecdf;
+  border-color: var(--studio-accent);
+}
+/* Folds the strip of photos away while one is open, filters and all. */
+.photo-studio__fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--studio-accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.photo-studio__fold:hover,
+.photo-studio__fold[aria-expanded="false"] {
+  background: #e7ecdf;
+}
+.photo-studio__library[data-folded]
+  .photo-studio__toolbar
+  > :not(.photo-studio__back):not(.photo-studio__fold),
+.photo-studio__library[data-folded] .photo-studio__alerts,
+.photo-browser[hidden] {
+  display: none;
+}
+/* The browser: a grid, a table-like list, or a filmstrip while editing. */
+.photo-browser {
+  min-width: 0;
+}
+.photo-browser__empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--studio-muted);
+  border: 2px dashed #c9cfbf;
+  border-radius: 0.75rem;
+}
+.photo-browser__item {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--studio-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.photo-browser__thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #1d1e1c;
+}
+.photo-browser__badges {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+}
+.photo-browser__badges span {
+  display: grid;
+  place-items: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.25rem;
+  border-radius: 1rem;
+  background: #000b;
+  color: #fff;
+  font-size: 0.7rem;
+}
+.photo-browser__badges [data-warning] {
+  background: #d08a12;
+}
+.photo-browser--grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, var(--photo-browser-size, 200px)), 1fr)
+  );
+  gap: 1rem;
+}
+.photo-browser--grid .photo-browser__item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  border: 1px solid #0000000f;
+  box-shadow: 0 2px 8px -3px #0002;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.photo-browser--grid .photo-browser__item:hover,
+.photo-browser--grid .photo-browser__item:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--studio-accent);
+  box-shadow: 0 12px 26px -10px #2b332266;
+}
+.photo-browser--grid .photo-browser__thumb {
+  aspect-ratio: 1;
+  border-radius: 0.45rem;
+}
+.photo-browser--grid .photo-browser__thumb img {
+  transition: transform 0.3s;
+}
+.photo-browser--grid .photo-browser__item:hover .photo-browser__thumb img {
+  transform: scale(1.03);
+}
+.photo-browser__caption {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0 0.15rem 0.1rem;
+}
+.photo-browser__caption strong {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-browser__caption small {
+  font-size: 0.7rem;
+  color: var(--studio-muted);
+}
+.photo-browser--list {
+  display: grid;
+  gap: 2px;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.photo-browser__head,
+.photo-browser--list .photo-browser__item {
+  display: grid;
+  grid-template-columns: 56px minmax(10rem, 2fr) minmax(7rem, 1fr) 7rem minmax(7rem, 1fr) 7rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.4rem 0.75rem;
+}
+.photo-browser__head {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--studio-muted);
+}
+.photo-browser--list .photo-browser__item {
+  background: #fff;
+  font-size: 0.82rem;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+.photo-browser--list .photo-browser__item:hover,
+.photo-browser--list .photo-browser__item:focus-visible {
+  background: #eef2e7;
+  box-shadow: inset 3px 0 0 var(--studio-accent);
+}
+.photo-browser--list .photo-browser__thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 0.35rem;
+}
+.photo-browser--list .photo-browser__item > span:not(.photo-browser__thumb) {
+  color: var(--studio-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-browser__visibility {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 1rem;
+  background: #e7ecdf;
+  color: #3d4934;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.photo-browser__visibility[data-visibility="PRIVATE"],
+.photo-browser__visibility[data-visibility="SELECT"] {
+  background: #fff1d6;
+  color: #8a5d0b;
+}
+.photo-browser__warning {
+  color: #b5700a;
+  font-weight: 700;
+}
+.photo-browser--strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+}
+.photo-browser--strip .photo-browser__item {
+  flex: 0 0 84px;
+}
+.photo-browser--strip .photo-browser__thumb {
+  width: 84px;
+  height: 84px;
+  border-radius: 0.4rem;
+  box-shadow: 0 1px 4px #0003;
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+  opacity: 0.75;
+}
+.photo-browser--strip .photo-browser__item:hover .photo-browser__thumb {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.photo-browser__item[aria-pressed="true"] .photo-browser__thumb,
+.photo-browser__item[aria-current="true"] .photo-browser__thumb,
+.photo-browser__item:has(input:checked) .photo-browser__thumb {
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--studio-accent), 0 6px 14px -6px #0008;
+}
+.photo-browser--grid .photo-browser__item[aria-pressed="true"] {
+  border-color: var(--studio-accent);
+}
+
+/* Inside the catalog editor a generic rule strips every section of its padding and
+   frame, and gives every button one; these pieces keep their own. */
+.catalog-editor .collection-develop .photo-picker {
+  padding: 1rem 1.25rem;
+  border: 1px solid #0000000d;
+}
+.photo-picker .photo-browser__item.photo-browser__item,
+.catalog-editor .photo-picker .photo-browser__item,
+.catalog-editor .photo-picker .photo-browser__item:not(:disabled):hover {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.photo-picker__heading {
+  margin: 0;
+  font:
+    400 1.15rem/1.2 Georgia,
+    serif;
+  color: var(--studio-ink, #263021);
+}
+.photo-picker .photo-browser__item {
+  cursor: copy;
+}
+.photo-picker .photo-browser__item:hover .photo-picker__plus,
+.photo-picker .photo-browser__item:focus-visible .photo-picker__plus {
+  opacity: 1;
+}
+.photo-picker [hidden] {
+  display: none;
+}
+/* The strip scrolls inside the card instead of widening it, wherever the card sits. */
+.photo-picker__body,
+.photo-picker .photo-studio__toolbar {
+  min-width: 0;
+}
+.photo-picker .photo-studio__toolbar .photo-filters {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.photo-picker .upload-muted {
+  margin: 0;
+}
+/* The + that says a thumbnail is added on a click. */
+.photo-picker__plus { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; font-size: 1.9rem; font-weight: 300; color: #fff; background: #2f4f2a99; opacity: 0; transition: opacity .15s; }
+.photo-picker .photo-browser__item:disabled {
+  cursor: not-allowed;
+}
+.photo-picker .photo-browser__item:disabled .photo-browser__thumb {
+  opacity: 0.4;
+  transform: none;
+}
+.photo-picker .photo-browser__item:disabled .photo-picker__plus {
+  display: none;
+}
+.photo-picker__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--studio-muted);
+}
+/* A thumbnail that is a radio: the choice rings it, keyboard focus outlines it. */
+label.photo-browser__item {
+  cursor: pointer;
+}
+.photo-browser__item:has(input:focus-visible) .photo-browser__thumb {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 3px;
+}
+.photo-browser__item:has(input:disabled) {
+  cursor: not-allowed;
+}
+/* Choosing a profile photo or cover: the same strip, the thumbnails fully lit. */
+.profile-photo-strip .photo-browser__thumb {
+  opacity: 1;
+}
+.profile-photo-strip .photo-browser__item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

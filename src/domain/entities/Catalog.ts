@@ -13,6 +13,11 @@ export type MosaicSize = {
    * before it; starting at that piece's column puts it underneath.
    */
   column?: number | null;
+  /**
+   * The wide-screen row the piece starts at (from 1), only together with `column`:
+   * with both, the piece stays in that cell and may leave empty cells around it.
+   */
+  row?: number | null;
 };
 export type CollectionEntry = MosaicSize & {
   photoId: string;
