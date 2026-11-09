@@ -220,9 +220,9 @@
 .studio-caption-field { display: grid; gap: .3rem; }
 .studio-caption-field textarea { font-family: Georgia, serif; }
 .text-style-choice { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
-.catalog-editor .text-style-choice button { display: grid; justify-items: center; gap: .15rem; padding: .55rem .3rem; border: 1px solid #dfe3d7; border-radius: .6rem; background: #fff; color: #3d4934; font-size: .75rem; transition: border-color .15s, background .15s, transform .15s; }
-.catalog-editor .text-style-choice button:hover { border-color: #9fb685; transform: translateY(-1px); }
-.catalog-editor .text-style-choice button[aria-pressed=true] { border-color: #4d6b3a; background: #eef3e6; box-shadow: 0 0 0 2px #4d6b3a33; }
+.text-style-choice > button[data-style] { display: grid; justify-items: center; gap: .15rem; padding: .55rem .3rem; border: 1px solid #dfe3d7; border-radius: .6rem; background: #fff; color: #3d4934; font-size: .75rem; transition: border-color .15s, background .15s, transform .15s; }
+.text-style-choice > button[data-style]:not(:disabled):hover { border-color: #9fb685; transform: translateY(-1px); }
+.text-style-choice > button[data-style][aria-pressed=true] { border-color: #4d6b3a; background: #eef3e6; box-shadow: 0 0 0 2px #4d6b3a33; }
 .text-style-choice span { font-family: Georgia, serif; font-size: 1.3rem; line-height: 1; }
 .text-style-choice [data-style=BODY] span { font-family: inherit; font-size: 1rem; }
 .text-style-choice [data-style=QUOTE] span { font-style: italic; }

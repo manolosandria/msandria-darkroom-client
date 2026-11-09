@@ -530,19 +530,19 @@ describe("PostStudio", () => {
         .map((button) => button.getAttribute("aria-label")),
     ).toEqual([
       "Move Photo g1, position 1 of 2",
-      "Move Text block, position 2 of 2",
+      "Move Paragraph block, position 2 of 2",
     ]);
     await userEvent.click(
-      screen.getByRole("button", { name: "Move Text block down" }),
+      screen.getByRole("button", { name: "Move Paragraph block down" }),
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Preview" }));
-    await userEvent.click(screen.getByRole("button", { name: "Phone" }));
+    await userEvent.click(screen.getByRole("radio", { name: /Phone/ }));
     expect(document.querySelector(".post-studio__preview")).toHaveAttribute(
       "data-device",
-      "phone",
+      "mobile",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Desktop" }));
+    await userEvent.click(screen.getByRole("radio", { name: /Desktop/ }));
     expect(document.querySelector(".post-studio__preview")).toHaveAttribute(
       "data-device",
       "desktop",
@@ -558,7 +558,7 @@ describe("PostStudio", () => {
       screen.getByRole("button", { name: "Remove Photo g1" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove Text block" }),
+      screen.getByRole("button", { name: "Remove Paragraph block" }),
     );
     expect(screen.getByText(/Add text or photos to begin/)).toBeInTheDocument();
   });

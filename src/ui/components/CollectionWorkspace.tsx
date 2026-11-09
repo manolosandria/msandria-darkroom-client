@@ -8,10 +8,8 @@ import {
   Catalog,
   CatalogCollection,
   COLLECTION_TEXT_ALIGNS,
-  COLLECTION_TEXT_STYLES,
   CollectionDraft,
   CollectionTextAlign,
-  CollectionTextStyle,
 } from "@/src/domain/entities/Catalog";
 import {
   arrangePieces,
@@ -38,6 +36,8 @@ import { Photo } from "@/src/domain/entities/Photo";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import { PhotoImage } from "./PhotoImage";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
+import { EditorActions } from "./EditorActions";
+import { TEXT_STYLE_LABELS, TextStyleChoice } from "./TextStyleChoice";
 import { DeviceFrame, DeviceSwitch } from "./DeviceSwitch";
 import { VISIBILITY_LABELS } from "./PhotoBadges";
 import { VariantThumbs } from "./VariantThumbs";
@@ -598,6 +598,7 @@ function CollectionEditor({
   );
   return (
     <form
+      id={`${prefix}-form`}
       hidden={!active}
       className="studio-editor collection-develop"
       onSubmit={async (event) => {
@@ -617,19 +618,13 @@ function CollectionEditor({
           </button>
           <h3>{draft.title || "New collection"}</h3>
           {dirty && <span className="studio-dirty">Unsaved changes</span>}
-          <button
-            type="submit"
-            className="studio-save"
-            data-busy={busy || undefined}
-            data-dirty={dirty || undefined}
-          >
-            {busy ? "Saving…" : "Save collection"}
-          </button>
-          <button
-            type="button"
-            className="upload-secondary"
-            disabled={!dirty}
-            onClick={async () => {
+          <EditorActions
+            form={`${prefix}-form`}
+            busy={busy}
+            dirty={dirty}
+            canSave
+            saveLabel="Save collection"
+            onCancel={async () => {
               if (
                 await confirm(
                   "Cancel collection changes?",
@@ -640,9 +635,7 @@ function CollectionEditor({
               )
                 discard();
             }}
-          >
-            Cancel changes
-          </button>
+          />
         </div>
         {error && <p role="alert">{error}</p>}
         {conflict && (
@@ -1377,11 +1370,6 @@ function PieceLayoutFields({
   );
 }
 
-const STYLE_LABELS: Record<CollectionTextStyle, string> = {
-  HEADING: "Heading",
-  BODY: "Paragraph",
-  QUOTE: "Quote",
-};
 const ALIGN_LABELS: Record<CollectionTextAlign, string> = {
   START: "Left",
   CENTER: "Center",
@@ -1411,7 +1399,7 @@ function TextDetails({
         </div>
         <div>
           <h3>Text block</h3>
-          <p className="upload-muted">{STYLE_LABELS[style]}</p>
+          <p className="upload-muted">{TEXT_STYLE_LABELS[style]}</p>
         </div>
         <button
           type="button"
@@ -1434,20 +1422,10 @@ function TextDetails({
           onChange={(event) => onChange({ text: event.target.value })}
         />
       </label>
-      <div className="text-style-choice" role="group" aria-label="Text style">
-        {COLLECTION_TEXT_STYLES.map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={style === value}
-            data-style={value}
-            onClick={() => onChange({ style: value })}
-          >
-            <span aria-hidden="true">{value === "QUOTE" ? "“”" : "Aa"}</span>
-            {STYLE_LABELS[value]}
-          </button>
-        ))}
-      </div>
+      <TextStyleChoice
+        value={style}
+        onChange={(value) => onChange({ style: value })}
+      />
       <div className="text-align-choice" role="group" aria-label="Alignment">
         {COLLECTION_TEXT_ALIGNS.map((value) => (
           <button

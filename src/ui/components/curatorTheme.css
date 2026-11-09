@@ -1021,3 +1021,35 @@
     animation: none;
   }
 }
+
+/* Editors whose stylesheets dress every button (the catalog editor, Photos, Posts) keep
+   these round and colored. */
+.editor-icon-actions .curator-icon-button.curator-icon-button {
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+}
+.editor-icon-actions .curator-icon-button--save.curator-icon-button--save {
+  border-color: #3e6b34;
+  background: #4f7d3f;
+  color: #fff;
+}
+.editor-icon-actions
+  .curator-icon-button--save.curator-icon-button--save:not(:disabled):hover {
+  background: #3f6a31;
+  border-color: #3e6b34;
+  color: #fff;
+}
+.editor-icon-actions .curator-icon-button--cancel.curator-icon-button--cancel {
+  border-color: #c6cfbb;
+  background: #ffffffd0;
+  color: #3d4934;
+}
+.editor-icon-actions
+  .curator-icon-button--cancel.curator-icon-button--cancel:not(:disabled):hover {
+  background: #f3ece4;
+  border-color: #c4a78a;
+  color: #6e3f1d;
+}

@@ -70,6 +70,7 @@ import {
   PhotoVisibilityField,
 } from "./PhotoClassificationFields";
 import { EmptyState } from "./EmptyState";
+import { EditorActions } from "./EditorActions";
 import { VISIBILITY_LABELS, VisibilityBadge } from "./PhotoBadges";
 import { FileBorderTrim } from "./BorderTrimFields";
 import { BorderTrim } from "@/src/domain/borderTrim";
@@ -87,7 +88,6 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
   TOP_LEFT: "Top left",
   TOP_RIGHT: "Top right",
 };
-
 
 export default function ManagePhotos() {
   const session = useSessionValue();
@@ -269,10 +269,19 @@ function PhotoLibrary({
               className="photo-studio__fold"
               aria-expanded={!stripFolded}
               aria-controls={stripId}
-              title={stripFolded ? "Show the strip of photos" : "Fold the strip of photos away"}
+              title={
+                stripFolded
+                  ? "Show the strip of photos"
+                  : "Fold the strip of photos away"
+              }
               onClick={() => foldStrip(!stripFolded)}
             >
-              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <svg
+                viewBox="0 0 20 20"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
                 <path
                   d={stripFolded ? "M5 8l5 5 5-5" : "M5 12l5-5 5 5"}
                   fill="none"
@@ -437,13 +446,29 @@ function PhotoLibrary({
           {!loading && entries.length === 0 && (
             <div className="photo-browser__empty">
               {listed.length ? (
-                <EmptyState picture="search" title="No photos match these filters." quiet />
+                <EmptyState
+                  picture="search"
+                  title="No photos match these filters."
+                  quiet
+                />
               ) : pendingOnly && needing.length ? (
-                <EmptyState picture="search" title="No photos have the alerts chosen." quiet />
+                <EmptyState
+                  picture="search"
+                  title="No photos have the alerts chosen."
+                  quiet
+                />
               ) : pendingOnly ? (
-                <EmptyState picture="done" title="No photos need optimization." quiet />
+                <EmptyState
+                  picture="done"
+                  title="No photos need optimization."
+                  quiet
+                />
               ) : (
-                <EmptyState picture="photos" title="No photos published yet." quiet>
+                <EmptyState
+                  picture="photos"
+                  title="No photos published yet."
+                  quiet
+                >
                   Upload brings your first photographs here.
                 </EmptyState>
               )}
@@ -577,10 +602,7 @@ function LibraryItem({
     <span className="photo-browser__badges" aria-hidden="true">
       <VisibilityBadge visibility={visibility} />
       {pending > 0 && (
-        <span
-          data-warning
-          title={alerts.map(alertLabel).join(", ")}
-        >
+        <span data-warning title={alerts.map(alertLabel).join(", ")}>
           ⚠
         </span>
       )}
@@ -766,6 +788,7 @@ function PhotoEditor({
   const form = useRef<HTMLFormElement>(null);
   const [resetKey, setResetKey] = useState(0);
   const prefix = useId();
+  const formId = `${prefix}-form`;
   const dirty =
     Boolean(file) ||
     title !== photo.getTitle() ||
@@ -912,8 +935,7 @@ function PhotoEditor({
   // Follows the reader: the section crossing the upper third of the window is current.
   useEffect(() => {
     const root = sectionsRef.current;
-    if (!active || !root || typeof IntersectionObserver === "undefined")
-      return;
+    if (!active || !root || typeof IntersectionObserver === "undefined") return;
     const inBand = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -935,14 +957,13 @@ function PhotoEditor({
   }, [active, hiddenSections]);
   const actions = () => (
     <div className={styles.actions}>
-      <button type="submit" className="upload-primary" disabled={saving}>
-        {saving ? "Saving…" : "Save changes"}
-      </button>
-      <button
-        type="button"
-        className="upload-secondary"
-        disabled={saving || !dirty}
-        onClick={async () => {
+      <EditorActions
+        form={formId}
+        busy={saving}
+        dirty={dirty}
+        canSave
+        saveLabel="Save changes"
+        onCancel={async () => {
           if (
             await confirm(
               "Cancel changes?",
@@ -951,9 +972,7 @@ function PhotoEditor({
           )
             discard();
         }}
-      >
-        Cancel changes
-      </button>
+      />
     </div>
   );
   const section = (
@@ -983,6 +1002,7 @@ function PhotoEditor({
   const pending = report.filter((issue) => issue.isPending()).length;
   return (
     <form
+      id={formId}
       className="photo-develop"
       ref={form}
       onSubmit={async (event) => {
@@ -1283,7 +1303,10 @@ function PhotoEditor({
 type StageView = { key: string; label: string; crop?: Highlight };
 
 function stageViews(highlights: PhotoHighlights): StageView[] {
-  return [{ key: "original", label: "Original" }, ...highlightViews(highlights)];
+  return [
+    { key: "original", label: "Original" },
+    ...highlightViews(highlights),
+  ];
 }
 
 // The large preview: the whole photo, or any of its highlights shown big.
@@ -1527,7 +1550,10 @@ function VariantCorner({
           onChange={() => onChange(null)}
         />
         Automatic
-        <small>{TITLE_POSITION_LABELS[automatic].toLowerCase()}, across from the title</small>
+        <small>
+          {TITLE_POSITION_LABELS[automatic].toLowerCase()}, across from the
+          title
+        </small>
       </label>
     </fieldset>
   );

@@ -503,9 +503,10 @@ The save bar shows the message on a row of its own, and the leaving dialog names
 editors with unsaved changes and keeps the last failure on screen while a new attempt
 runs, until its outcome replaces it. Photos returns the API's own words. An editor registers with `useUnsavedEditor` once while dirty
 and its latest callbacks are read when used, so its renders never churn the bar.
-Home, Gallery and Palettes keep their own **Save**, **Cancel changes** and **Restore
-original** (`EditorActions`) as icons on the line of their heading instead of a block
-under the controls: green, neutral and amber.
+Every editor keeps its own **Save**, **Cancel changes** and, where there is one, **Restore
+original** (`EditorActions`) as icons on the line of its heading instead of a block of
+text buttons: green, neutral and amber (Home, Gallery, Palettes, General, Collections,
+Photos and Posts).
 
 Home and Gallery group their properties in tabs beside the preview (`PropertyTabs`,
 arrow keys, Home and End between tabs), one segmented row of drawings over short names
@@ -897,7 +898,13 @@ the pointer the same way:
 - **`DeviceSwitch`** and **`DeviceFrame`** (`deviceSwitch.css`): the choice between a
   desktop monitor and a phone, two radios with their drawings (arrow keys switch them;
   `tone="dark"` on a dark stage), and the monitor with its stand or the phone the preview
-  sits in. Home, Gallery and Collections use them; Posts still has its own.
+  sits in. Home, Gallery, Collections and Posts' reader preview use them.
+- **`EditorActions`**: an editor's own Save and Cancel (and Restore where there is an
+  original design) as round icons, green and neutral (and amber). Home, Gallery,
+  Palettes, General, Collections, the foot of Photos and Posts use it; it submits the
+  editor's form (`form`) or calls `onSave`, and `canSave` says when Save is offered.
+- **`TextStyleChoice`**: Heading, Paragraph or Quote as three cards drawn in their own
+  type, for collection text blocks and post text blocks alike (`TEXT_STYLE_LABELS`).
 - **The photo library** (`photoBrowser.css`): Photos' card, toolbar, **Hide photos** and
   browser as a grid, a list or a filmstrip of square thumbnails with their badges
   (`VisibilityBadge` and `VISIBILITY_LABELS` in `PhotoBadges`). `PhotoPicker` is that
