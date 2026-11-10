@@ -1,5 +1,6 @@
 "use client";
 import "./catalogStudio.css";
+import { AdminOnly } from "./AdminOnly";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Catalog, WorkDraft } from "@/src/domain/entities/Catalog";
@@ -8,8 +9,6 @@ import { manageCatalog as editCatalog } from "@/src/infrastructure/catalogServic
 import { getManagedPhotos as getAllPhotos } from "@/src/infrastructure/photoServices";
 import { CollectionWorkspace } from "./CollectionWorkspace";
 import { EditingBoundary } from "./EditingWorkspace";
-import { useSessionValue } from "./SessionProvider";
-import { ErrorMessage } from "./ErrorMessage";
 import { VariantStudio } from "./VariantStudio";
 import { ChoiceMenu } from "./ChoiceMenu";
 
@@ -27,7 +26,6 @@ export default function ManageCollections({
   /** Shows one part of the catalog without its own tabs, as Curator's menu does. */
   only?: "Collections" | "Categories";
 }) {
-  const session = useSessionValue();
   return (
     <main className="upload-workspace">
       <div className="upload-container">
@@ -44,17 +42,9 @@ export default function ManageCollections({
         <Link href="/upload" className="upload-link">
           ← Upload photos
         </Link>
-        {session.loading ? (
-          <p role="status">Loading session…</p>
-        ) : session.error ? (
-          <ErrorMessage message={session.error} onRetry={session.reload} />
-        ) : session.user?.isAdmin() ? (
+        <AdminOnly to="edit collections">
           <CatalogEditor variants={variants} only={only} />
-        ) : (
-          <p>
-            Sign in as the gallery&apos;s administrator to edit collections.
-          </p>
-        )}
+        </AdminOnly>
       </div>
     </main>
   );

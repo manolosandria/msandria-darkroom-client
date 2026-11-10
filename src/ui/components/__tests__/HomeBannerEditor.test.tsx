@@ -153,7 +153,7 @@ describe("Home banner editor", () => {
     >);
     render(<HomeBannerEditor />);
     expect(
-      screen.getByText(/Sign in as the administrator/),
+      screen.getByText(/administrator to edit Home/),
     ).toBeInTheDocument();
     expect(manageHomeBanner.get).not.toHaveBeenCalled();
   });

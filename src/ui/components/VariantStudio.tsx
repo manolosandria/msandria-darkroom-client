@@ -1,4 +1,5 @@
 "use client";
+import { UPLOAD_FORMATS, UPLOAD_IMAGE_TYPES } from "@/src/ui/uploadFiles";
 import "./catalogStudio.css";
 import "./photoBrowser.css";
 import "./photoStudio.css";
@@ -11,7 +12,6 @@ import { PhotoImage } from "./PhotoImage";
 import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
 import {
   useVariantUploads,
-  VARIANT_IMAGE_TYPES,
   VariantUploadQueue,
 } from "./VariantUploads";
 
@@ -150,9 +150,9 @@ export function VariantStudio({
     });
     setDropError(
       !added && refused.length
-        ? "Drop JPEG, PNG or WebP images."
+        ? `Drop ${UPLOAD_FORMATS} images.`
         : refused.length
-          ? `Left out: ${refused.join(", ")}. Drop JPEG, PNG or WebP images up to 10 MB.`
+          ? `Left out: ${refused.join(", ")}. Drop ${UPLOAD_FORMATS} images up to 10 MB.`
           : "",
     );
   }
@@ -174,7 +174,7 @@ export function VariantStudio({
       type="file"
       className="sr-only"
       multiple
-      accept={VARIANT_IMAGE_TYPES.join(",")}
+      accept={UPLOAD_IMAGE_TYPES.join(",")}
       disabled={disabled}
       onChange={(event) => {
         const files = [...(event.target.files ?? [])];

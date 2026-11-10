@@ -1,5 +1,6 @@
 "use client";
 import "./paletteStudio.css";
+import { AdminOnly } from "./AdminOnly";
 import { useEffect, useRef, useState } from "react";
 import {
   defaultGallerySettings,
@@ -8,9 +9,8 @@ import {
   GallerySettings,
 } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
-import { useSessionValue } from "./SessionProvider";
-import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
-import { EditorActions } from "./EditorActions";
+import { useSettingsDocument } from "@/src/ui/hooks/useSettingsDocument";
+import { EditorActions, EditorStatus } from "./EditorActions";
 import { ChoiceMenu } from "./ChoiceMenu";
 import {
   GalleryPaletteLibrary,
@@ -27,46 +27,54 @@ const byId = (palettes: GalleryPalette[]) =>
   Object.fromEntries(palettes.map((palette) => [palette.id, palette]));
 
 export default function PaletteManager() {
-  const { user } = useSessionValue();
-  return user?.isAdmin() ? (
-    <Manager />
-  ) : (
-    <p>Sign in as the administrator to manage palettes.</p>
+  return (
+    <AdminOnly to="manage palettes">
+      <Manager />
+    </AdminOnly>
   );
 }
 
 function Manager() {
-  const [saved, setSaved] = useState<GallerySettings | null>(null);
-  const [palettes, setPalettes] = useState<GalleryPalette[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("");
   // The color pointed at, by its row in the editor or its zone in the drawing.
   const [highlighted, setHighlighted] = useState<PaletteKey | null>(null);
-  const lock = useRef(false);
-  const { confirm } = useEditingWorkspace();
-  const savedPalettes = saved?.palettes ?? defaultGalleryPalettes;
-  const dirty =
-    saved !== null &&
-    JSON.stringify(savedPalettes) !== JSON.stringify(palettes);
-  async function load() {
-    setBusy(true);
-    setError("");
-    try {
-      const settings = await manageGallerySettings.get();
-      setSaved(settings);
-      setPalettes(settings.palettes ?? defaultGalleryPalettes);
-      setNotice("");
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
+  const {
+    saved,
+    setSaved,
+    draft: palettes,
+    setDraft: setPalettes,
+    busy,
+    error,
+    notice,
+    setNotice,
+    dirty,
+    cancel,
+    reload,
+    review,
+  } = useSettingsDocument<GallerySettings, GalleryPalette[]>({
+    initial: [],
+    read: () => manageGallerySettings.get(),
+    toDraft: (settings) => settings.palettes ?? defaultGalleryPalettes,
+    write: (value, settings) =>
+      manageGallerySettings.save({ ...settings, palettes: value }),
+    // Keyed by palette, so each palette's changes are reviewed on their own.
+    reviewAs: {
+      wrap: byId,
+      unwrap: (value) =>
+        Object.values(value as Record<string, GalleryPalette>),
+    },
+    label: "Palettes",
+    savedNotice: "Palettes saved.",
+    onSaved: (result) =>
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_SETTINGS_SAVED, { detail: result }),
+      ),
+    cancelPrompt: ["Cancel changes?", "Return to the saved palettes?"],
+    reloadPrompt: [
+      "Reload palettes?",
+      "Discard your palette changes and load the saved ones?",
+    ],
+  });
   // A Gallery save carries its own palettes and a new version; keep a draft in progress.
   useEffect(() => {
     const adopt = (event: Event) => {
@@ -77,42 +85,7 @@ function Manager() {
     };
     window.addEventListener(GALLERY_SETTINGS_SAVED, adopt);
     return () => window.removeEventListener(GALLERY_SETTINGS_SAVED, adopt);
-  }, [dirty]);
-  async function save() {
-    if (lock.current || !saved) return false;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const result = await manageGallerySettings.save({ ...saved, palettes });
-      setSaved(result);
-      setPalettes(result.palettes ?? defaultGalleryPalettes);
-      setNotice("Palettes saved.");
-      window.dispatchEvent(
-        new CustomEvent(GALLERY_SETTINGS_SAVED, { detail: result }),
-      );
-      return true;
-    } catch (failure) {
-      setError((failure as Error).message);
-      return false;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  const { review } = useUnsavedEditor(dirty, {
-    label: "Palettes",
-    save,
-    discard: () => setPalettes(savedPalettes),
-    // Keyed by palette, so each palette's changes are reviewed on their own.
-    document: {
-      original: byId(savedPalettes),
-      draft: byId(palettes),
-      restore: (value) =>
-        setPalettes(Object.values(value as Record<string, GalleryPalette>)),
-    },
-  });
+  }, [dirty, setPalettes, setSaved]);
   const shown =
     palettes.find((palette) => palette.id === preview) ?? palettes[0];
   // A click on the drawing opens that color's picker in the editor, which always
@@ -140,40 +113,16 @@ function Manager() {
             busy={busy}
             dirty={dirty}
             saveLabel="Save palettes"
-            onCancel={async () => {
-              if (
-                await confirm(
-                  "Cancel changes?",
-                  "Return to the saved palettes?",
-                )
-              )
-                setPalettes(savedPalettes);
-            }}
+            onCancel={cancel}
           />
         )}
       </header>
-      {error && (
-        <p role="alert">
-          {error}{" "}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={async () => {
-              if (
-                !dirty ||
-                (await confirm(
-                  "Reload palettes?",
-                  "Discard your palette changes and load the saved ones?",
-                ))
-              )
-                await load();
-            }}
-          >
-            Reload state
-          </button>
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
+      <EditorStatus
+        error={error}
+        notice={notice}
+        busy={busy}
+        onReload={reload}
+      />
       {!saved ? (
         <p>{busy ? "Loading palettes…" : "Palettes are unavailable."}</p>
       ) : (

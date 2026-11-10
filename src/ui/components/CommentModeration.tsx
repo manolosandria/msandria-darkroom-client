@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminOnly } from "./AdminOnly";
 import { useCallback, useEffect, useState } from "react";
 import { PendingComment } from "@/src/domain/entities/PhotoComment";
 import {
@@ -14,11 +15,9 @@ import {
   formatCommentDate,
 } from "@/src/ui/commentMessages";
 import { ErrorMessage } from "./ErrorMessage";
-import { useSessionValue } from "./SessionProvider";
 import { EmptyState } from "./EmptyState";
 
 export default function CommentModeration() {
-  const session = useSessionValue();
   return (
     <main className="upload-workspace">
       <div className="upload-container">
@@ -29,15 +28,9 @@ export default function CommentModeration() {
         <Link href="/upload" className="upload-link">
           ← Upload photos
         </Link>
-        {session.loading ? (
-          <p role="status">Loading session…</p>
-        ) : session.error ? (
-          <ErrorMessage message={session.error} onRetry={session.reload} />
-        ) : session.user?.isAdmin() ? (
+        <AdminOnly to="review comments">
           <ModerationQueue />
-        ) : (
-          <p>Sign in as the gallery&apos;s administrator to review comments.</p>
-        )}
+        </AdminOnly>
       </div>
     </main>
   );

@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
+import { AdminOnly } from "./AdminOnly";
 import { InboxMessage } from "@/src/domain/repositories/ContactRepository";
 import { manageContact } from "@/src/infrastructure/contactServices";
-import { useSessionValue } from "./SessionProvider";
 import { EmptyState } from "./EmptyState";
 
 export default function ContactInbox() {
-  const { user } = useSessionValue();
-  return user?.isAdmin() ? (
-    <Inbox />
-  ) : (
-    <p>Sign in as the administrator to read messages.</p>
+  return (
+    <AdminOnly to="read messages">
+      <Inbox />
+    </AdminOnly>
   );
 }
 function Inbox() {

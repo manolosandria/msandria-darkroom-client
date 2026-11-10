@@ -68,3 +68,33 @@ export function EditorActions({
     </span>
   );
 }
+
+/**
+ * Under an editor's heading: why the last read or save failed, with **Reload state** to
+ * read the saved version again, and the notice of the last save.
+ */
+export function EditorStatus({
+  error,
+  notice,
+  busy,
+  onReload,
+}: {
+  error: string;
+  notice: string;
+  busy: boolean;
+  onReload: () => void | Promise<void>;
+}) {
+  return (
+    <>
+      {error && (
+        <p role="alert">
+          {error}{" "}
+          <button type="button" disabled={busy} onClick={() => void onReload()}>
+            Reload state
+          </button>
+        </p>
+      )}
+      {notice && <p role="status">{notice}</p>}
+    </>
+  );
+}

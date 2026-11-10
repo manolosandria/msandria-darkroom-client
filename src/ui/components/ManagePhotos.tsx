@@ -1,5 +1,7 @@
 "use client";
+import { UPLOAD_IMAGE_TYPES } from "@/src/ui/uploadFiles";
 import "./catalogStudio.css";
+import { AdminOnly } from "./AdminOnly";
 import "./photoBrowser.css";
 import "./photoStudio.css";
 
@@ -51,7 +53,6 @@ import {
   PhotoTitlePosition,
   PhotoVariantPosition,
 } from "@/src/domain/entities/PhotoTitlePosition";
-import { useSessionValue } from "./SessionProvider";
 import { VariantAssignment } from "./VariantAssignment";
 import { InspectorSection } from "./InspectorSection";
 import { PhotoSectionBar } from "./PhotoSectionBar";
@@ -90,7 +91,6 @@ const TITLE_POSITION_LABELS: Record<PhotoTitlePosition, string> = {
 };
 
 export default function ManagePhotos() {
-  const session = useSessionValue();
   return (
     <main className="upload-workspace">
       <div className="upload-container photo-studio-container">
@@ -101,17 +101,11 @@ export default function ManagePhotos() {
         <Link href="/upload" className="upload-link">
           ← Upload photos
         </Link>
-        {session.loading ? (
-          <p role="status">Loading session…</p>
-        ) : session.error ? (
-          <ErrorMessage message={session.error} onRetry={session.reload} />
-        ) : session.user?.isAdmin() ? (
+        <AdminOnly to="manage photos">
           <EditingBoundary>
             <PhotoManager />
           </EditingBoundary>
-        ) : (
-          <p>Sign in as the gallery&apos;s administrator to manage photos.</p>
-        )}
+        </AdminOnly>
       </div>
     </main>
   );
@@ -1239,7 +1233,7 @@ function PhotoEditor({
                   className="sr-only"
                   type="file"
                   aria-label="Replacement file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept={UPLOAD_IMAGE_TYPES.join(",")}
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null);
                     setFileTrim(null);
