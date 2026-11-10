@@ -300,10 +300,6 @@
   padding: 0.2rem;
   border-radius: 999px;
 }
-/* The fold arrow closes the tabs' row. */
-.curator-tabs > .curator-fold {
-  margin-left: auto;
-}
 .curator-backdrop-swatch {
   flex: none;
   width: 22px;
@@ -659,13 +655,11 @@
   box-shadow: 0 4px 14px #2931260f;
   backdrop-filter: blur(8px);
 }
-/* On a phone the page flows: once the header leaves (or comes back pinned over the
-   page), the tabs stick below its floating pills instead of under them. */
+/* On a phone the page flows: once the header leaves, the tabs stick below its floating
+   pills instead of under them. */
 @media (max-width: 899px) {
   .curator-page:has(.site-header[data-docked]) .property-tabs,
-  .curator-page:has(.site-header[data-docked]) .banner-editor__tabs,
-  .curator-page:has(.site-header[data-pinned]) .property-tabs,
-  .curator-page:has(.site-header[data-pinned]) .banner-editor__tabs {
+  .curator-page:has(.site-header[data-docked]) .banner-editor__tabs {
     top: 4.3rem;
   }
 }
@@ -732,24 +726,7 @@
   }
 }
 
-/* With the header gone, its floating logo sits at the start of the menu's row and the
-   account at its end: the row is as tall as their pills with their top margin above
-   and below, so all three line up. */
-@media (min-width: 900px) {
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-tabs {
-    /* Padding, not margin: the row's own ground runs under the floating logo too. */
-    padding-left: 13rem;
-  }
-  .curator-page:has(.site-header[data-docked])
-    .curator-workspace
-    > .curator-tabs {
-    min-height: 4.2rem;
-    padding-right: calc(var(--site-corner-width, 15rem) + 1.5rem);
-  }
-}
-/* With the header docked and the tabs folded, only the floating pills sit on top: every
+/* Compact, only the floating pills sit on top: every
    panel starts under them, so no editor scrolls its controls (sticky tabs included)
    beneath the logo or the Curator pill. */
 @media (min-width: 900px) {
@@ -769,176 +746,23 @@
 .curator-workspace > .curator-tabs[hidden] {
   display: none;
 }
-/* Narrow: the tabs open as one centered column, every group with its tabs in view,
-   instead of a wrapping row of menus that open over one another. */
+/* Below 1100 px the tabs live in the page menu beside the account: there is no row. */
+@media (max-width: 1100px) {
+  .curator-workspace > .curator-tabs {
+    display: none;
+  }
+}
+/* The panels' top margin would otherwise collapse through the workspace and leave a
+   strip of bare page between the header and Curator. */
 @media (max-width: 899px) {
-  /* The menu's top margin (and the folded pill's) would otherwise collapse through
-     the workspace and leave a strip of bare page between the header and Curator. */
   .curator-workspace {
     display: flow-root;
-  }
-  .curator-workspace > .curator-tabs {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 0.9rem;
-    margin: 0.5rem clamp(0.75rem, 3vw, 2rem);
-    padding: 1rem;
-    border: 1px solid #dce0d4;
-    border-radius: 1.1rem;
-    background: #fbfbf8f2;
-    box-shadow: 0 18px 40px #17211620;
-    animation: curator-menu-in 0.22s ease both;
-  }
-  .curator-workspace > .curator-tabs .curator-tabs__group {
-    display: grid;
-    justify-items: center;
-    gap: 0.35rem;
-    width: 100%;
-  }
-  .curator-workspace > .curator-tabs .curator-tabs__group > .curator-tabs__trigger {
-    pointer-events: none;
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-  .curator-workspace > .curator-tabs .curator-tabs__current,
-  .curator-workspace > .curator-tabs .curator-tabs__chevron {
-    display: none;
-  }
-  .curator-workspace > .curator-tabs .curator-tabs__menu {
-    position: static;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    box-shadow: none;
-    backdrop-filter: none;
-    opacity: 1;
-    visibility: visible;
-    transform: none;
-  }
-  .curator-workspace > .curator-tabs .curator-tabs__menu::before {
-    display: none;
   }
 }
 @keyframes curator-menu-in {
   from {
     opacity: 0;
     transform: translateY(-6px);
-  }
-}
-
-/* ---------- The fold arrow, at the far right of the tabs' row ---------- */
-.curator-fold {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.4rem;
-  height: 2.4rem;
-  padding: 0;
-  border: 1px solid #cbd3c0;
-  border-radius: 50%;
-  background: #ffffffc8;
-  color: #3d4934;
-  cursor: pointer;
-  transition:
-    background 0.18s,
-    transform 0.18s,
-    box-shadow 0.18s;
-}
-/* `.curator-tabs button` in globals.css would square it off and pad it out of round. */
-.curator-tabs .curator-fold {
-  padding: 0;
-  border-radius: 50%;
-}
-.curator-fold:hover,
-.curator-fold:focus-visible {
-  background: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px #29312614;
-}
-
-/* ---------- Folded: the lit pill, the swatches and the arrow ---------- */
-.curator-workspace > .curator-dock {
-  position: relative;
-  z-index: 51;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  align-self: flex-start;
-  margin: 0.5rem clamp(0.75rem, 3vw, 2rem) 0;
-  animation: curator-menu-in 0.22s ease both;
-}
-.curator-dock .curator-fold {
-  width: 3rem;
-  height: 3rem;
-  border-color: #ffffff80;
-  background: #f6f5f1d6;
-  box-shadow:
-    0 4px 18px #1a201826,
-    0 0 0 1px #1a20180d;
-  backdrop-filter: blur(12px) saturate(1.3);
-}
-.curator-dock .curator-backdrop-picker {
-  margin-left: 0.15rem;
-  padding: 0 0.55rem;
-  height: 3rem;
-  border: 1px solid #ffffff80;
-  background: #f6f5f1d6;
-  box-shadow:
-    0 4px 18px #1a201826,
-    0 0 0 1px #1a20180d;
-  backdrop-filter: blur(12px) saturate(1.3);
-}
-.curator-dock .curator-backdrop-swatch {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px #c3cab8;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.curator-dock .curator-backdrop-swatch[aria-checked="true"] {
-  box-shadow: 0 0 0 2px #4f6638;
-}
-/* The site header docked: the pill row lines up with the floating logo and account. */
-.curator-page:has(.site-header[data-docked]) .curator-workspace > .curator-dock {
-  margin-top: 0.6rem;
-}
-@media (min-width: 900px) {
-  .curator-page:has(.site-header[data-docked]) .curator-workspace > .curator-dock {
-    margin-left: 13rem;
-    margin-bottom: 0.6rem;
-  }
-}
-@media (max-width: 899px) {
-  .curator-page:has(.site-header[data-docked]) .curator-workspace > .curator-dock {
-    margin-top: 0;
-  }
-  .curator-dock .curator-backdrop-picker {
-    padding: 0 0.4rem;
-  }
-  .curator-dock .curator-backdrop-swatch {
-    width: 18px;
-    height: 18px;
-  }
-}
-@media (max-width: 480px) {
-  .curator-workspace > .curator-dock {
-    flex-wrap: wrap;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .curator-workspace > .curator-dock {
-    animation: none !important;
   }
 }
 

@@ -6,9 +6,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { curatorGroups, CuratorSection } from "@/src/ui/curatorSections";
 import {
   requestCuratorSection,
-  requestCuratorTabs,
   useCuratorSection,
-  useCuratorTabsShown,
 } from "@/src/ui/curatorChannel";
 
 // The site's own pages, offered first in the menu so the pill can stand in for the
@@ -162,7 +160,6 @@ export function CuratorShortcut({
 }) {
   const pathname = usePathname();
   const open = useCuratorSection();
-  const tabsShown = useCuratorTabsShown();
   const inCurator = admin && Boolean(pathname?.startsWith("/curator"));
   if (!admin)
     return <CuratorPill lit={false} tab={pageName(pathname)} />;
@@ -193,21 +190,6 @@ export function CuratorShortcut({
           >
             {section}
           </Link>
-        )
-      }
-      footer={(close) =>
-        inCurator &&
-        !tabsShown && (
-          <button
-            type="button"
-            className="curator-pill__footer"
-            onClick={() => {
-              requestCuratorTabs();
-              close();
-            }}
-          >
-            Show Curator&apos;s tabs
-          </button>
         )
       }
     />

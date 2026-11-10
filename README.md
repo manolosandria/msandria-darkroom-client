@@ -1089,10 +1089,8 @@ profile comes from `GET /auth/me/profile`, once per account.
 
 When the settings hide the header on scroll, scrolling past it leaves the logo floating
 in the top-left corner as a link home (the page menu beside the account holds the links), level
-with the account pill; **Show header** returns to the top on wide screens, and below
-1100 px pins the header over the page where the visitor is (`data-pinned`) until the
-chevron or a return to the top lets it go. Otherwise the header sticks to the top. The
-chevron still folds the header by hand, remembered as before (`headerHidden`).
+with the account pill; **Show header** returns to the top. Otherwise the header sticks
+to the top. See "Expanded or compact" for folding it by hand.
 
 Curator → Sections → **General** (`SiteGeneralEditor`) edits `GET`/admin
 `PUT /site/settings`: the header's tone (light, dark, or automatic, which follows the
@@ -1156,17 +1154,19 @@ break the tree's limits are refused. The tree editor with keyboard moves and con
 properties stays under **Containers and keyboard arrangement**, and the category groups
 (departments) are edited below it.
 
-**Narrow windows and Curator's menu.** Below 1100 px the header's links move into the
-page menu beside the account. Curator's tabs show and hide from one button
-naming the current group and tab; every screen starts with them hidden (the pill's **Show Curator's tabs** opens them; narrow screens show them as
-a centered column, every group with its tabs, and choosing one folds them again.
+**Expanded or compact.** The site has one choice of chrome, the same on every page:
+**expanded** (the header with its links and, inside Curator, its row of tabs as the
+header's second row) or **compact** (the floating logo, the page menu and the account).
+The chevron in the top-right corner switches between them; it is the rightmost control
+and never moves, so it can be pressed again and again without moving the pointer. The
+choice is kept under `headerHidden` (`headerPreference`) and Curator reads the same
+preference, so there is no second fold control. It is offered on wide screens only
+(`useWideScreen`, from 1101 px): below that the chrome is always compact, with no
+chevron, the links and Curator's tabs in the page menu, and a remembered fold is ignored
+there. On public pages that hide the header on scroll, scrolling past it docks it the same
+way, and returning to the top brings it back.
 `/curator?section=<tab>` opens that tab (with `&photo=<id>` on Photos, that photo's
-editor): the account menu's **Admin** label opens
-Dashboard.
-
-Folded, the tabs leave nothing behind: the lit pill beside the account names the open
-tab, opens every group and ends with **Show Curator's tabs** to bring the row back.
-While the tabs show, an arrow (**Hide the tabs**) at the end of their row folds them.
+editor): the account menu's **Admin** label opens Dashboard.
 From 900 px Home's preview and properties sit side by side even below 1100 px.
 
 **Collections editor.** The inspector uses Home's property tabs (`PropertyTabs`):
@@ -1203,15 +1203,12 @@ its link still opens it. Curator → Home → Carousel offers **Open the slide's
 anywhere on the photograph** (`photoLink`, off by default): on, a click on the photograph
 goes through the title's own link. The page never grows wider than the window
 (`overflow-x: clip` on `html` and `body`), so a wide editor cannot leave a phone zoomed
-out after moving to another page. On wide screens Curator's tab button is an icon at the
-start of the tabs' row while they show, and names group and tab when folded.
+out after moving to another page.
 
-## Curator: fold arrow, admin pill, undo and review
+## Curator: admin pill, undo and review
 
 Curator's first group is now **Curator** (General, Home, Gallery, Collections,
-Palettes). The tabs'
-row ends with an arrow that folds it; folded, an arrow alone brings the tabs back. The
-pill beside the account (`CuratorShortcut`) is on every page: see "Curator pill and
+Palettes). The pill beside the account (`CuratorShortcut`) is on every page: see "Curator pill and
 account card".
 
 An editor that passes its `document` (saved version, draft, restore) to
@@ -1262,8 +1259,7 @@ settings must accept the proportions before this client saves them.
 
 **Fewer menus.** The header's links no longer include **Curator**: the page menu beside
 the account is the way in, with the pending count. The docked logo is only a link home.
-Curator's row of tabs starts folded on every screen, and its screens head with their
-title alone. The account card's **Admin** label still opens Dashboard.
+Curator's screens head with their title alone. The account card's **Admin** label still opens Dashboard.
 
 ## Posts on Home
 

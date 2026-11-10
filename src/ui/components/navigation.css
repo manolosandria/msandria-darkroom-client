@@ -35,9 +35,6 @@
 .site-header[data-sticky] { position:sticky; top:0; }
 /* Brought back by hand on a narrow screen while scrolled: it sticks over the page
    where the visitor is reading, until the chevron or a return to the top lets it go. */
-.site-header[data-pinned] { position:sticky; top:0; z-index:65; }
-.site-header[data-pinned] .main-header { animation:header-pin-in .3s var(--fold-ease) both; box-shadow:0 10px 30px #1a20181f; }
-@keyframes header-pin-in { from { transform:translateY(-100%); } }
 
 .main-header { display:flex; align-items:center; gap:1rem 2rem; min-height:4.2rem; padding:.6rem var(--header-gutter); padding-right:calc(.75rem + var(--corner-width,0px) + 1.5rem); background:var(--header-bg); border-bottom:1px solid var(--header-line); color:var(--header-text); }
 .site-header[data-material="glass"] .main-header { backdrop-filter:blur(20px) saturate(1.7) brightness(1.06); box-shadow:inset 0 1px 0 #ffffff4d,0 10px 30px #1a201814; }

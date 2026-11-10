@@ -16,11 +16,10 @@ Feature: Phone menu, "Use as", instant returns and arranging filters
     When I unfold them and choose Palette
     Then the Palette controls show and the page scrolls back to them
 
-  Scenario: Folded Curator tabs on a small monitor
+  Scenario: Curator on a small monitor
     Given I am in Curator at 980 px wide
     Then Home's preview and properties sit side by side
-    When I hide the tabs
-    Then no empty row is left, and the pill beside my account offers "Show Curator's tabs"
+    And Curator's tabs are in the page menu, with no row of their own
 
   Scenario: Using a photograph as my profile photo
     Given I am signed in and viewing a public photograph's info

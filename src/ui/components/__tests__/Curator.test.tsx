@@ -6,10 +6,8 @@ import { manageContact } from "@/src/infrastructure/contactServices";
 import { SessionPorts } from "@/src/ui/hooks/useSession";
 import { SessionProvider } from "../SessionProvider";
 import Curator from "../Curator";
-import {
-  requestCuratorSection,
-  requestCuratorTabs,
-} from "@/src/ui/curatorChannel";
+import { requestCuratorSection } from "@/src/ui/curatorChannel";
+import { writeHeaderHidden } from "@/src/ui/headerPreference";
 import {
   CuratorNotificationsProvider,
   useCuratorNotifications,
@@ -61,9 +59,6 @@ function show(user: User | null, children = <Curator />) {
       <CuratorNotificationsProvider>{children}</CuratorNotificationsProvider>
     </SessionProvider>,
   );
-  // The row of tabs starts folded; these tests work it as the pill's last line
-  // brings it back.
-  act(() => requestCuratorTabs());
 }
 
 function Counts() {
@@ -73,6 +68,7 @@ function Counts() {
 
 beforeEach(() => {
   sessionStorage.clear();
+  act(() => writeHeaderHidden(false));
   vi.mocked(manageContact.notifications).mockResolvedValue({
     comments: 2,
     inbox: 1,
@@ -142,7 +138,8 @@ describe("Curator", () => {
     expect(screen.getByText("Categories editor")).toBeVisible();
   });
 
-  it("starts with its row of tabs folded, leaving the pill as its menu", async () => {
+  it("starts folded when the header was left folded", async () => {
+    act(() => writeHeaderHidden(true));
     render(
       <SessionProvider
         ports={{
@@ -156,31 +153,31 @@ describe("Curator", () => {
     );
     await screen.findByText("Upload workshop");
     expect(screen.queryByRole("navigation", { name: "Curator sections" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Hide the tabs" })).toBeNull();
   });
 
-  it("folds the tabs away entirely and answers the header's pill", async () => {
+  it("folds its tabs with the header and answers the header's pill", async () => {
     const announced: (string | null)[] = [];
     const listen = (event: Event) =>
       announced.push((event as CustomEvent<string | null>).detail);
     window.addEventListener("curator:section", listen);
     show(admin);
     await screen.findByRole("button", { name: "Admin3" });
-    await userEvent.click(screen.getByRole("button", { name: "Hide the tabs" }));
-    // Folded, nothing of the row stays: the lit pill in the header's corner offers
-    // it back, and the backdrop is chosen from the account menu.
-    expect(screen.queryByRole("button", { name: "Show the tabs" })).toBeNull();
+    // The tabs are the header's second row: the corner's chevron folds both, and
+    // nothing of the row stays.
+    act(() => writeHeaderHidden(true));
+    expect(
+      screen.queryByRole("navigation", { name: "Curator sections" }),
+    ).toBeNull();
     expect(screen.queryByRole("radiogroup", { name: "Backdrop" })).toBeNull();
     expect(announced.at(-1)).toBe("Upload");
     act(() => requestCuratorSection("Variants"));
     expect(screen.getByText("Variant studio")).toBeVisible();
     expect(announced.at(-1)).toBe("Variants");
     window.removeEventListener("curator:section", listen);
-    act(() => requestCuratorTabs());
+    act(() => writeHeaderHidden(false));
     expect(
       screen.getByRole("navigation", { name: "Curator sections" }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Hide the tabs" })).toBeInTheDocument();
   });
 
   it("badges the admin group, comments and inbox, and opens them from the dashboard", async () => {
