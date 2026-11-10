@@ -1,4 +1,5 @@
 "use client";
+import { MAX_UPLOAD_BYTES, titleFromFile, UPLOAD_IMAGE_TYPES } from "@/src/ui/uploadFiles";
 import { useEffect, useRef, useState } from "react";
 import { Photo, PhotoClassification } from "@/src/domain/entities/Photo";
 import { PhotoHighlights } from "@/src/domain/entities/PhotoHighlights";
@@ -14,9 +15,8 @@ import {
 } from "@/src/domain/borderTrim";
 import { useTrimmedPreview } from "@/src/ui/hooks/useTrimmedPreview";
 import { PhotoClassificationFields } from "./PhotoClassificationFields";
+import { VISIBILITY_LABELS } from "./PhotoBadges";
 
-export const VARIANT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_BYTES = 10 * 1024 * 1024;
 // Files sent at the same time. The API allows 30 uploads a minute per account.
 const CONCURRENCY = 3;
 
@@ -35,9 +35,6 @@ export type VariantUpload = {
   status: "draft" | "queued" | "uploading" | "done" | "failed" | "cancelled";
   error?: string;
 };
-
-const fileTitle = (file: File) =>
-  file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Variant";
 
 const sendable = (item: VariantUpload) =>
   item.status === "draft" ||
@@ -142,11 +139,11 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
       const refused: string[] = [];
       const additions: VariantUpload[] = [];
       for (const file of files) {
-        if (!VARIANT_IMAGE_TYPES.includes(file.type)) {
+        if (!UPLOAD_IMAGE_TYPES.includes(file.type)) {
           refused.push(file.name);
           continue;
         }
-        if (file.size > MAX_BYTES) {
+        if (file.size > MAX_UPLOAD_BYTES) {
           refused.push(`${file.name} (over 10 MB)`);
           continue;
         }
@@ -154,7 +151,7 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
           id: nextId.current++,
           file,
           preview: URL.createObjectURL(file),
-          title: defaults.title.trim() || fileTitle(file),
+          title: defaults.title.trim() || titleFromFile(file, "Variant"),
           description: "",
           classification: { ...defaults.classification },
           highlights: {},
@@ -224,14 +221,6 @@ export function useVariantUploads(onUploaded: (photo: Photo) => void) {
     },
   };
 }
-
-const VISIBILITY: Record<PhotoClassification["visibility"], string> = {
-  PUBLIC: "Public",
-  COLLECTIONS_ONLY: "Collections only",
-  POSTS_ONLY: "Posts only",
-  PRIVATE: "Private",
-  SELECT: "Select",
-};
 
 const STATUS: Record<VariantUpload["status"], string> = {
   draft: "Ready",
@@ -388,7 +377,7 @@ function VariantUploadCard({
           <summary>
             Visibility, categories and collections
             <small>
-              {VISIBILITY[item.classification.visibility]}
+              {VISIBILITY_LABELS[item.classification.visibility]}
               {item.classification.categoryNames.length
                 ? ` · ${item.classification.categoryNames.length} categories`
                 : ""}
@@ -397,8 +386,8 @@ function VariantUploadCard({
           {item.classification.visibility !== workVisibility && (
             <p className="variant-upload__muted">
               The work&apos;s main photo is{" "}
-              {VISIBILITY[workVisibility].toLowerCase()}; this file will be{" "}
-              {VISIBILITY[item.classification.visibility].toLowerCase()}.
+              {VISIBILITY_LABELS[workVisibility].toLowerCase()}; this file will be{" "}
+              {VISIBILITY_LABELS[item.classification.visibility].toLowerCase()}.
             </p>
           )}
           <PhotoClassificationFields

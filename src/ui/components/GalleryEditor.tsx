@@ -1,5 +1,6 @@
 "use client";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { AdminOnly } from "./AdminOnly";
 import { CatalogCategory } from "@/src/domain/entities/Catalog";
 import {
   defaultGallerySettings,
@@ -10,8 +11,8 @@ import {
 } from "@/src/domain/entities/GallerySettings";
 import { manageGallerySettings } from "@/src/infrastructure/gallerySettingsServices";
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
-import { useSessionValue } from "./SessionProvider";
-import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
+import { useEditingWorkspace } from "./EditingWorkspace";
+import { useSettingsDocument } from "@/src/ui/hooks/useSettingsDocument";
 import { groupGalleryCategories } from "./galleryCategoryGroups";
 import { GalleryDepartmentsEditor } from "./GalleryDepartmentsEditor";
 import { GalleryPageLayoutEditor } from "./GalleryPageLayoutEditor";
@@ -19,7 +20,7 @@ import { GalleryFilterBuilder } from "./GalleryFilterBuilder";
 import { GalleryFilterPieces } from "./GalleryFilterPieces";
 import type { FilterGroup } from "@/src/domain/galleryFilterLayout";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
-import { EditorActions } from "./EditorActions";
+import { EditorActions, EditorStatus } from "./EditorActions";
 import Gallery from "./Gallery";
 import { GalleryOptionsEditor } from "./GalleryOptionsEditor";
 import { GalleryPaletteLibrary, PaletteSwatch } from "./GalleryPaletteLibrary";
@@ -43,48 +44,54 @@ const galleryTabs = [
 ] as const;
 
 export default function GalleryEditor() {
-  const { user } = useSessionValue();
-  return user?.isAdmin() ? (
-    <Editor />
-  ) : (
-    <p>Sign in as the administrator to edit Gallery.</p>
+  return (
+    <AdminOnly to="edit Gallery">
+      <Editor />
+    </AdminOnly>
   );
 }
 function Editor() {
-  const [saved, setSaved] = useState<GallerySettings | null>(null);
-  const [draft, setDraft] = useState(defaultGallerySettings);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [target, setTarget] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [mobile, setMobile] = useState(false);
   const [tab, setTab] = useState<(typeof galleryTabs)[number]>("Style");
-  const lock = useRef(false);
   const { confirm } = useEditingWorkspace();
-  const dirty =
-    saved !== null && JSON.stringify(saved) !== JSON.stringify(draft);
-  async function load() {
-    setBusy(true);
-    setError("");
-    try {
+  const {
+    saved,
+    setSaved,
+    draft,
+    setDraft,
+    busy,
+    error,
+    notice,
+    setNotice,
+    dirty,
+    cancel,
+    reload,
+    review,
+  } = useSettingsDocument<GallerySettings>({
+    initial: defaultGallerySettings,
+    read: async () => {
       const [settings, catalog] = await Promise.all([
         manageGallerySettings.get(),
         manageCatalog.load(),
       ]);
-      setSaved(settings);
-      setDraft(settings);
       setCategories(catalog.categories);
-      setNotice("");
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
+      return settings;
+    },
+    write: (value) => manageGallerySettings.save(value),
+    label: "Gallery design",
+    savedNotice: "Gallery design saved.",
+    onSaved: (result) =>
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_SETTINGS_SAVED, { detail: result }),
+      ),
+    cancelPrompt: ["Cancel changes?", "Return to the saved design?"],
+    reloadPrompt: [
+      "Reload design?",
+      "Discard your draft and load the latest saved design?",
+    ],
+  });
   // Palettes saved in their own tab arrive with the new version; the rest of a draft stays.
   useEffect(() => {
     const adopt = (event: Event) => {
@@ -96,44 +103,7 @@ function Editor() {
     };
     window.addEventListener(GALLERY_SETTINGS_SAVED, adopt);
     return () => window.removeEventListener(GALLERY_SETTINGS_SAVED, adopt);
-  }, []);
-  async function save() {
-    if (lock.current) return false;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const result = await manageGallerySettings.save(draft);
-      setSaved(result);
-      setDraft(result);
-      setNotice("Gallery design saved.");
-      window.dispatchEvent(
-        new CustomEvent(GALLERY_SETTINGS_SAVED, { detail: result }),
-      );
-      return true;
-    } catch (failure) {
-      setError((failure as Error).message);
-      return false;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  const { review } = useUnsavedEditor(dirty, {
-    label: "Gallery design",
-    save,
-    discard: () => {
-      if (saved) setDraft(saved);
-    },
-    document: saved
-      ? {
-          original: saved,
-          draft,
-          restore: (value) => setDraft(value as GallerySettings),
-        }
-      : undefined,
-  });
+  }, [setDraft, setSaved]);
   const category = draft.categories.find((item) => item.categoryId === target);
   const appearance = category?.customize
     ? category.appearance
@@ -197,14 +167,7 @@ function Editor() {
             busy={busy}
             dirty={dirty}
             saveLabel="Save gallery"
-            onCancel={async () => {
-              if (
-                await confirm("Cancel changes?", "Return to the saved design?")
-              ) {
-                setDraft(saved);
-                setNotice("");
-              }
-            }}
+            onCancel={cancel}
             onRestore={async () => {
               if (
                 await confirm(
@@ -220,27 +183,12 @@ function Editor() {
           />
         )}
       </header>
-      {error && (
-        <p role="alert">
-          {error}{" "}
-          <button
-            disabled={busy}
-            onClick={async () => {
-              if (
-                !dirty ||
-                (await confirm(
-                  "Reload design?",
-                  "Discard your draft and load the latest saved design?",
-                ))
-              )
-                await load();
-            }}
-          >
-            Reload state
-          </button>
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
+      <EditorStatus
+        error={error}
+        notice={notice}
+        busy={busy}
+        onReload={reload}
+      />
       {!saved ? (
         <p>
           {busy

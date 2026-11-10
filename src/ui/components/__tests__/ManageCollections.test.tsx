@@ -910,7 +910,7 @@ it("adds a photo dragged from the library and refuses files that are not images"
     },
   });
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Drop JPEG, PNG or WebP images.",
+    "Drop JPEG, PNG, WebP, AVIF or GIF images.",
   );
   expect(uploadPhoto.execute).not.toHaveBeenCalled();
 });

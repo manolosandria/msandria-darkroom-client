@@ -1,4 +1,5 @@
 "use client";
+import { titleFromFile, UPLOAD_IMAGE_TYPES, uploadRefusal } from "@/src/ui/uploadFiles";
 
 import Image from "next/image";
 import { ClassificationCatalogBoundary } from "./ClassificationCatalog";
@@ -35,14 +36,6 @@ import {
   publicClassification,
 } from "./PhotoClassificationFields";
 
-const ACCEPTED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-  "image/gif",
-];
-const MAX_BYTES = 10 * 1024 * 1024;
 export type UploadItem = {
   variantTargetId?: string;
   classification: PhotoClassification;
@@ -111,12 +104,9 @@ export default function UploadPanel({
     const errors: string[] = [];
     const additions: UploadItem[] = [];
     Array.from(files).forEach((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        errors.push(`${file.name}: choose a JPEG, PNG, WebP, AVIF or GIF.`);
-        return;
-      }
-      if (file.size > MAX_BYTES) {
-        errors.push(`${file.name}: exceeds the 10 MB limit.`);
+      const refusal = uploadRefusal(file);
+      if (refusal) {
+        errors.push(refusal);
         return;
       }
       const preview = URL.createObjectURL(file);
@@ -126,7 +116,7 @@ export default function UploadPanel({
         id: nextId.current++,
         file,
         preview,
-        title: file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
+        title: titleFromFile(file),
         description: "",
         highlights: {},
         frame: null,
@@ -295,7 +285,7 @@ export default function UploadPanel({
           ref={picker}
           type="file"
           multiple
-          accept={ACCEPTED_TYPES.join(",")}
+          accept={UPLOAD_IMAGE_TYPES.join(",")}
           aria-label="Photos"
           className="sr-only"
           onChange={(event) => {

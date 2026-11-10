@@ -1,13 +1,14 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AdminOnly } from "./AdminOnly";
 import {
   defaultHomeBanner,
   defaultWelcomePanel,
   HomeBanner,
 } from "@/src/domain/entities/HomeBanner";
 import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
-import { useSessionValue } from "./SessionProvider";
-import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
+import { useEditingWorkspace } from "./EditingWorkspace";
+import { useSettingsDocument } from "@/src/ui/hooks/useSettingsDocument";
 import { VisualChoice } from "./VisualChoice";
 import HomePage from "./HomePage";
 import "./homeBannerEditor.css";
@@ -16,7 +17,7 @@ import { BannerPhotoSettings } from "./BannerPhotoSettings";
 import { BannerSlideList } from "./BannerSlideList";
 import { PropertyTabs, propertyPanel } from "./PropertyTabs";
 import { DeviceFrame, DeviceSwitch } from "./DeviceSwitch";
-import { EditorActions } from "./EditorActions";
+import { EditorActions, EditorStatus } from "./EditorActions";
 import { BannerLayoutPicker, WelcomePanelControls } from "./BannerLayoutPicker";
 import { ArrangeTarget } from "./BannerArrange";
 import { Photo } from "@/src/domain/entities/Photo";
@@ -36,11 +37,10 @@ const propertyTabs = [
 type PropertyTab = (typeof propertyTabs)[number];
 
 export default function HomeBannerEditor() {
-  const { user } = useSessionValue();
-  return user?.isAdmin() ? (
-    <Editor />
-  ) : (
-    <p>Sign in as the administrator to edit Home.</p>
+  return (
+    <AdminOnly to="edit Home">
+      <Editor />
+    </AdminOnly>
   );
 }
 function Editor() {
@@ -51,12 +51,6 @@ function Editor() {
         .querySelector(".banner-photo-settings")
         ?.scrollIntoView?.({ block: "nearest" });
   }, [editingPhoto]);
-  const [saved, setSaved] = useState<HomeBanner | null>(null);
-  const [draft, setDraft] = useState<HomeBanner>(defaultHomeBanner);
-  const [busy, setBusy] = useState(false);
-  const lock = useRef(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [highlightDirty, setHighlightDirty] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [propertyTab, setPropertyTab] = useState<PropertyTab>("Text");
@@ -64,44 +58,30 @@ function Editor() {
   const [activePhotoId, setActivePhotoId] = useState<string>();
   const onActiveChange = useCallback((id: string) => setActivePhotoId(id), []);
   const { confirm } = useEditingWorkspace();
-  const dirty =
-    saved !== null && JSON.stringify(draft) !== JSON.stringify(saved);
-  async function load() {
-    setBusy(true);
-    setError("");
-    try {
-      const value = await manageHomeBanner.get();
-      setSaved(value);
-      setDraft(value);
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
-  async function save() {
-    if (lock.current) return false;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const value = await manageHomeBanner.save(draft);
-      setSaved(value);
-      setDraft(value);
-      setNotice("Home banner saved.");
-      return true;
-    } catch (failure) {
-      setError((failure as Error).message);
-      return false;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
+  const {
+    saved,
+    draft,
+    setDraft,
+    busy,
+    error,
+    notice,
+    setNotice,
+    dirty,
+    cancel,
+    reload,
+    review,
+  } = useSettingsDocument<HomeBanner>({
+    initial: defaultHomeBanner,
+    read: () => manageHomeBanner.get(),
+    write: (value) => manageHomeBanner.save(value),
+    label: "Home banner",
+    savedNotice: "Home banner saved.",
+    cancelPrompt: ["Discard changes?", "Return to the last saved banner?"],
+    reloadPrompt: [
+      "Reload banner?",
+      "Discard your draft and load the latest saved banner?",
+    ],
+  });
   function change(key: keyof HomeBanner, value: string | number | boolean) {
     setDraft((previous) => ({ ...previous, [key]: value }));
     setNotice("");
@@ -126,20 +106,6 @@ function Editor() {
     }));
     setNotice("");
   }
-  const { review } = useUnsavedEditor(dirty, {
-    label: "Home banner",
-    save,
-    discard: () => {
-      if (saved) setDraft(saved);
-    },
-    document: saved
-      ? {
-          original: saved,
-          draft,
-          restore: (value) => setDraft(value as HomeBanner),
-        }
-      : undefined,
-  });
   return (
     <div className="banner-editor">
       <header>
@@ -154,15 +120,7 @@ function Editor() {
             busy={busy}
             dirty={dirty}
             saveLabel="Save banner"
-            onCancel={async () => {
-              if (
-                await confirm(
-                  "Discard changes?",
-                  "Return to the last saved banner?",
-                )
-              )
-                setDraft(saved);
-            }}
+            onCancel={cancel}
             onRestore={async () => {
               if (
                 await confirm(
@@ -175,27 +133,12 @@ function Editor() {
           />
         )}
       </header>
-      {error && (
-        <p role="alert">
-          {error}{" "}
-          <button
-            disabled={busy}
-            onClick={async () => {
-              if (
-                !dirty ||
-                (await confirm(
-                  "Reload banner?",
-                  "Discard your draft and load the latest saved banner?",
-                ))
-              )
-                await load();
-            }}
-          >
-            Reload state
-          </button>
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
+      <EditorStatus
+        error={error}
+        notice={notice}
+        busy={busy}
+        onReload={reload}
+      />
       {!saved ? (
         <p>{busy ? "Loading banner…" : "Banner settings are unavailable."}</p>
       ) : (

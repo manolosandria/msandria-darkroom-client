@@ -914,6 +914,21 @@ the pointer the same way:
   and cover are chosen from it, and Variants' library shares its badges and labels.
 - **`EmptyState`**: a drawing in a soft circle, a title and an optional line, for lists
   with nothing to show (Inbox, Comments, Photos, Collections).
+- **`AdminOnly`**: the administrator's screens (Home, Gallery, Palettes, Inbox,
+  Comments, Collections and Photos) wrap their editor in it: it says while the session is
+  being asked for, offers **Try Again** when the API could not be reached, and tells
+  anyone else what signing in as the administrator allows (`to="edit Home"`). It only
+  decides what shows; the API decides what is allowed.
+- **`useSettingsDocument`** (`src/ui/hooks`): one settings document edited as a draft
+  (Home, Gallery, Palettes and General): read once, saved with its version, a save in
+  flight blocking another, registered with the save bar and the review, Cancel and
+  **Reload state** asking before a draft with changes is lost. `toDraft` and
+  `reviewAs` let Palettes edit and review only its list. **`EditorStatus`** (beside
+  `EditorActions`) shows the failure with **Reload state** and the last save's notice.
+- **`uploadFiles`** (`src/ui`): the formats and size every uploader takes (JPEG, PNG,
+  WebP, AVIF and GIF up to 10 MB, as the API's pipe), `uploadRefusal` naming a file
+  and why it was left out, and `titleFromFile` for a file's first title. Upload, Posts,
+  Collections, Variants and **Replace file…** share it.
 - Checkboxes, radios and sliders are drawn by `globals.css` with zero-specificity
   `:where` rules (accent from `--control-accent`, Gallery's theme in Gallery), and every
   enabled button shows the pointing hand and darkens a touch while pressed.

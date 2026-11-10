@@ -1,7 +1,6 @@
 "use client";
 import "./paletteStudio.css";
 import "./siteGeneral.css";
-import { useEffect, useRef, useState } from "react";
 import {
   contrastRatio,
   defaultSiteSettings,
@@ -21,8 +20,8 @@ import {
 import { defaultGalleryPalettes } from "@/src/domain/entities/GallerySettings";
 import { manageSiteSettings } from "@/src/infrastructure/siteSettingsServices";
 import type { ManageSiteSettings } from "@/src/application/use-cases/ManageSiteSettings";
-import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
-import { EditorActions } from "./EditorActions";
+import { useSettingsDocument } from "@/src/ui/hooks/useSettingsDocument";
+import { EditorActions, EditorStatus } from "./EditorActions";
 import { Segment, SegmentedChoice } from "./SegmentedChoice";
 import { useSiteSettings } from "./SiteSettingsProvider";
 
@@ -138,68 +137,31 @@ export default function SiteGeneralEditor({
 }: {
   service?: ManageSiteSettings;
 }) {
-  const { confirm } = useEditingWorkspace();
   const site = useSiteSettings();
-  const [saved, setSaved] = useState<SiteSettings | null>(null);
-  const [draft, setDraft] = useState<SiteSettings>(defaultSiteSettings);
-  const [busy, setBusy] = useState(true);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const lock = useRef(false);
-  const dirty = !!saved && JSON.stringify(saved) !== JSON.stringify(draft);
-
-  async function load() {
-    setBusy(true);
-    setError("");
-    try {
-      const loaded = withSiteDefaults(await service.get());
-      setSaved(loaded);
-      setDraft(loaded);
-      setNotice("");
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  useEffect(() => {
-    void load();
-    // Only once: afterwards the draft is the curator's.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function save() {
-    if (lock.current || !saved) return false;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const result = await service.save(draft);
-      setSaved(result);
-      setDraft(result);
-      site.adopt(result);
-      setNotice("General settings saved.");
-      return true;
-    } catch (failure) {
-      setError((failure as Error).message);
-      return false;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  const { review } = useUnsavedEditor(dirty, {
+  const {
+    saved,
+    draft,
+    setDraft,
+    busy,
+    error,
+    notice,
+    setNotice,
+    dirty,
+    cancel,
+    reload,
+    review,
+  } = useSettingsDocument<SiteSettings>({
+    initial: defaultSiteSettings,
+    read: async () => withSiteDefaults(await service.get()),
+    write: (value) => service.save(value),
     label: "General",
-    save,
-    discard: () => saved && setDraft(saved),
-    document: saved
-      ? {
-          original: saved,
-          draft,
-          restore: (value) => setDraft(value as SiteSettings),
-        }
-      : undefined,
+    savedNotice: "General settings saved.",
+    onSaved: (result) => site.adopt(result),
+    cancelPrompt: ["Cancel changes?", "Return to the saved settings?"],
+    reloadPrompt: [
+      "Reload settings?",
+      "Discard your draft and load the latest saved settings?",
+    ],
   });
 
   const themes = headerThemes(draft);
@@ -229,28 +191,17 @@ export default function SiteGeneralEditor({
             busy={busy}
             dirty={dirty}
             saveLabel="Save general settings"
-            onCancel={async () => {
-              if (
-                await confirm(
-                  "Cancel changes?",
-                  "Return to the saved settings?",
-                )
-              )
-                setDraft(saved);
-            }}
+            onCancel={cancel}
             onRestore={() => change({ ...defaultSiteSettings, version: draft.version })}
           />
         )}
       </header>
-      {error && (
-        <p role="alert">
-          {error}{" "}
-          <button type="button" disabled={busy} onClick={() => void load()}>
-            Reload state
-          </button>
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
+      <EditorStatus
+        error={error}
+        notice={notice}
+        busy={busy}
+        onReload={reload}
+      />
       {!saved ? (
         <p>{busy ? "Loading settings…" : "Settings are unavailable."}</p>
       ) : (

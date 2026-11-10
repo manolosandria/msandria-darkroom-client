@@ -1,4 +1,5 @@
 "use client";
+import { titleFromFile, UPLOAD_IMAGE_TYPES, uploadRefusal } from "@/src/ui/uploadFiles";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Photo, PhotoVisibility } from "@/src/domain/entities/Photo";
@@ -128,12 +129,6 @@ export function postDraftOf(draft: EditorDraft): PostDraft {
 
 const sameDraft = (a: EditorDraft, b: EditorDraft) =>
   JSON.stringify(postDraftOf(a)) === JSON.stringify(postDraftOf(b));
-
-const fileTitle = (file: File) =>
-  file.name
-    .replace(/\.[^.]+$/, "")
-    .replace(/[_-]+/g, " ")
-    .trim() || "Untitled";
 
 /**
  * Curator → Posts: Home's journal. A list of every post (drafts and scheduled ones
@@ -1130,19 +1125,9 @@ function AddBlocks({
     const additions: UploadItem[] = [];
     const errors: string[] = [];
     for (const file of files.slice(0, available)) {
-      if (
-        ![
-          "image/jpeg",
-          "image/png",
-          "image/webp",
-          "image/avif",
-          "image/gif",
-        ].includes(file.type) ||
-        file.size > 10 * 1024 * 1024
-      ) {
-        errors.push(
-          `${file.name}: choose a JPEG, PNG, WebP, AVIF or GIF up to 10 MB.`,
-        );
+      const refusal = uploadRefusal(file);
+      if (refusal) {
+        errors.push(refusal);
         continue;
       }
       const preview = URL.createObjectURL(file);
@@ -1151,7 +1136,7 @@ function AddBlocks({
         id: nextId.current++,
         file,
         preview,
-        title: fileTitle(file),
+        title: titleFromFile(file),
         description: "",
         highlights: {},
         frame: null,
@@ -1237,7 +1222,7 @@ function AddBlocks({
         <input
           ref={input}
           type="file"
-          accept="image/*"
+          accept={UPLOAD_IMAGE_TYPES.join(",")}
           multiple
           hidden
           onChange={(event) => {
