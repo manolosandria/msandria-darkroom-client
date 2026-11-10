@@ -11,6 +11,7 @@ import { useSessionValue } from "./SessionProvider";
 import { useCuratorNotifications } from "./CuratorNotifications";
 import { useSiteSettings } from "./SiteSettingsProvider";
 import { useHeaderVisibility } from "@/src/ui/hooks/useHeaderVisibility";
+import { useWideScreen } from "@/src/ui/hooks/useWideScreen";
 
 function Chevron({ direction }: { direction: "up" | "down" }) {
   return (
@@ -26,9 +27,6 @@ function Chevron({ direction }: { direction: "up" | "down" }) {
     </svg>
   );
 }
-
-// Where the header trades its links for the three bars (navigation.css).
-const NARROW = "(max-width: 1100px)";
 
 /** Whether the page has scrolled past the given element's height. */
 function useScrolledPast(element: HTMLElement | null, enabled: boolean) {
@@ -57,7 +55,12 @@ export default function MainHeader() {
   // publish from anyone else, whatever the header chose to show.
   const canPublish = user?.isAdmin() ?? false;
 
-  const [hidden, setHidden] = useHeaderVisibility();
+  // One choice for the whole site: expanded (the header and, inside Curator, its row of
+  // tabs) or compact (the floating logo, the page menu and the account). It is offered
+  // on wide screens only; narrower ones are always compact, the links in the page menu.
+  const [folded, setFolded] = useHeaderVisibility();
+  const wide = useWideScreen();
+  const hidden = folded && wide;
   // A remembered choice applies without motion on arrival; only the visitor's own
   // toggle animates.
   const [animated, setAnimated] = useState(false);
@@ -70,14 +73,9 @@ export default function MainHeader() {
     fold,
     settings.header.hideOnScroll && !hidden,
   );
-  // On narrow screens the chevron brings a scrolled-away header back over the page,
-  // pinned to the top, instead of carrying the visitor back to the top of the page.
-  const [pinned, setPinned] = useState(false);
-  // Back at the top, the header is in its place again and needs no pin.
-  if (pinned && !scrolled) setPinned(false);
-  // Folded by hand or scrolled out of view: the logo floats with the menu on the left
-  // and the account stays in the top-right corner.
-  const docked = hidden || (scrolled && !pinned);
+  // Folded by hand or scrolled out of view: the logo floats on the left and the page
+  // menu and the account stay in the top-right corner.
+  const docked = hidden || scrolled;
   // The corner floats over the header's row, which leaves it room.
   useEffect(() => {
     if (!corner || typeof ResizeObserver === "undefined") return;
@@ -98,14 +96,10 @@ export default function MainHeader() {
 
   function toggle() {
     setAnimated(true);
-    if (pinned) setPinned(false);
-    else if (docked) {
-      setHidden(false);
-      if (scrolled) {
-        if (window.matchMedia?.(NARROW).matches) setPinned(true);
-        else window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    } else setHidden(true);
+    if (docked) {
+      setFolded(false);
+      if (scrolled) window.scrollTo({ top: 0, behavior: "smooth" });
+    } else setFolded(true);
     // The same control stays where it was; a keyboard press keeps focus on it.
     if (document.activeElement !== toggleButton.current)
       toggleButton.current?.focus();
@@ -132,19 +126,20 @@ export default function MainHeader() {
       className="site-header"
       data-hidden={hidden ? "true" : "false"}
       data-docked={docked ? "true" : undefined}
-      data-pinned={pinned ? "true" : undefined}
       data-sticky={settings.header.hideOnScroll ? undefined : "true"}
       data-tone={settings.header.tone}
       data-material={settings.header.material}
       data-animated={animated ? "true" : undefined}
       style={{ "--corner-width": `${cornerWidth}px` } as React.CSSProperties}
     >
-      <div className="site-header__fold" id={panelId} inert={hidden} ref={setFold}>
+      <div
+        className="site-header__fold"
+        id={panelId}
+        inert={hidden}
+        ref={setFold}
+      >
         <div className="site-header__fold-inner">
-          <header
-            className="main-header"
-            data-align={settings.header.navAlign}
-          >
+          <header className="main-header" data-align={settings.header.navAlign}>
             <Link
               href="/"
               aria-label="Manolo Sandria — home"
@@ -172,27 +167,29 @@ export default function MainHeader() {
             administrator's Curator, lit inside Curator, everywhere. */}
         <CuratorShortcut pending={pending} admin={canPublish} />
         <SessionMenu />
-        <button
-          ref={toggleButton}
-          type="button"
-          className="main-header__hide"
-          aria-label={
-            docked
-              ? canPublish && pending > 0
-                ? `Show header, ${pending} pending notifications`
-                : "Show header"
-              : "Hide header"
-          }
-          aria-controls={panelId}
-          aria-expanded={!docked}
-          title={docked ? "Show the header" : "Hide header"}
-          onClick={toggle}
-        >
-          <Chevron direction={docked ? "down" : "up"} />
-          {docked && canPublish && pending > 0 && (
-            <span className="site-header__reveal-dot" aria-hidden="true" />
-          )}
-        </button>
+        {wide && (
+          <button
+            ref={toggleButton}
+            type="button"
+            className="main-header__hide"
+            aria-label={
+              docked
+                ? canPublish && pending > 0
+                  ? `Show header, ${pending} pending notifications`
+                  : "Show header"
+                : "Hide header"
+            }
+            aria-controls={panelId}
+            aria-expanded={!docked}
+            title={docked ? "Show the header" : "Hide header"}
+            onClick={toggle}
+          >
+            <Chevron direction={docked ? "down" : "up"} />
+            {docked && canPublish && pending > 0 && (
+              <span className="site-header__reveal-dot" aria-hidden="true" />
+            )}
+          </button>
+        )}
       </div>
       {/* Docked, the header is only its logo, floating translucent in the top-left
           corner and leading home; the page menu beside the account holds the links. */}

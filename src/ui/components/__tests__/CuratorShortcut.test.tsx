@@ -2,20 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CuratorShortcut } from "../CuratorPill";
-import {
-  announceCuratorSection,
-  announceCuratorTabs,
-} from "@/src/ui/curatorChannel";
+import { announceCuratorSection } from "@/src/ui/curatorChannel";
 
 const path = vi.hoisted(() => ({ current: "/curator" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.current }));
 
 describe("The Curator pill beside the account", () => {
   afterEach(() =>
-    act(() => {
-      announceCuratorSection(null);
-      announceCuratorTabs(true);
-    }),
+    act(() => announceCuratorSection(null)),
   );
 
   it("is lit inside Curator, says CURATOR with the open tab and switches tabs in place", async () => {
@@ -30,8 +24,6 @@ describe("The Curator pill beside the account", () => {
     const pill = screen.getByRole("button", {
       name: "Curator and site pages: Upload",
     });
-    // Folded tabs come back from the pill's last line.
-    act(() => announceCuratorTabs(false));
     expect(pill.closest(".curator-pill")).toHaveAttribute("data-lit");
     expect(within(pill).getByText("Curator")).toBeInTheDocument();
     await userEvent.click(pill);
@@ -40,13 +32,10 @@ describe("The Curator pill beside the account", () => {
       "aria-current",
       "page",
     );
-    const footer = within(menu).getByRole("button", { name: "Show Curator's tabs" });
-    const tabs = vi.fn();
-    window.addEventListener("curator:show-tabs", tabs);
-    await userEvent.click(footer);
-    expect(tabs).toHaveBeenCalled();
-    window.removeEventListener("curator:show-tabs", tabs);
-    await userEvent.click(pill);
+    // The header's chevron, not the menu, brings Curator's tabs back.
+    expect(
+      within(menu).queryByRole("button", { name: "Show Curator's tabs" }),
+    ).toBeNull();
     await userEvent.click(within(menu).getByRole("button", { name: "Variants" }));
     expect(asked).toEqual(["Variants"]);
     expect(pill).toHaveAttribute("aria-expanded", "false");

@@ -11,14 +11,22 @@ Feature: The site header and the account corner
     When I press "Show header" on a wide screen
     Then the page returns to the top with the header
 
-  Scenario: Bringing the header back on a phone
-    Given the general settings hide the header on scroll
-    And I have scrolled past the header on a narrow screen
-    When I press "Show header"
-    Then the header comes back pinned over the page where I am, without scrolling
-    And the section's own tabs stay visible below it
-    When I press "Hide header" or return to the top
-    Then the pin is released
+  Scenario: One chrome, expanded or compact, on a wide screen
+    Given I am on any page of the site at 1400 px wide
+    When I press the chevron in the top-right corner
+    Then the header folds into the floating logo, the page menu and my account
+    And inside Curator its row of tabs folds with it
+    When I press the chevron again without moving the pointer
+    Then the header and Curator's tabs come back
+    And the choice holds on every page I open next
+
+  Scenario: Always compact on a phone
+    Given I folded the header on a wide screen
+    When I open the site on a phone
+    Then the header shows its logo, the page menu and my account, with no chevron
+    And the site's links and Curator's tabs are in the page menu
+    When the general settings hide the header on scroll and I scroll past it
+    Then the logo floats and the page menu stays in the corner until I return to the top
 
   Scenario: A header that stays
     Given the general settings keep the header on scroll

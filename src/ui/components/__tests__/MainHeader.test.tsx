@@ -179,7 +179,10 @@ describe("MainHeader", () => {
       });
     }
     function narrow(matches: boolean) {
-      vi.stubGlobal("matchMedia", (query: string) => ({ matches, media: query }));
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: query.includes("min-width") ? !matches : matches,
+        media: query,
+      }));
     }
     const header = () => document.querySelector(".site-header");
 
@@ -188,40 +191,25 @@ describe("MainHeader", () => {
       scrollTo(0);
     });
 
-    it("pins it over the page on a narrow screen, where the visitor is", () => {
+    it("stays compact on a narrow screen: no chevron, and scrolling docks it", () => {
       getCurrentUser.mockResolvedValue(null);
       narrow(true);
-      const scroll = vi.fn();
-      window.scrollTo = scroll as typeof window.scrollTo;
       renderHeader();
+      expect(screen.queryByRole("button", { name: /header/ })).toBeNull();
       scrollTo(400);
-
-      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
-
-      expect(scroll).not.toHaveBeenCalled();
-      expect(header()).toHaveAttribute("data-pinned", "true");
-      expect(header()).not.toHaveAttribute("data-docked");
-      expect(document.querySelector(".site-header__dock-pill")).toBeNull();
-
-      // The same chevron lets it go again.
-      fireEvent.click(screen.getByRole("button", { name: "Hide header" }));
-      expect(header()).not.toHaveAttribute("data-pinned");
       expect(header()).toHaveAttribute("data-docked", "true");
+      scrollTo(0);
+      expect(header()).not.toHaveAttribute("data-docked");
     });
 
-    it("drops the pin once the page is back at the top", () => {
+    it("ignores a fold remembered on a wide screen", () => {
       getCurrentUser.mockResolvedValue(null);
+      localStorage.setItem("headerHidden", "true");
       narrow(true);
-      window.scrollTo = vi.fn() as typeof window.scrollTo;
       renderHeader();
-      scrollTo(400);
-      fireEvent.click(screen.getByRole("button", { name: "Show header" }));
-
-      scrollTo(0);
-      scrollTo(400);
-
-      expect(header()).not.toHaveAttribute("data-pinned");
-      expect(header()).toHaveAttribute("data-docked", "true");
+      expect(header()).toHaveAttribute("data-hidden", "false");
+      expect(header()).not.toHaveAttribute("data-docked");
+      localStorage.removeItem("headerHidden");
     });
 
     it("returns to the top on a wide screen", () => {
@@ -235,7 +223,6 @@ describe("MainHeader", () => {
       fireEvent.click(screen.getByRole("button", { name: "Show header" }));
 
       expect(scroll).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
-      expect(header()).not.toHaveAttribute("data-pinned");
     });
   });
 

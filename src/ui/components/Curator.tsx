@@ -22,10 +22,9 @@ import "./curatorLayout.css";
 import "./curatorTheme.css";
 import {
   announceCuratorSection,
-  announceCuratorTabs,
   useCuratorRequests,
-  useCuratorTabsRequests,
 } from "@/src/ui/curatorChannel";
+import { useHeaderVisibility } from "@/src/ui/hooks/useHeaderVisibility";
 import {
   CURATOR_SECTION_KEY,
   curatorGroupOf,
@@ -100,13 +99,9 @@ export default function Curator() {
     );
   const current = groupOf(section);
   const backdrop = useCuratorBackdrop();
-  // The pill beside the account is Curator's menu, so its own row of tabs starts
-  // folded everywhere; the pill's last line brings it back (a row on wide screens, a
-  // centered column on narrow ones), and its arrow folds it again.
-  const [menuShown, setMenuShown] = useState(false);
-  useEffect(() => announceCuratorTabs(menuShown), [menuShown]);
-  useEffect(() => () => announceCuratorTabs(true), []);
-  useCuratorTabsRequests(() => setMenuShown(true));
+  // The tabs are the header's second row: the corner's chevron folds and unfolds both,
+  // and narrow screens never show them (curatorTheme.css), the page menu holding them.
+  const [folded] = useHeaderVisibility();
   // The group whose menu was opened by a press (touch has no hover); pointing at a
   // group or tabbing into it opens its menu too.
   const [open, setOpen] = useState<string | null>(null);
@@ -147,15 +142,7 @@ export default function Curator() {
             id="curator-tabs"
             aria-label="Curator sections"
             className="curator-tabs"
-            hidden={!menuShown}
-            onClick={(event) => {
-              // On narrow screens, choosing a tab folds the menu again.
-              if (
-                (event.target as Element).closest(".curator-tabs__menu button, .curator-tabs__trigger[aria-current]") &&
-                window.matchMedia?.("(max-width: 899px)").matches
-              )
-                setMenuShown(false);
-            }}
+            hidden={folded}
           >
             {curatorGroups.map((group) => {
               const active = group === current;
@@ -215,7 +202,6 @@ export default function Curator() {
                 </div>
               );
             })}
-            <FoldArrow folded={false} onClick={() => setMenuShown(false)} />
           </nav>
           <div className="curator-panel" hidden={section !== "Upload"}>
             <UploadPanel />
@@ -239,35 +225,3 @@ export default function Curator() {
   );
 }
 
-// At the far right of the tabs' row, it folds them into the pill; beside the pill, it
-// brings them back.
-function FoldArrow({
-  folded,
-  onClick,
-}: {
-  folded: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="curator-fold"
-      aria-expanded={!folded}
-      aria-controls="curator-tabs"
-      aria-label={folded ? "Show the tabs" : "Hide the tabs"}
-      title={folded ? "Show the tabs" : "Hide the tabs"}
-      onClick={onClick}
-    >
-      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-        <path
-          d={folded ? "M5 7.5l5 5 5-5" : "M5 12.5 10 7.5l5 5"}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
-  );
-}

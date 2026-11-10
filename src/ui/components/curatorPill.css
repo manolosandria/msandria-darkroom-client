@@ -210,14 +210,6 @@
 .curator-pill.is-visitor .curator-pill__menu {
   grid-template-columns: minmax(180px, 1fr);
 }
-.curator-pill__menu .curator-pill__footer {
-  grid-column: 1 / -1;
-  justify-content: center;
-  border-top: 1px solid #eceee6;
-  border-radius: 0 0 9px 9px;
-  color: #4f6638;
-  font-weight: 600;
-}
 /* While the header shows its links on a wide screen, the visitor needs no menu. */
 @media (min-width: 1101px) {
   .site-header:not([data-docked]) .curator-pill.is-visitor {
