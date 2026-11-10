@@ -65,3 +65,43 @@
  .upload-review-group dl > div { grid-template-columns:80px minmax(0,1fr); }
 }
 @media(prefers-reduced-motion:reduce) { .upload-preparation * { transition:none !important; } }
+
+/* ---------- The photograph at its own proportion ----------
+   Wherever the card is one column (a post's light card, an expanded card, a phone), the
+   photograph takes its own proportion, frame included, up to most of the window's
+   height, instead of whatever height the fields leave it. */
+.upload-preparation[data-light] .upload-card-body { height:auto; grid-template-columns:minmax(0,1fr); }
+.upload-preparation[data-light] .upload-fields { height:auto; max-height:none; overflow:visible; }
+.upload-preparation[data-light]:not([data-expanded]) .upload-photo-surface,
+.upload-side-preview .upload-photo-surface {
+  flex:none; height:auto; margin-inline:auto;
+  /* As wide as the card, or narrower when the window's height is what limits it. */
+  width:min(100%, calc(62vh * var(--preview-ratio,1.5)));
+  aspect-ratio:var(--preview-ratio,1.5);
+  min-height:200px;
+}
+.upload-preparation .upload-preview[data-zoom="in"] { cursor:zoom-in; }
+.upload-preparation .upload-preview[data-zoom="out"] { cursor:zoom-out; }
+.upload-more-toggle { margin-right:auto; padding:9px 4px; border:0; background:none; color:var(--upload-accent); font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.upload-more-toggle .upload-muted { font-weight:500; text-decoration:none; }
+.upload-more-toggle[aria-expanded="true"] { color:#7b8675; }
+
+/* Beside the card, in Posts' publishing column on wide screens. */
+.upload-side-preview { display:grid; gap:10px; min-width:0; }
+.upload-side-preview .upload-visual { gap:10px; }
+.upload-side-preview__name { margin:0; overflow:hidden; color:#36553d; font-size:12px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+
+/* A phone always shows the photograph whole, above its fields: nothing to expand. */
+@media(max-width:800px) {
+  .upload-preparation .upload-photo-surface,
+  .upload-preparation[data-expanded] .upload-photo-surface {
+    flex:none; height:auto; margin-inline:auto;
+    width:min(100%, calc(70vh * var(--preview-ratio,1.5)));
+    aspect-ratio:var(--preview-ratio,1.5);
+    min-height:200px;
+  }
+  .upload-preparation .upload-fields,
+  .upload-preparation[data-expanded] .upload-fields { height:auto; max-height:none; overflow:visible; }
+  .upload-preparation .upload-preview-expand { display:none; }
+  .upload-preparation .upload-preview[data-zoom] { cursor:auto; }
+}

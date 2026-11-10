@@ -1306,18 +1306,25 @@ in Curator's undo history: Ctrl+Z outside text fields can restore cancelled chan
 including removed blocks; opening or saving a post starts a fresh history.
 
 The story toolbar offers Text, Photo from the library and Upload photos without
-extra descriptions. Choosing files opens the same preparation cards as Photos:
-title, description, border trimming, frame, highlights and optimization review.
-**Uploaded photo goes to** appears only on these cards, defaulting to **Only in posts**.
-Upload explicitly after preparing each file. The API optimizes and removes GPS through
-the same pipeline as Photos. Successful uploads join the story and are never uploaded
-again on retry. Prepared files survive Preview and reserve their story block slots;
-upload or remove them before saving the post. Saving the story remains separate.
+extra descriptions. Choosing files opens a light version of Photos' preparation card
+(`UploadCard` with `forPost`): the photograph, its title and description, and
+**Uploaded photo goes to** as two cards like Status (**Only in posts**, the default, or
+**To the gallery too**), then **Upload**. **More options** opens the steps a post rarely
+needs (Details, Appearance with border trimming and frame, Highlights); there is no
+Organization or Review step, since the photograph on screen is the review. From
+1280 px the photograph of the card being worked on (the one last pointed into or
+focused, else the first waiting) shows under **Publishing**, at its own proportion
+(`previewSlot`); in Highlights, or expanded, it returns to the card, which has the
+width to draw on. Upload explicitly after preparing each file. The API optimizes and
+removes GPS through the same pipeline as Photos. Successful uploads join the story and
+are never uploaded again on retry. Prepared files survive Preview and reserve their
+story block slots; upload or remove them before saving the post. Saving the story
+remains separate.
 
 ### Photo preparation steps
 
-Photos and Posts share `UploadCard`: Details, Appearance, Highlights, Organization
-and Review. Next/Back and the numbered tabs preserve edits; optional steps can be
+Photos and Collections use `UploadCard` with every step: Details, Appearance,
+Highlights, Organization and Review (Posts uses its light version, above). Next/Back and the numbered tabs preserve edits; optional steps can be
 skipped and Upload remains available at every step. Arrow keys, Home and End move
 between tabs. Upload All still publishes the pending queue directly.
 
@@ -1327,9 +1334,13 @@ mode. Photos start as collections-only and enter the composition draft after upl
 saving. Folding the uploader or switching collections preserves prepared files.
 
 The preparation card has one shared photograph surface: Highlights draws directly on
-that preview, and Appearance shows its frame there. **Expand photo** gives the image
-the full row with properties below; **Compact view** restores the split layout without
-losing edits. In compact mode each step has the same height, the inspector scrolls
+that preview, and Appearance shows its frame there. **Expand photo**, or a click on the
+photograph, gives the image the full row with properties below; **Compact view** or
+another click restores the split layout without losing edits. Wherever the card is one
+column (Posts, expanded, phones) the photograph takes its own proportion, frame
+included, up to most of the window's height (`--preview-ratio`), instead of the height
+the fields leave it. Phones always show it that way, above the fields, with nothing to
+expand. In compact mode each step has the same height, the inspector scrolls
 independently and starts at its top on a step change. Review lists metadata, border
 trimming, frame, highlights, presentation choices and classification, with links back
 to each step. The same card is used by Photos, Posts and Collections.

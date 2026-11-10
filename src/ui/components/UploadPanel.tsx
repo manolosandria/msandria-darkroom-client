@@ -8,6 +8,8 @@ import { assignPhotoVariant } from "@/src/application/use-cases/AssignPhotoVaria
 import { manageCatalog } from "@/src/infrastructure/catalogServices";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useMediaQuery } from "@/src/ui/hooks/useMediaQuery";
 import { UploadPhoto } from "@/src/application/use-cases/UploadPhoto";
 import { PhotoHighlights } from "@/src/domain/entities/PhotoHighlights";
 import { PublishedPhoto } from "@/src/domain/repositories/PhotoRepository";
@@ -380,6 +382,9 @@ export default function UploadPanel({
   );
 }
 
+// Wide enough for Posts' publishing column beside the story (postStudio.css).
+const SIDE_PREVIEW = "(min-width: 1280px)";
+
 export function UploadCard({
   item,
   index,
@@ -388,6 +393,8 @@ export function UploadCard({
   onUpload,
   running,
   forPost = false,
+  previewSlot,
+  onActivate,
 }: {
   item: UploadItem;
   index: number;
@@ -395,7 +402,12 @@ export function UploadCard({
   onRemove: () => void;
   onUpload: () => void;
   running: boolean;
+  /** A post's photo: title, words and destination first, the rest under More options. */
   forPost?: boolean;
+  /** Where the photograph shows instead, beside the card, on screens wide enough. */
+  previewSlot?: HTMLElement | null;
+  /** The curator is working on this card: pointing into it or focusing it. */
+  onActivate?: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -405,7 +417,14 @@ export function UploadCard({
     if (inspector.current) inspector.current.scrollTop = 0;
   }, [step]);
   const prefix = useId();
-  const steps = ["Details", "Appearance", "Highlights", "Organization", "Review"];
+  // A post's photo needs its title and destination; frame, border and highlights wait
+  // under More options, and there is no review: the photograph is the review.
+  const [more, setMore] = useState(false);
+  const steps = forPost
+    ? ["Details", "Appearance", "Highlights"]
+    : ["Details", "Appearance", "Highlights", "Organization", "Review"];
+  const showSteps = !forPost || more;
+  const sideBySide = useMediaQuery(SIDE_PREVIEW);
   const panel = (index: number) => ({
     role: "tabpanel" as const,
     id: `${prefix}-panel-${index}`,
@@ -423,9 +442,160 @@ export function UploadCard({
       ? trimmedSize(item.trim, item.width, item.height)
       : undefined;
   const layout = framedLayout(kept ? kept.width / kept.height : 1.5, item.frame);
+  // Drawing highlights wants the card's width, and an expanded photo its own row.
+  const aside = Boolean(previewSlot) && sideBySide && !expanded && step !== 2;
+  const destination = (
+    <fieldset className="post-studio__status post-studio__destination" disabled={locked}>
+      <legend>Uploaded photo goes to</legend>
+      {(["POSTS_ONLY", "PUBLIC"] as const).map((visibility) => (
+        <label key={visibility}>
+          <input
+            type="radio"
+            name={`${prefix}-destination`}
+            aria-label={visibility === "POSTS_ONLY" ? "Only in posts" : "To the gallery too"}
+            checked={item.classification.visibility === visibility}
+            onChange={() =>
+              onChange({
+                classification: { ...item.classification, visibility },
+              })
+            }
+          />
+          <span>
+            <strong>{visibility === "POSTS_ONLY" ? "Only in posts" : "To the gallery too"}</strong>
+            <small>{visibility === "POSTS_ONLY" ? "Not shown in Gallery" : "Public in Gallery as well"}</small>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+  const visual = (
+    <div className="upload-visual">
+      <div className="upload-preview-toolbar">
+        <span>{step === 2 ? "Draw on your photograph" : "Photo preview"}</span>
+        <button type="button" className="upload-preview-expand" aria-pressed={expanded} hidden={aside} onClick={() => setExpanded(!expanded)}>
+          <span aria-hidden="true">{expanded ? "↙" : "↗"}</span> {expanded ? "Compact view" : "Expand photo"}
+        </button>
+      </div>
+      <div className="upload-photo-surface" style={{ "--preview-ratio": 1 / layout.heightPerWidth } as React.CSSProperties}>
+        <div
+          ref={setStageContainer}
+          className="upload-shared-stage"
+          hidden={step !== 2 || !kept}
+          style={{ "--photo-ratio": kept ? kept.width / kept.height : 1 } as React.CSSProperties}
+        />
+        {/* A click on the photograph expands it, as the button does; the button stays for the keyboard. */}
+        <div className="upload-preview" hidden={step === 2 && !!kept} data-zoom={aside ? undefined : expanded ? "out" : "in"} onClick={() => !aside && setExpanded(!expanded)}>
+          <div
+            className="upload-photo-mat"
+            data-testid="upload-frame-preview"
+            style={{ width: `min(100%, calc(100cqh / ${layout.heightPerWidth}))` }}
+          >
+            <div
+              className="upload-photo-border"
+              style={{ background: item.frame?.color, padding: `${layout.paddingY}% ${layout.paddingX}%` }}
+            >
+              <div className="upload-photo-image" style={{ aspectRatio: kept ? kept.width / kept.height : 1.5 }}>
+                <Image
+                  src={src}
+                  alt={item.title || item.file.name}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 800px) 100vw, 45vw"
+                  style={{ objectFit: "contain" }}
+                  onLoad={(event) => {
+                    const image = event.currentTarget;
+                    if (!item.width)
+                      onChange({
+                        width: image.naturalWidth,
+                        height: image.naturalHeight,
+                      });
+                  }}
+                  onError={() => {
+                    if (!item.published)
+                      onChange({
+                        error:
+                          "This image could not be previewed. Check the file before publishing.",
+                      });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <details className="upload-metadata">
+        <summary>Photo metadata</summary>
+        <dl>
+          <div>
+            <dt>Original size</dt>
+            <dd>{(item.file.size / 1024 / 1024).toFixed(2)} MB</dd>
+          </div>
+          <div>
+            <dt>Original format</dt>
+            <dd>{item.file.type.replace("image/", "").toUpperCase()}</dd>
+          </div>
+          {item.width && (
+            <div>
+              <dt>Original dimensions</dt>
+              <dd>
+                {item.width} × {item.height} px
+              </dd>
+            </div>
+          )}
+          {item.published && (
+            <div>
+              <dt>Published dimensions</dt>
+              <dd>
+                {item.published.photo.getWidth()} ×{" "}
+                {item.published.photo.getHeight()} px
+              </dd>
+            </div>
+          )}
+          {metadata?.format && (
+            <div>
+              <dt>Published format</dt>
+              <dd>{metadata.format.toUpperCase()}</dd>
+            </div>
+          )}
+          {metadata && (
+            <>
+              <div>
+                <dt>Captured</dt>
+                <dd>
+                  {metadata.capturedAt
+                    ? new Date(metadata.capturedAt).toLocaleString("en", {
+                        timeZone: "America/Mexico_City",
+                      })
+                    : "Not available"}
+                </dd>
+              </div>
+              <div>
+                <dt>Last edited</dt>
+                <dd>
+                  {metadata.lastEditDate
+                    ? new Date(metadata.lastEditDate).toLocaleString("en", {
+                        timeZone: "America/Mexico_City",
+                      })
+                    : "Not available"}
+                </dd>
+              </div>
+              <div>
+                <dt>Origin</dt>
+                <dd>{metadata.origin ?? "Not available"}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+      </details>
+    </div>
+  );
   return (
     <article
       data-expanded={expanded || undefined}
+      data-light={forPost || undefined}
+      data-aside={aside || undefined}
+      onPointerDown={onActivate}
+      onFocus={onActivate}
       className="upload-card upload-preparation"
       aria-label={`Photo ${index + 1}: ${item.file.name}`}
     >
@@ -446,7 +616,7 @@ export function UploadCard({
           {item.status === "published" ? "Dismiss" : "Remove"}
         </button>
       </header>
-      <div className="upload-step-tabs" role="tablist" aria-label="Photo preparation">
+      {showSteps && <div className="upload-step-tabs" role="tablist" aria-label="Photo preparation">
         {steps.map((label, index) => (
           <button
             key={label}
@@ -470,126 +640,18 @@ export function UploadCard({
             <span>{index + 1}</span> {label}
           </button>
         ))}
-      </div>
+      </div>}
       <div className="upload-card-body">
-        <div className="upload-visual">
-          <div className="upload-preview-toolbar">
-            <span>{step === 2 ? "Draw on your photograph" : "Photo preview"}</span>
-            <button type="button" className="upload-preview-expand" aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>
-              <span aria-hidden="true">{expanded ? "↙" : "↗"}</span> {expanded ? "Compact view" : "Expand photo"}
-            </button>
-          </div>
-          <div className="upload-photo-surface">
-            <div
-              ref={setStageContainer}
-              className="upload-shared-stage"
-              hidden={step !== 2 || !kept}
-              style={{ "--photo-ratio": kept ? kept.width / kept.height : 1 } as React.CSSProperties}
-            />
-            <div className="upload-preview" hidden={step === 2 && !!kept}>
-              <div
-                className="upload-photo-mat"
-                data-testid="upload-frame-preview"
-                style={{ width: `min(100%, calc(100cqh / ${layout.heightPerWidth}))` }}
-              >
-                <div
-                  className="upload-photo-border"
-                  style={{ background: item.frame?.color, padding: `${layout.paddingY}% ${layout.paddingX}%` }}
-                >
-                  <div className="upload-photo-image" style={{ aspectRatio: kept ? kept.width / kept.height : 1.5 }}>
-                    <Image
-                      src={src}
-                      alt={item.title || item.file.name}
-                      fill
-                      unoptimized
-                      sizes="(max-width: 800px) 100vw, 45vw"
-                      style={{ objectFit: "contain" }}
-                      onLoad={(event) => {
-                        const image = event.currentTarget;
-                        if (!item.width)
-                          onChange({
-                            width: image.naturalWidth,
-                            height: image.naturalHeight,
-                          });
-                      }}
-                      onError={() => {
-                        if (!item.published)
-                          onChange({
-                            error:
-                              "This image could not be previewed. Check the file before publishing.",
-                          });
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <details className="upload-metadata">
-            <summary>Photo metadata</summary>
-            <dl>
-              <div>
-                <dt>Original size</dt>
-                <dd>{(item.file.size / 1024 / 1024).toFixed(2)} MB</dd>
-              </div>
-              <div>
-                <dt>Original format</dt>
-                <dd>{item.file.type.replace("image/", "").toUpperCase()}</dd>
-              </div>
-              {item.width && (
-                <div>
-                  <dt>Original dimensions</dt>
-                  <dd>
-                    {item.width} × {item.height} px
-                  </dd>
-                </div>
-              )}
-              {item.published && (
-                <div>
-                  <dt>Published dimensions</dt>
-                  <dd>
-                    {item.published.photo.getWidth()} ×{" "}
-                    {item.published.photo.getHeight()} px
-                  </dd>
-                </div>
-              )}
-              {metadata?.format && (
-                <div>
-                  <dt>Published format</dt>
-                  <dd>{metadata.format.toUpperCase()}</dd>
-                </div>
-              )}
-              {metadata && (
-                <>
-                  <div>
-                    <dt>Captured</dt>
-                    <dd>
-                      {metadata.capturedAt
-                        ? new Date(metadata.capturedAt).toLocaleString("en", {
-                            timeZone: "America/Mexico_City",
-                          })
-                        : "Not available"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Last edited</dt>
-                    <dd>
-                      {metadata.lastEditDate
-                        ? new Date(metadata.lastEditDate).toLocaleString("en", {
-                            timeZone: "America/Mexico_City",
-                          })
-                        : "Not available"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Origin</dt>
-                    <dd>{metadata.origin ?? "Not available"}</dd>
-                  </div>
-                </>
-              )}
-            </dl>
-          </details>
-        </div>
+        {aside
+          ? previewSlot &&
+            createPortal(
+              <div className="upload-side-preview">
+                <p className="upload-side-preview__name">{item.title || item.file.name}</p>
+                {visual}
+              </div>,
+              previewSlot,
+            )
+          : visual}
         <div className="upload-fields" ref={inspector}>
           <div {...panel(0)}>
             <label htmlFor={`${prefix}-title`}>
@@ -615,6 +677,7 @@ export function UploadCard({
                 }
               />
             </label>
+            {forPost && destination}
           </div>
           <div {...panel(1)}>
             {item.width && item.height && (
@@ -657,8 +720,8 @@ export function UploadCard({
               />
             )}
           </div>
+          {!forPost && (
           <div {...panel(3)}>
-            {!forPost && (
               <VariantAssignment
                 key={item.published?.photo.getId() ?? "draft"}
                 photoId={
@@ -675,36 +738,14 @@ export function UploadCard({
                 }
                 disabled={locked || !!item.published}
               />
-            )}
-            {forPost ? (
-              <fieldset className="post-studio__destination" disabled={locked}>
-                <legend>Uploaded photo goes to</legend>
-                {(["POSTS_ONLY", "PUBLIC"] as const).map((visibility) => (
-                  <label key={visibility}>
-                    <input
-                      type="radio"
-                      name={`${prefix}-destination`}
-                      checked={item.classification.visibility === visibility}
-                      onChange={() =>
-                        onChange({
-                          classification: { ...item.classification, visibility },
-                        })
-                      }
-                    />
-                    {visibility === "POSTS_ONLY"
-                      ? "Only in posts"
-                      : "To the gallery too"}
-                  </label>
-                ))}
-              </fieldset>
-            ) : (
               <PhotoClassificationFields
                 value={item.classification}
                 disabled={locked}
                 onChange={(classification) => onChange({ classification })}
               />
-            )}
           </div>
+          )}
+          {!forPost && (
           <div {...panel(4)}>
             <UploadReview item={item} forPost={forPost} onEdit={setStep} />
             <section className="upload-optimization">
@@ -718,6 +759,7 @@ export function UploadCard({
               )}
             </section>
           </div>
+          )}
           {item.published && <OptimizationIssueList issues={item.published.optimizationIssues} />}
           {item.error && (
             <p role="alert" className="upload-error">
@@ -739,14 +781,31 @@ export function UploadCard({
         </div>
       </div>
       <footer className="upload-card-actions">
-        <span className="upload-muted">Step {step + 1} of {steps.length} · Optional settings can be skipped</span>
-        <button type="button" className="upload-secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</button>
-        {step < steps.length - 1 && (
-          <button type="button" className="upload-primary" onClick={() => setStep(step + 1)}>Next</button>
+        {forPost ? (
+          <button
+            type="button"
+            className="upload-more-toggle"
+            aria-expanded={more}
+            onClick={() => {
+              setMore(!more);
+              setStep(0);
+            }}
+          >
+            {more ? "Fewer options" : "More options"}
+            <span className="upload-muted"> · border, frame, highlights</span>
+          </button>
+        ) : (
+          <>
+            <span className="upload-muted">Step {step + 1} of {steps.length} · Optional settings can be skipped</span>
+            <button type="button" className="upload-secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</button>
+            {step < steps.length - 1 && (
+              <button type="button" className="upload-primary" onClick={() => setStep(step + 1)}>Next</button>
+            )}
+          </>
         )}
         <button
           type="button"
-          className={step === 4 ? "upload-primary" : "upload-secondary"}
+          className={forPost || step === 4 ? "upload-primary" : "upload-secondary"}
           disabled={running || ["queued", "uploading", "published"].includes(item.status)}
           onClick={onUpload}
         >

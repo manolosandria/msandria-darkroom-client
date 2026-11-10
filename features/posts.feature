@@ -42,12 +42,24 @@ Feature: Posts on Home
   Scenario: Uploading photos from the post editor
     Given I am writing a post
     When I choose photo files
-    Then each photo offers the same preparation card as Photos, defaulting to "Only in posts"
+    Then each photo offers a light card: the photograph, its title, description and destination, defaulting to "Only in posts"
     And the upload destination appears only after choosing a file
+    And border, frame and highlights wait under "More options", with no review step
     When I upload the prepared photos
     Then they join the post and stay out of the gallery
     And each photo shows its optimization review
     But with "To the gallery too" they also join the gallery with a detail view
+
+  Scenario: Seeing the photograph while preparing it
+    Given I am writing a post on a wide monitor
+    When I choose a portrait photo file
+    Then the photograph shows under Publishing at its own proportion
+    And working on another card shows that card's photograph there instead
+    When I open Highlights under "More options"
+    Then the photograph returns to the card to be drawn on
+    But on a narrower screen the photograph stays in the card at its own proportion
+    And clicking it expands it, and clicking again restores it
+    And on a phone it always shows whole above the fields
 
   Scenario: Recovering cancelled changes
     Given I have edited a post
