@@ -415,8 +415,15 @@ describe("PostStudio", () => {
       new File(["x"], "my_trip-1.jpg", { type: "image/jpeg" }),
     );
     expect(ports.upload.execute).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("tab", { name: /Organization/ }));
+    // A post's photo starts light: title, words and destination, no steps.
+    expect(screen.queryByRole("tablist", { name: "Photo preparation" })).toBeNull();
     expect(screen.getByRole("radio", { name: "Only in posts" })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /More options/ }));
+    expect(
+      screen.getAllByRole("tab").map((tab) => tab.textContent?.replace(/^\d+\s*/, "")),
+    ).toEqual(["Details", "Appearance", "Highlights"]);
+    await userEvent.click(screen.getByRole("button", { name: /Fewer options/ }));
+    expect(screen.queryByRole("tablist", { name: "Photo preparation" })).toBeNull();
     await userEvent.click(
       screen.getByRole("button", { name: "Upload" }),
     );

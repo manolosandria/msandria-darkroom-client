@@ -162,6 +162,7 @@ export default function PostStudio({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
+  const [photoSlot, setPhotoSlot] = useState<HTMLDivElement | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [search, setSearch] = useState("");
@@ -702,6 +703,7 @@ export default function PostStudio({
                         )
                       }
                       onPhoto={addPhoto}
+                      previewSlot={photoSlot}
                       upload={uploadPort}
                       onUploadingChange={setUploading}
                       onPendingChange={setPendingUploads}
@@ -767,6 +769,8 @@ export default function PostStudio({
                           ? `Saving schedules this post for ${new Date(draft.publishedAt).toLocaleString()}.`
                           : "Saving makes this post visible on Home immediately."}
                     </p>
+                    {/* The photograph being prepared shows here on wide screens. */}
+                    <div ref={setPhotoSlot} className="post-studio__photo-slot" />
                   </aside>
                 </div>
               </fieldset>
@@ -1073,7 +1077,9 @@ function AddBlocks({
   onUploaded,
   onUploadingChange,
   onPendingChange,
+  previewSlot,
 }: {
+  previewSlot?: HTMLElement | null;
   remaining: number;
   library: Photo[];
   onText: () => void;
@@ -1086,6 +1092,12 @@ function AddBlocks({
   const full = remaining <= 0;
   const [picking, setPicking] = useState(false);
   const [items, setItems] = useState<UploadItem[]>([]);
+  // The card being worked on lends its photograph to the publishing column.
+  const [active, setActive] = useState<number | null>(null);
+  const waiting = items.filter((item) => item.status !== "published");
+  const shown = waiting.some((item) => item.id === active)
+    ? active
+    : (waiting[0]?.id ?? null);
   const urls = useRef(new Set<string>());
   const nextId = useRef(0);
   const [uploading, setUploading] = useState("");
@@ -1244,6 +1256,8 @@ function AddBlocks({
               item={item}
               index={index}
               forPost
+              previewSlot={item.id === shown ? previewSlot : undefined}
+              onActivate={() => setActive(item.id)}
               running={Boolean(uploading)}
               onChange={(fields) => patch(item.id, fields)}
               onRemove={() => {
