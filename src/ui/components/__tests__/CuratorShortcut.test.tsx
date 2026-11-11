@@ -3,6 +3,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CuratorShortcut } from "../CuratorPill";
 import { announceCuratorSection } from "@/src/ui/curatorChannel";
+import { defaultSiteSettings } from "@/src/domain/entities/SiteSettings";
+import { SiteSettingsProvider } from "../SiteSettingsProvider";
 
 const path = vi.hoisted(() => ({ current: "/curator" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.current }));
@@ -89,5 +91,27 @@ describe("The Curator pill beside the account", () => {
       "href",
       "/contact",
     );
+  });
+
+  it("offers the owner's profiles elsewhere beside Contact, for visitors too", async () => {
+    path.current = "/";
+    const service = {
+      get: vi.fn().mockResolvedValue({
+        ...defaultSiteSettings,
+        socialLinks: [{ kind: "youtube", url: "https://youtube.com/@someone" }],
+      }),
+    };
+    render(
+      <SiteSettingsProvider service={service}>
+        <CuratorShortcut admin={false} />
+      </SiteSettingsProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Site pages: Home" }));
+    const site = screen.getByRole("group", { name: "Site" });
+    const youtube = await within(site).findByRole("link", {
+      name: "YouTube (opens in a new tab)",
+    });
+    expect(youtube).toHaveAttribute("target", "_blank");
+    expect(youtube).toHaveAttribute("rel", "noopener noreferrer");
   });
 });

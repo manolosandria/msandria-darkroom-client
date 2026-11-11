@@ -1125,6 +1125,24 @@ keeps the draft).
 fallback, and pages with a look of their own keep it. The API must serve
 `/site/settings` before this client is deployed.
 
+**Social links.** General also edits `socialLinks` (`SocialLinksEditor`): up to twelve
+links to the owner's profiles elsewhere, each a network from a closed list (LinkedIn,
+Instagram, YouTube, X, Facebook, TikTok, Threads, Bluesky, Behance, Flickr, Vimeo,
+Pinterest, a website, or **Other** with a name of its own), an `https://` address and an
+optional name, reordered with ↑ ↓ and removed with ×. `socialLinkProblem` applies the
+API's rule before saving (https to a named domain, no credentials, spaces, quotes or
+control characters), so a refused link is explained under it and nothing is sent.
+**Restore original** keeps the links: they are content, not look. The site shows them as
+our own SVG drawings (`SocialIcon`; nothing is loaded from the networks) in
+`SocialLinkList`: each link is named for screen readers ("Instagram (opens in a new
+tab)"), opens with `target="_blank"` and `rel="noopener noreferrer"`, and stays faint
+until pointed at. They sit in a quiet footer at the end of the public pages
+(`SiteFooter` in `app/layout.tsx`; not on Curator, the viewer or the upload screens) and
+under Contact in the page menu, so a phone or a folded header reaches them too. Stored
+links are filtered again on reading (`publicSocialLinks`). The API must accept
+`socialLinks` before this client saves them. To show them on `/contact` later, render
+`SocialLinkList` with `useSiteSettings().settings.socialLinks`.
+
 **Header tones.** Each tone of the header comes from the main palette unless it was
 picked by hand (`header.light`/`header.dark`, `{ background, text }`): light is the
 palette's surface with its text, dark is its text as the ground with its background as

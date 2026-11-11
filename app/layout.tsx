@@ -4,6 +4,7 @@ import { SessionProvider } from "@/src/ui/components/SessionProvider";
 import { CuratorNotificationsProvider } from "@/src/ui/components/CuratorNotifications";
 import { EditingWorkspace } from "@/src/ui/components/EditingWorkspace";
 import { SiteSettingsProvider } from "@/src/ui/components/SiteSettingsProvider";
+import { SiteFooter } from "@/src/ui/components/SiteFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({
         <SessionProvider>
           <SiteSettingsProvider>
           <CuratorNotificationsProvider><EditingWorkspace>{children}</EditingWorkspace></CuratorNotificationsProvider>
+          <SiteFooter />
           </SiteSettingsProvider>
         </SessionProvider>
       </body>
