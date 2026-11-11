@@ -338,3 +338,11 @@ label.photo-browser__item {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* In the grid a whole photograph rests on a soft ground of the card, not on black bars:
+   sixteen dark squares read as heavier than the photographs themselves. The filmstrip
+   and the list keep the dark mat, where thumbnails are small and cropped square. */
+.photo-browser--grid .photo-browser__thumb {
+  background: #eceee7;
+  box-shadow: inset 0 0 0 1px #1f281a0d;
+}

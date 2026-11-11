@@ -25,7 +25,7 @@ Feature: Curated collections
 
   Scenario: Find photos to add
     Given I am editing a collection
-    When I search the Add photos strip by title or choose a category
+    When I search the All photos strip by title or choose a category
     Then only matching photos that are not already in the collection are offered
     And the strip is the Photos filmstrip: square 160-pixel thumbnails with their visibility, loaded as they appear
     And Hide photos folds it away, remembered for the next visit
@@ -189,7 +189,7 @@ Feature: Curated collections
 
   Scenario: Compose on an eight-column grid
     Given I am editing a collection
-    When I add a photo
+    When I place a photo from Collection photos
     Then it takes two by two cells of an eight-column grid
     And dragging its edges or corner shows its size and resizes it up to eight cells
     And collections saved on the old four-column grid keep their look
@@ -225,3 +225,24 @@ Feature: Curated collections
     And a photo with a square crop enabled for Gallery uses it
     And the others are cut from the centre of one of their views
     And changing the proportion asks the API for nothing new
+
+  Scenario: Collect photos before composing the mosaic
+    Given I am editing a collection
+    When I choose a photo from All photos or upload one here
+    Then it appears in Collection photos without entering the mosaic
+    When I select it in Collection photos
+    Then it is placed in the mosaic and marked as placed in the library
+    When I remove it from the mosaic and save
+    Then it remains available in Collection photos after reopening the collection
+    And All photos and Collection photos have independent collapsed states
+
+  Scenario: Reuse the photo category field
+    Given I open Categories in the collection inspector
+    Then I can filter, select and create categories with the same field used in Photos
+    And All collections is a styled return button in both editor and public view
+
+  Scenario: Configure random emphasis
+    Given Gallery uses Random arrangement
+    When I save a minimum and maximum of large photographs
+    Then Random respects the range when the available proportions can fill the mosaic
+    And other arrangements show only their own help

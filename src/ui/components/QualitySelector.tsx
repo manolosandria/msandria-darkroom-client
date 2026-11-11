@@ -22,24 +22,27 @@ interface QualitySelectorProps {
   onChange: (quality: PhotoQuality) => void;
 }
 
-// Pinned to a corner of the photo's area so it stays within reach between photos.
+// Pinned to a corner of the photo's area so it stays within reach between photos. Only
+// the level in use is spelled out; the others are their drawings until the pointer or
+// the keyboard reaches the group, so it covers little of the photograph.
 export function QualitySelector({ quality, onChange }: QualitySelectorProps) {
   return (
     <div
       role="group"
       aria-label="Image quality"
-      className="absolute bottom-4 right-4 z-20 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
+      className="quality-selector absolute bottom-4 right-4 z-20 flex gap-1 rounded-full bg-black/70 p-1 text-sm text-white backdrop-blur"
     >
       {PHOTO_QUALITIES.map((level) => (
         <button
           key={level}
           type="button"
           aria-pressed={level === quality}
+          title={LABELS[level]}
           onClick={() => onChange(level)}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${level === quality ? "bg-white text-black" : "hover:bg-white/20"}`}
+          className={`flex items-center rounded-full px-2.5 py-1 transition-colors ${level === quality ? "bg-white text-black" : "hover:bg-white/20"}`}
         >
           <PixelIcon blocks={ICON_GRID[level]} />
-          {LABELS[level]}
+          <span className="quality-selector__label">{LABELS[level]}</span>
         </button>
       ))}
     </div>

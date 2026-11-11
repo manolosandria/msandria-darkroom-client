@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import GalleryEditor from "./GalleryEditor";
 import PaletteManager from "./PaletteManager";
+import ContactEditor from "./ContactEditor";
 import SiteGeneralEditor from "./SiteGeneralEditor";
 import HomeBannerEditor from "./HomeBannerEditor";
 import PostStudio from "./PostStudio";
@@ -108,9 +109,7 @@ export default function Curator() {
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
-      if (
-        !(event.target as Element).closest?.(".curator-tabs__group")
-      )
+      if (!(event.target as Element).closest?.(".curator-tabs__group"))
         setOpen(null);
     };
     document.addEventListener("pointerdown", close);
@@ -211,6 +210,7 @@ export default function Curator() {
           {panel("Categories", <ManageCollections only="Categories" />)}
           {panel("Variants", <ManageCollections variants />)}
           {panel("General", <SiteGeneralEditor />)}
+          {panel("Contact", <ContactEditor />)}
           {panel("Home", <HomeBannerEditor />)}
           {panel("Posts", <PostStudio />)}
           {panel("Palettes", <PaletteManager />)}
@@ -224,4 +224,3 @@ export default function Curator() {
     </EditingBoundary>
   );
 }
-

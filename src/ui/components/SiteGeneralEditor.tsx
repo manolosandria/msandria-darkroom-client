@@ -115,9 +115,7 @@ const headerDrawing = (linksFrom: number) => (
     <path d="M3.5 10h2.5" strokeWidth="2.2" />
     <circle cx="16" cy="10" r="1.2" fill="currentColor" stroke="none" />
     <path
-      d={[0, 1.6, 3.2]
-        .map((step) => `M${linksFrom + step} 10h.6`)
-        .join("")}
+      d={[0, 1.6, 3.2].map((step) => `M${linksFrom + step} 10h.6`).join("")}
       strokeWidth="1.5"
     />
   </svg>
@@ -286,7 +284,8 @@ export default function SiteGeneralEditor({
             <fieldset disabled={busy}>
               <legend>Header colors</legend>
               <p className="site-general__hint">
-                Each tone comes from the main palette unless you pick it by hand.
+                Each tone comes from the main palette unless you pick it by
+                hand.
                 {draft.header.tone === "auto" &&
                   " Automatic shows each visitor the tone of their system, so both count."}
               </p>
@@ -324,6 +323,20 @@ export default function SiteGeneralEditor({
             </fieldset>
             <fieldset disabled={busy}>
               <legend>Main palette</legend>
+              <label>
+                Body texture
+                <select
+                  value={draft.bodyMaterial ?? "solid"}
+                  onChange={(event) =>
+                    change({
+                      bodyMaterial: event.target.value as "solid" | "glass",
+                    })
+                  }
+                >
+                  <option value="solid">Solid</option>
+                  <option value="glass">Frosted glass</option>
+                </select>
+              </label>
               <div className="site-general__presets">
                 {defaultGalleryPalettes.map((palette) => (
                   <button
@@ -364,7 +377,10 @@ export default function SiteGeneralEditor({
                       value={draft.palette[key]}
                       onChange={(event) =>
                         change({
-                          palette: { ...draft.palette, [key]: event.target.value },
+                          palette: {
+                            ...draft.palette,
+                            [key]: event.target.value,
+                          },
                         })
                       }
                     />
@@ -470,7 +486,10 @@ function SitePreview({ settings }: { settings: SiteSettings }) {
             <span>Gallery</span>
             <span>Collections</span>
           </nav>
-          <span className="site-general__avatar" style={{ background: palette.accent }} />
+          <span
+            className="site-general__avatar"
+            style={{ background: palette.accent }}
+          />
         </div>
         <div className="site-general__body">
           <h3 style={{ fontFamily: siteFonts[settings.headingFont] }}>

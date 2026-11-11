@@ -37,7 +37,7 @@
    where the visitor is reading, until the chevron or a return to the top lets it go. */
 
 .main-header { display:flex; align-items:center; gap:1rem 2rem; min-height:4.2rem; padding:.6rem var(--header-gutter); padding-right:calc(.75rem + var(--corner-width,0px) + 1.5rem); background:var(--header-bg); border-bottom:1px solid var(--header-line); color:var(--header-text); }
-.site-header[data-material="glass"] .main-header { backdrop-filter:blur(20px) saturate(1.7) brightness(1.06); box-shadow:inset 0 1px 0 #ffffff4d,0 10px 30px #1a201814; }
+.site-header[data-material="glass"] .main-header { -webkit-backdrop-filter:blur(20px) saturate(1.7) brightness(1.06); backdrop-filter:blur(20px) saturate(1.7) brightness(1.06); box-shadow:inset 0 1px 0 #ffffff4d,0 10px 30px #1a201814; }
 .main-header__brand img { filter:var(--tone-logo); }
 .main-header__brand { flex:0 1 240px; }
 .main-header__brand img { width:100%; }
@@ -54,7 +54,7 @@
 /* Folding by hand. The fold keeps its row in the page flow, so nothing below is ever
    covered while it shows; folded, it takes no row at all. */
 .site-header__fold { display:grid; grid-template-rows:1fr; visibility:visible; }
-.site-header__fold-inner { min-height:0; clip-path:inset(-2rem -100vw -100vh -100vw); }
+.site-header__fold-inner { min-height:0; }
 .site-header[data-hidden="true"] .site-header__fold { grid-template-rows:0fr; visibility:hidden; }
 .site-header[data-hidden="true"] .site-header__fold-inner { clip-path:inset(0 0 100% 0); }
 .site-header[data-hidden="true"] .main-header { opacity:0; transform:translateY(-18px); }
@@ -169,3 +169,6 @@
 }
 
 a.session-menu__role:hover,a.session-menu__role:focus-visible { background:var(--site-accent,#384e2b); }
+
+/* Frost and a subtle grain remain visible even over a uniform backdrop. */
+.site-header[data-material="glass"] .main-header { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.1' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(120deg,#ffffff55,#ffffff08 48%,#85937722); }

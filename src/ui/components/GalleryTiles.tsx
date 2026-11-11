@@ -19,8 +19,12 @@ export function GalleryTiles({
   tiles: listed,
   layout,
   context,
+  randomMin = 0,
+  randomMax = 2,
 }: {
   tiles: CatalogTile[];
+  randomMin?: number;
+  randomMax?: number;
   layout: string;
   context?: GalleryViewContext;
 }) {
@@ -40,8 +44,8 @@ export function GalleryTiles({
   const photos = shown.map((item) => item.photo);
   const views = shown.map((item) => [item.view]);
   const keys = tiles.map((tile) => tile.key);
-  const desktop = packGallery(keys, views, 4);
-  const mobile = packGallery(keys, views, 3);
+  const desktop = packGallery(keys, views, 4, randomMin, randomMax);
+  const mobile = packGallery(keys, views, 3, randomMin, randomMax);
   return (
     <ul
       className={`gallery-tiles gallery-tiles--${layout}`}

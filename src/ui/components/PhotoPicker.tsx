@@ -7,7 +7,7 @@ import { Photo } from "@/src/domain/entities/Photo";
 import { PhotoImage } from "./PhotoImage";
 import { filterPhotos, PhotoFilters, usePhotoFilter } from "./PhotoFilters";
 import { VisibilityBadge } from "./PhotoBadges";
-import { readFolded, writeFolded } from "@/src/ui/photoSectionPreference";
+import { FoldablePart, readFolded, writeFolded } from "@/src/ui/photoSectionPreference";
 
 /**
  * The library as a strip of square thumbnails to add from, drawn as the Photos tab's
@@ -26,7 +26,11 @@ export function PhotoPicker({
   loading = false,
   emptyText = "Every photo is already in this collection.",
   children,
+  placedIds = [],
+  preferenceKey = "photoPickerFolded",
 }: {
+  placedIds?: string[];
+  preferenceKey?: FoldablePart;
   photos: Photo[];
   catalog?: Catalog | null;
   onPick: (photo: Photo) => void;
@@ -45,12 +49,12 @@ export function PhotoPicker({
   children?: ReactNode;
 }) {
   const [filter, setFilter] = usePhotoFilter();
-  const [folded, setFolded] = useState(() => readFolded("photoPickerFolded"));
+  const [folded, setFolded] = useState(() => readFolded(preferenceKey));
   const stripId = useId();
   const shown = filterPhotos(photos, filter, catalog);
   const fold = (next: boolean) => {
     setFolded(next);
-    writeFolded("photoPickerFolded", next);
+    writeFolded(preferenceKey, next);
   };
   return (
     <section
@@ -129,7 +133,7 @@ export function PhotoPicker({
                       />
                     </span>
                     <span className="photo-picker__plus" aria-hidden="true">
-                      +
+                      {placedIds.includes(photo.getId()) ? "✓" : "+"}
                     </span>
                   </span>
                 </button>

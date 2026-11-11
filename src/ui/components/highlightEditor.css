@@ -289,3 +289,6 @@
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
+
+.highlight-size-label { margin: .35rem 0 .5rem; min-height: 1.2em; text-align: center; font-size: .78rem; color: #526047; }
+.highlight-thumb__uses i[data-hidden] { background: #eee; color: #626262; }

@@ -219,6 +219,7 @@ export function HighlightEditor({
     if (start === "original") return "original";
     return start && cropOf(value, start) ? shapeOf(value, start) : "square";
   });
+  const [hintedTab, setHintedTab] = useState<Tab | null>(null);
   const active =
     tab !== "original" && chosen && cropOf(value, chosen) ? chosen : null;
   // What each highlight looked like when the editor opened or it was accepted.
@@ -398,6 +399,23 @@ export function HighlightEditor({
   const views = photoViews(value, ratio);
   const enabled = (target: "gallery" | "home", id: string) =>
     (value.presentation?.[target] ?? ["original"]).includes(id);
+  const visible = (id: string) =>
+    enabled("home", id) ||
+    (enabled("gallery", id) &&
+      galleryViewRules(value, ratio).some((rule) => rule.views.includes(id)));
+  function setEveryDestination(id: string, checked: boolean) {
+    const next = updateGalleryRule(value, id, checked, ratio);
+    const presentation = next.presentation!;
+    onChange({
+      ...next,
+      presentation: {
+        ...presentation,
+        home: checked
+          ? [...new Set([...presentation.home, id])]
+          : presentation.home.filter((current) => current !== id),
+      },
+    });
+  }
   const strip =
     tab === "original"
       ? []
@@ -489,8 +507,7 @@ export function HighlightEditor({
       }}
       onPointerMove={(event) => {
         const g = gesture.current;
-        if (!g || g.pointer !== event.pointerId || !crop || disabled)
-          return;
+        if (!g || g.pointer !== event.pointerId || !crop || disabled) return;
         const { x, y } = point(event, event.currentTarget);
         if (g.mode === "move")
           update({
@@ -584,10 +601,7 @@ export function HighlightEditor({
         height={height * (crop?.height ?? 1)}
       />
       <fieldset className="highlight-editor" disabled={disabled}>
-        <legend>
-          Highlights{" "}
-          <span className="upload-muted">/ optional thumbnail crops</span>
-        </legend>
+        <legend>Highlights</legend>
         <div className="highlight-sizes" role="tablist" aria-label="Sizes">
           {TABS.map((option) => {
             const count =
@@ -606,10 +620,13 @@ export function HighlightEditor({
                     : label(option)
                 }
                 disabled={!!draft && option === "original"}
+                onMouseEnter={() => setHintedTab(option)}
+                onMouseLeave={() => setHintedTab(null)}
+                onFocus={() => setHintedTab(option)}
+                onBlur={() => setHintedTab(null)}
                 onClick={() => openTab(option)}
               >
                 <ShapeIcon shape={option} />
-                <span>{label(option)}</span>
                 {count ? (
                   <b className="highlight-sizes__count">{count}</b>
                 ) : null}
@@ -617,6 +634,9 @@ export function HighlightEditor({
             );
           })}
         </div>
+        <p className="highlight-size-label" aria-live="polite">
+          {label(hintedTab ?? draft?.shape ?? tab)}
+        </p>
         {tab !== "original" && (
           <div className="highlight-bar">
             <div className="highlight-strip" aria-label="Highlights">
@@ -661,9 +681,10 @@ export function HighlightEditor({
                       item.label
                     )}
                   </span>
-                  <span className="highlight-thumb__uses" aria-hidden="true">
+                  <span className="highlight-thumb__uses">
                     {enabled("gallery", item.key) && <i>Gallery</i>}
                     {enabled("home", item.key) && <i>Home</i>}
+                    {!visible(item.key) && <i data-hidden="true">Hidden</i>}
                   </span>
                 </button>
               ))}
@@ -908,12 +929,40 @@ export function HighlightEditor({
             className="highlight-eligibility"
             aria-label="Random presentation choices"
           >
-            <h3>Where can {view.name} appear?</h3>
-            <p>
-              Gallery and Home choose at random among the views enabled here.
-              Turn off every view of a page to leave this photo out of it. Save
-              the photo to apply.
-            </p>
+            <div className="highlight-eligibility__heading">
+              <h3>Visibility</h3>
+              <span
+                className="highlight-visibility"
+                data-visible={visible(view.id)}
+              >
+                {visible(view.id) ? "Visible" : "Hidden"}
+              </span>
+              <details className="highlight-help">
+                <summary aria-label="About highlight visibility">
+                  &#9432;
+                </summary>
+                <p>
+                  Gallery and Home randomly choose enabled views. Only
+                  compatible layouts are shown. Hide every view to exclude the
+                  photo from a page. Save the photo to apply. Photo privacy
+                  still applies.
+                </p>
+              </details>
+            </div>
+            <div className="highlight-visibility-actions">
+              <button
+                type="button"
+                onClick={() => setEveryDestination(view.id, false)}
+              >
+                Hide everywhere
+              </button>
+              <button
+                type="button"
+                onClick={() => setEveryDestination(view.id, true)}
+              >
+                Show everywhere
+              </button>
+            </div>
             <article className="highlight-eligibility__view">
               <div
                 className="highlight-eligibility__preview"
@@ -976,65 +1025,45 @@ export function HighlightEditor({
                 ))}
               </div>
             </article>
-            <details className="highlight-distribution-matrix">
-              <summary>Gallery layouts and proportions</summary>
-              <p>
-                This view is {viewAspect(view.ratio)}. Add a highlight of
-                another size to offer another proportion.
-              </p>
-              <table>
-                <caption>Eligible view aspects for {view.name}</caption>
-                <thead>
-                  <tr>
-                    <th>Layout</th>
-                    {["Portrait", "Square", "Landscape"].map((name) => (
-                      <th key={name}>{name}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(
-                    [
-                      ["random", "Random"],
-                      ["uniform", "Grid"],
-                      ["justified", "Original"],
-                    ] as const
-                  ).map(([layout, name]) => (
-                    <tr key={layout}>
-                      <th>{name}</th>
-                      {["portrait", "square", "landscape"].map((aspect) => (
-                        <td key={aspect}>
-                          <input
-                            type="checkbox"
-                            aria-label={`${view.name} in ${name} ${aspect}`}
-                            disabled={viewAspect(view.ratio) !== aspect}
-                            checked={galleryViewRules(value, ratio)
-                              .find(
-                                (rule) =>
-                                  rule.layout === layout &&
-                                  rule.aspect === aspect,
-                              )!
-                              .views.includes(view.id)}
-                            onChange={(event) =>
-                              onChange(
-                                updateGalleryRule(
-                                  value,
-                                  view.id,
-                                  event.target.checked,
-                                  ratio,
-                                  layout,
-                                  aspect,
-                                ),
-                              )
-                            }
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
+            <div
+              className="highlight-layouts"
+              role="group"
+              aria-label="Gallery layouts"
+            >
+              {(
+                [
+                  ["random", "Random"],
+                  ["uniform", "Grid"],
+                  ["justified", "Original"],
+                ] as const
+              ).map(([layout, name]) => (
+                <label key={layout}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${view.name} in ${name} ${viewAspect(view.ratio)}`}
+                    checked={galleryViewRules(value, ratio).some(
+                      (rule) =>
+                        rule.layout === layout &&
+                        rule.aspect === viewAspect(view.ratio) &&
+                        rule.views.includes(view.id),
+                    )}
+                    onChange={(event) =>
+                      onChange(
+                        updateGalleryRule(
+                          value,
+                          view.id,
+                          event.target.checked,
+                          ratio,
+                          layout,
+                          viewAspect(view.ratio),
+                        ),
+                      )
+                    }
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
           </section>
         )}
       </fieldset>

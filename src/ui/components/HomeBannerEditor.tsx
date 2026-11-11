@@ -330,9 +330,9 @@ function Editor() {
                 aria-label="Image presentation"
               >
                 {[
-                  ["highlight", "Use highlight", "▦"],
-                  ["fill", "Fill photograph", "▭"],
-                  ["framed", "Complete framed photo", "□"],
+                  ["highlight", "Crop", "▦"],
+                  ["fill", "Fill", "▭"],
+                  ["framed", "Framed", "□"],
                 ].map(([value, label, icon]) => (
                   <VisualChoice
                     key={value}
@@ -343,47 +343,35 @@ function Editor() {
                   />
                 ))}
               </div>
-              <p>
-                Fill may trim the selected area. Click a preview photo to choose
-                or edit its highlights.
-              </p>
+              <details>
+                <summary aria-label="About Fill">ⓘ</summary>
+                <p>Fill may trim the photo.</p>
+              </details>
               {(draft.imageMode ?? "highlight") === "highlight" &&
                 (["desktopCrop", "mobileCrop"] as const).map((key) => (
                   <div key={key}>
-                    <p>
-                      {key === "desktopCrop"
-                        ? "Desktop highlight"
-                        : "Mobile highlight"}
-                    </p>
-                    <div
-                      className="display-choice"
-                      role="group"
-                      aria-label={
-                        key === "desktopCrop"
-                          ? "Desktop highlight"
-                          : "Mobile highlight"
+                    <SegmentedChoice
+                      label={key === "desktopCrop" ? "Desktop" : "Mobile"}
+                      value={
+                        draft[key] ??
+                        (key === "desktopCrop" ? "landscape" : "portrait")
                       }
-                    >
-                      {[
-                        ["landscape", "Landscape 3:2", "▭"],
-                        ["portrait", "Portrait 2:3", "▯"],
-                        ["square", "Square 1:1", "□"],
-                        ["full", "Full photograph", "▦"],
-                      ].map(([value, label, icon]) => (
-                        <VisualChoice
-                          key={value}
-                          label={`${key === "desktopCrop" ? "Desktop" : "Mobile"} ${label}`}
-                          icon={icon}
-                          active={
-                            (draft[key] ??
-                              (key === "desktopCrop"
-                                ? "landscape"
-                                : "portrait")) === value
-                          }
-                          onClick={() => change(key, value)}
-                        />
-                      ))}
-                    </div>
+                      onChange={(value) => change(key, value)}
+                      options={[
+                        {
+                          value: "landscape",
+                          label: "Landscape · 3:2",
+                          icon: "▭",
+                        },
+                        {
+                          value: "portrait",
+                          label: "Portrait · 2:3",
+                          icon: "▯",
+                        },
+                        { value: "square", label: "Square · 1:1", icon: "□" },
+                        { value: "full", label: "Original", icon: "▦" },
+                      ]}
+                    />
                   </div>
                 ))}
             </fieldset>

@@ -1,5 +1,12 @@
 "use client";
-import { useState } from "react";
+import "./contactSettings.css";
+import {
+  ContactSettings,
+  defaultContactSettings,
+} from "@/src/domain/entities/ContactSettings";
+import { contrastRatio, siteFonts } from "@/src/domain/entities/SiteSettings";
+import { manageContactSettings } from "@/src/infrastructure/contactSettingsServices";
+import { CSSProperties, useEffect, useState } from "react";
 import { manageContact } from "@/src/infrastructure/contactServices";
 import { RateLimitError } from "@/src/domain/errors/RateLimitError";
 import { EmptyState } from "./EmptyState";
@@ -8,7 +15,28 @@ import { useOptionalSessionValue } from "./SessionProvider";
 
 const emptyDraft = { name: "", email: "", body: "", consent: false, website: "" };
 
-export default function ContactForm() {
+export default function ContactForm({
+  settings: previewSettings,
+  preview = false,
+}: {
+  settings?: ContactSettings;
+  preview?: boolean;
+}) {
+  const [loaded, setLoaded] = useState(defaultContactSettings);
+  useEffect(() => {
+    if (previewSettings) return;
+    let live = true;
+    manageContactSettings
+      .get()
+      .then((settings) => {
+        if (live) setLoaded(settings);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [previewSettings]);
+  const settings = previewSettings ?? loaded;
   // Signed in, the message is signed with the account's email and needs no code.
   const accountEmail = useOptionalSessionValue()?.user?.getEmail() ?? null;
   const [pending, setPending] = useState<{
@@ -20,26 +48,45 @@ export default function ContactForm() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   return (
-    <main className="upload-workspace">
+    <main
+      className="upload-workspace contact-page"
+      data-layout={settings.layout}
+      style={
+        {
+          "--contact-background": settings.background,
+          "--contact-surface": settings.surface,
+          "--contact-text": settings.text,
+          "--contact-accent": settings.accent,
+          "--contact-button-text":
+            contrastRatio(settings.accent, "#ffffff") >=
+            contrastRatio(settings.accent, "#000000")
+              ? "#ffffff"
+              : "#000000",
+          "--contact-heading-font": siteFonts[settings.headingFont],
+        } as CSSProperties
+      }
+    >
       <div className="upload-container contact-container">
-        <div className="upload-heading contact-intro">
-          <span className="upload-eyebrow">GET IN TOUCH</span>
-          <h1>Let&apos;s talk photography.</h1>
-          <p>Send a private message to the photographer.</p>
-          <ul className="contact-facts">
-            <li>
-              <span aria-hidden="true">{contactIcons.private}</span>
-              Only the photographer reads it.
-            </li>
-            <li>
-              <span aria-hidden="true">{contactIcons.inbox}</span>
-              Signed out, you confirm it with a code sent to your email.
-            </li>
-            <li>
-              <span aria-hidden="true">{contactIcons.length}</span>
-              Up to 3,000 characters, without links.
-            </li>
-          </ul>
+        <div className="contact-intro">
+          <span className="upload-eyebrow">{settings.eyebrow}</span>
+          <h1>{settings.title}</h1>
+          <p>{settings.description}</p>
+          {settings.showFacts && (
+            <ul className="contact-facts">
+              <li>
+                <span aria-hidden="true">{contactIcons.private}</span>
+                Only the photographer reads it.
+              </li>
+              <li>
+                <span aria-hidden="true">{contactIcons.inbox}</span>
+                Signed out, you confirm it with a code sent to your email.
+              </li>
+              <li>
+                <span aria-hidden="true">{contactIcons.length}</span>
+                Up to 3,000 characters, without links.
+              </li>
+            </ul>
+          )}
         </div>
         {sent ? (
           <div role="status" className="contact-sent">
@@ -64,7 +111,7 @@ export default function ContactForm() {
             className="upload-card contact-form"
             onSubmit={async (event) => {
               event.preventDefault();
-              if (busy) return;
+              if (busy || preview) return;
               const fields = Array.from(event.currentTarget.elements).filter(
                 (element): element is HTMLInputElement | HTMLTextAreaElement =>
                   element instanceof HTMLInputElement ||
@@ -114,7 +161,7 @@ export default function ContactForm() {
               }
             }}
           >
-            <fieldset className="upload-fields" disabled={busy}>
+            <fieldset className="upload-fields" disabled={busy || preview}>
               <label>
                 Your name
                 <input
@@ -187,7 +234,7 @@ export default function ContactForm() {
               </label>
               {error && <p role="alert">{error}</p>}
               <button className="upload-primary contact-send">
-                {busy ? "Sending…" : "Send message"}
+                {busy ? "Sending…" : settings.buttonText}
                 <span aria-hidden="true">→</span>
               </button>
             </fieldset>

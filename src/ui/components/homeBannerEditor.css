@@ -107,7 +107,7 @@
   background: white;
   border: 1px solid #d2d7ca;
 }
-.banner-editor__preview-bar span {
+.banner-editor__preview-bar > span {
   font-size: 0.7rem;
   margin-left: auto;
 }

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   defaultSiteSettings,
   headerThemeProperties,
@@ -31,11 +25,15 @@ const SiteSettingsContext = createContext<SiteSettingsValue>({
 /** The site's palette, fonts and header tones as custom properties on the root element. */
 export function applySiteSettings(settings: SiteSettings, root: HTMLElement) {
   const { palette } = settings;
+  root.dataset.bodyMaterial = settings.bodyMaterial ?? "solid";
   root.style.setProperty("--site-background", palette.background);
   root.style.setProperty("--site-text", palette.text);
   root.style.setProperty("--site-accent", palette.accent);
   root.style.setProperty("--site-surface", palette.surface);
-  root.style.setProperty("--site-heading-font", siteFonts[settings.headingFont]);
+  root.style.setProperty(
+    "--site-heading-font",
+    siteFonts[settings.headingFont],
+  );
   root.style.setProperty("--site-body-font", siteFonts[settings.bodyFont]);
   for (const [name, value] of Object.entries(headerThemeProperties(settings)))
     root.style.setProperty(name, value);

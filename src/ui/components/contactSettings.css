@@ -1,0 +1,109 @@
+.upload-workspace.contact-page {
+  background: var(--contact-background);
+  color: var(--contact-text);
+}
+.contact-page .contact-form {
+  background: var(--contact-surface);
+}
+.contact-page .contact-intro {
+  display: block;
+  margin-bottom: 2rem;
+}
+.contact-page .contact-intro h1 {
+  color: inherit;
+  font-family: var(--contact-heading-font);
+  font-size: clamp(2rem, 3.5vw, 3.4rem);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  margin: 1rem 0;
+}
+.contact-page .contact-intro p {
+  display: block;
+  white-space: pre-line;
+  color: var(--contact-text);
+  opacity: 0.8;
+}
+.contact-page .contact-form label,
+.contact-page .contact-facts li,
+.contact-page .upload-muted {
+  color: var(--contact-text);
+}
+.contact-page .contact-send {
+  background: var(--contact-accent);
+  color: var(--contact-button-text);
+}
+.contact-page .contact-send:hover:not(:disabled) {
+  background: var(--contact-accent);
+  filter: brightness(1.1);
+}
+.contact-page[data-layout="stacked"] .contact-container {
+  grid-template-columns: 1fr;
+  max-width: 44rem;
+}
+.contact-page[data-layout="stacked"] .contact-intro {
+  position: static;
+}
+.contact-editor {
+  padding: var(--page-top-gap) clamp(1rem, 3vw, 3rem);
+}
+.contact-editor > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.contact-editor h1 {
+  font:
+    2.5rem Georgia,
+    serif;
+}
+.contact-editor__layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.7fr) minmax(0, 1.6fr);
+  gap: 1.5rem;
+}
+.contact-editor fieldset {
+  background: #fff;
+}
+.contact-editor #contact-settings label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.contact-editor #contact-settings input:not([type="checkbox"]),
+.contact-editor #contact-settings select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cdd4c4;
+  border-radius: 0.5rem;
+}
+.contact-editor .contact-editor__check,
+.contact-editor .contact-editor__color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.contact-editor input[type="color"] {
+  width: 3rem;
+  height: 2rem;
+  padding: 0.15rem;
+}
+.contact-editor__preview {
+  min-width: 0;
+}
+.contact-editor__preview .contact-page {
+  min-height: auto;
+}
+.contact-editor__preview .contact-intro {
+  position: static;
+}
+.contact-editor .device-frame--mobile .contact-container {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 1000px) {
+  .contact-editor__layout {
+    grid-template-columns: 1fr;
+  }
+}

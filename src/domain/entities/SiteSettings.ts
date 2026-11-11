@@ -11,6 +11,7 @@ export type SiteFont = "serif" | "sans" | "mono";
 
 /** The look shared by every page, edited in Curator → Sections → General. */
 export type SiteSettings = {
+  bodyMaterial?: SiteHeaderMaterial;
   header: {
     tone: SiteHeaderTone;
     material: SiteHeaderMaterial;
@@ -59,7 +60,10 @@ export interface SiteSettingsRepository {
 }
 
 // Before tone and material, the header had a single `style`.
-const legacyStyles: Record<string, Pick<SiteSettings["header"], "tone" | "material">> = {
+const legacyStyles: Record<
+  string,
+  Pick<SiteSettings["header"], "tone" | "material">
+> = {
   light: { tone: "light", material: "solid" },
   dark: { tone: "dark", material: "solid" },
   glass: { tone: "light", material: "glass" },
@@ -134,7 +138,8 @@ function theme(colors: SiteHeaderColors, custom: boolean): HeaderTheme {
   // The palette's own text may be too faint on its ground: then black or white wins.
   if (!custom && contrastRatio(background, text) < headerMinimumContrast)
     text =
-      contrastRatio(background, "#ffffff") >= contrastRatio(background, "#000000")
+      contrastRatio(background, "#ffffff") >=
+      contrastRatio(background, "#000000")
         ? "#ffffff"
         : "#000000";
   return {
@@ -152,7 +157,9 @@ function theme(colors: SiteHeaderColors, custom: boolean): HeaderTheme {
  * text; dark: its text as the ground and its background as the words) unless the
  * curator picked it by hand.
  */
-export function headerThemes(settings: Pick<SiteSettings, "header" | "palette">) {
+export function headerThemes(
+  settings: Pick<SiteSettings, "header" | "palette">,
+) {
   const { palette, header } = settings;
   return {
     light: header.light
@@ -176,7 +183,9 @@ export function headerThemeProperties(
     properties[`--header-${tone}-text`] = value.text;
     properties[`--header-${tone}-line`] = value.line;
     properties[`--header-${tone}-hover`] = value.hover;
-    properties[`--header-${tone}-logo`] = value.darkGround ? "invert(1)" : "none";
+    properties[`--header-${tone}-logo`] = value.darkGround
+      ? "invert(1)"
+      : "none";
   }
   return properties;
 }

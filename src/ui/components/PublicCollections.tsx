@@ -66,8 +66,11 @@ export default function PublicCollections() {
       {catalog &&
         (collection ? (
           <>
-            <button className="collection-back" onClick={() => setSelected("")}>
-              ← All collections
+            <button
+              className="collection-back collection-return"
+              onClick={() => setSelected("")}
+            >
+              <span aria-hidden="true">←</span> All collections
             </button>
             <CollectionContents
               key={collection.id}
