@@ -68,6 +68,15 @@ Once per machine.
 2. Create `.env.local` from the template (`cp .env.example .env.local` in bash; `Copy-Item .env.example .env.local` in PowerShell) and fill it in: `NEXT_PUBLIC_API_URL` points at msandria-darkroom-api (`http://localhost:3001` in development), and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` holds the same OAuth client id the API has in `GOOGLE_CLIENT_ID`. Both are inlined when the bundle is built, so restart `npm run dev` after changing them, and set them before building for production.
 3. Continue with [Running](#running).
 
+## Deploying
+
+Not deployed yet. Each gallery is its own installation, and this site is meant to run on
+Cloudflare: [docs/deployment.md](docs/deployment.md) explains why the site is not fully
+static (the `/photo/[id]`, `/post/[id]` and `/profile/[id]` routes and the security
+headers need the Next.js server), compares OpenNext on Workers with a static export,
+and why every gallery needs its own build (`NEXT_PUBLIC_*` and `IMAGE_ORIGINS` are fixed
+when `next build` runs).
+
 ## Tech stack
 
 - Next.js 16 (App Router, Turbopack) and React 19
