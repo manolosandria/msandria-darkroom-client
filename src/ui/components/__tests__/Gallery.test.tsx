@@ -267,3 +267,83 @@ describe("Gallery server pagination", () => {
     expect(container.querySelector(".gallery-card__row")).toBeNull();
   });
 });
+
+describe("Gallery metadata filters", () => {
+  const facets = {
+    cameras: [
+      { value: "FUJIFILM|X-T4", make: "FUJIFILM", model: "X-T4", count: 2 },
+    ],
+    lenses: [],
+    focalLength: null,
+    exposureTime: null,
+    aperture: null,
+    iso: null,
+    tonality: { color: 1, monochrome: 1 },
+  };
+
+  it("reads them from the URL, sends them with the page and clears them with the reset", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/gallery?camera=FUJIFILM%7CX-T4&tone=color&isoMax=800",
+    );
+    const execute = vi.fn().mockResolvedValue(result(1, 3));
+    const user = userEvent.setup();
+    render(
+      <Gallery
+        browsePhotos={{ execute }}
+        getPhotoFacets={{ execute: vi.fn().mockResolvedValue(facets) }}
+      />,
+    );
+    await waitFor(() => expect(execute).toHaveBeenCalled());
+    expect(execute.mock.calls[0][0].metadata).toMatchObject({
+      cameras: ["FUJIFILM|X-T4"],
+      tone: "color",
+      iso: { max: 800 },
+    });
+    expect(
+      await screen.findByRole("button", {
+        name: "Remove filter Camera FUJIFILM X-T4",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Filters/ }));
+    await user.click(screen.getByRole("radio", { name: "Black & white" }));
+    await waitFor(() =>
+      expect(execute.mock.lastCall?.[0].metadata.tone).toBe("monochrome"),
+    );
+    expect(window.location.search).toContain("tone=monochrome");
+    expect(window.location.search).toContain("camera=FUJIFILM%7CX-T4");
+
+    await user.click(screen.getByRole("button", { name: "Clear all filters" }));
+    await waitFor(() =>
+      expect(execute.mock.lastCall?.[0].metadata).toEqual({
+        cameras: [],
+        lenses: [],
+        focalLength: {},
+        exposureTime: {},
+        aperture: {},
+        iso: {},
+      }),
+    );
+    expect(window.location.search).not.toMatch(/camera|tone|iso/);
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("offers no metadata department when the facets cannot be loaded", async () => {
+    const execute = vi.fn().mockResolvedValue(result(1, 3));
+    const user = userEvent.setup();
+    render(
+      <Gallery
+        browsePhotos={{ execute }}
+        settings={defaultGallerySettings}
+        getPhotoFacets={{ execute: vi.fn().mockRejectedValue(new Error("x")) }}
+      />,
+    );
+    await waitFor(() => expect(execute).toHaveBeenCalled());
+    await user.click(screen.getByRole("button", { name: /^Filters/ }));
+    expect(
+      screen.queryByRole("group", { name: "Camera and exposure" }),
+    ).toBeNull();
+  });
+});

@@ -11,7 +11,21 @@ import { Catalog } from "@/src/domain/entities/Catalog";
 
 import { galleryCategories } from "@/src/infrastructure/catalogServices";
 import { BrowsePhotos } from "@/src/application/use-cases/BrowsePhotos";
-import { browsePhotos as defaultBrowsePhotos } from "@/src/infrastructure/photoServices";
+import {
+  browsePhotos as defaultBrowsePhotos,
+  getPhotoFacets as defaultGetPhotoFacets,
+} from "@/src/infrastructure/photoServices";
+import type { GetPhotoFacets } from "@/src/application/use-cases/GetPhotoFacets";
+import {
+  emptyMetadataFilters,
+  PhotoFacets,
+  PhotoMetadataFilters,
+} from "@/src/domain/entities/PhotoMetadataFilters";
+import {
+  GalleryMetadataFilters,
+  hasMetadataFacets,
+  metadataChips,
+} from "./GalleryMetadataFilters";
 import { usePhotoFetch } from "@/src/ui/hooks/usePhotoFetch";
 import { PhotoFetchStatus } from "./PhotoFetchStatus";
 import { GalleryVisitorControls } from "./GalleryVisitorControls";
@@ -38,10 +52,13 @@ import "./publicCatalog.css";
 
 export default function Gallery({
   browsePhotos = defaultBrowsePhotos,
+  getPhotoFacets = defaultGetPhotoFacets,
   settings: previewSettings,
   onArrangeFilters,
 }: {
   browsePhotos?: Pick<BrowsePhotos, "execute">;
+  /** What the public photographs offer to filter by camera, lens and exposure. */
+  getPhotoFacets?: Pick<GetPhotoFacets, "execute">;
   settings?: GallerySettings;
   /** Curator's preview: the filter bar is arranged by dragging in place. */
   onArrangeFilters?: (layout: FilterGroup) => void;
@@ -67,6 +84,18 @@ export default function Gallery({
     crops?: string;
   }>({});
   const [query, setQuery] = useState("");
+  const [metadata, setMetadata] = useState<PhotoMetadataFilters>(
+    emptyMetadataFilters,
+  );
+  // Without facets the department is not offered; filters from the URL still apply.
+  const [facets, setFacets] = useState<PhotoFacets | null>(null);
+  const facetsSource = useRef(getPhotoFacets);
+  useEffect(() => {
+    void facetsSource.current
+      .execute()
+      .then(setFacets)
+      .catch(() => setFacets(null));
+  }, []);
   const [page, setPage] = useState(1);
   const loadCatalog = useCallback(async () => {
     try {
@@ -88,6 +117,7 @@ export default function Gallery({
       setSettledSearch(state.search);
       setPage(state.page);
       setDisplay(state.display);
+      setMetadata(state.metadata);
       setSeed(state.seed);
       void loadCatalog();
     });
@@ -146,8 +176,17 @@ export default function Gallery({
         search: settledSearch,
         page,
         display,
+        metadata,
       });
-  }, [ready, previewSettings, categoryIds, settledSearch, page, display]);
+  }, [
+    ready,
+    previewSettings,
+    categoryIds,
+    settledSearch,
+    page,
+    display,
+    metadata,
+  ]);
   useEffect(() => {
     const timer = setTimeout(() => setSettledSearch(query.trim()), 350);
     return () => clearTimeout(timer);
@@ -169,13 +208,22 @@ export default function Gallery({
           categories: categoriesParam,
           search: settledSearch,
           layout,
+          metadata,
         },
         controller.signal,
       );
     } finally {
       if (abort.current === controller) pageLock.current = false;
     }
-  }, [browsePhotos, page, seed, categoriesParam, settledSearch, layout]);
+  }, [
+    browsePhotos,
+    page,
+    seed,
+    categoriesParam,
+    settledSearch,
+    layout,
+    metadata,
+  ]);
   useEffect(() => () => abort.current?.abort(), []);
   const {
     data: result,
@@ -191,7 +239,7 @@ export default function Gallery({
     // Coming back from a photo shows the same page at once while it is checked again.
     previewSettings
       ? undefined
-      : `gallery:${JSON.stringify([page, seed, categoriesParam, settledSearch, layout])}`,
+      : `gallery:${JSON.stringify([page, seed, categoriesParam, settledSearch, layout, metadata])}`,
   );
   const count = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(count / (result?.limit ?? 12)));
@@ -264,6 +312,31 @@ export default function Gallery({
         anchor={paired && filtersFirst ? "start" : "end"}
         onChange={(ids) => {
           setCategoryIds(ids);
+          setPage(1);
+        }}
+        extraColumn={
+          facets && hasMetadataFacets(facets) ? (
+            <GalleryMetadataFilters
+              facets={facets}
+              value={metadata}
+              onChange={(filters) => {
+                setMetadata(filters);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+        extraChips={metadataChips(metadata).map((chip) => ({
+          key: chip.key,
+          department: chip.department,
+          label: chip.label,
+          onRemove: () => {
+            setMetadata(chip.without);
+            setPage(1);
+          },
+        }))}
+        onReset={() => {
+          setMetadata(emptyMetadataFilters());
           setPage(1);
         }}
         search={

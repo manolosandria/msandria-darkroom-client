@@ -45,6 +45,10 @@ export type PhotoVisibility =
   | "COLLECTIONS_ONLY"
   | "POSTS_ONLY";
 
+// Colour or black and white, measured by the API when the file is uploaded and
+// corrected by hand in Curator. A toned print (sepia, selenium) counts as black and white.
+export type PhotoTonality = "COLOR" | "MONOCHROME";
+
 // Where a photo sits in a collection, counting from 1.
 export type PhotoCollectionPlacement = { id: string; position: number };
 
@@ -69,6 +73,8 @@ export type PhotoParams = Partial<PhotoClassification> & {
   titlePosition?: PhotoTitlePosition;
   variantPosition?: PhotoVariantPosition;
   metadata?: PhotoMetadata;
+  /** Only the administrator's listing and detail carry it; null until classified. */
+  tonality?: PhotoTonality | null;
   /** The detail's work, as small thumbnails in order (this photo included); only when
    *  the visitor can see more than one of its variants. */
   workVariants?: Photo[];
@@ -90,6 +96,7 @@ export class Photo {
   private readonly renditions: PhotoRendition[];
   private readonly createdAt: Date;
   private readonly workVariants: Photo[];
+  private readonly tonality: PhotoTonality | null;
 
   constructor(params: PhotoParams) {
     this.version = params.version ?? 1;
@@ -124,7 +131,13 @@ export class Photo {
     this.description = params.description?.trim();
     this.createdAt = params.createdAt ?? new Date();
     this.workVariants = params.workVariants ?? [];
+    this.tonality = params.tonality ?? null;
     this.validate();
+  }
+
+  /** Colour or black and white; null while the photo is not classified. */
+  getTonality(): PhotoTonality | null {
+    return this.tonality;
   }
 
   /** The photo's work as the detail brought it; empty when there is nothing to choose. */

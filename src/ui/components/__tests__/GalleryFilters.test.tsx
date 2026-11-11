@@ -172,3 +172,59 @@ describe("Gallery filters", () => {
     ).toBeVisible();
   });
 });
+
+describe("Gallery filters with another department", () => {
+  it("shows it in the panel, its choices as chips, and resets both", async () => {
+    const onReset = vi.fn();
+    const onRemove = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <GalleryFilters
+        categories={categories}
+        settings={{ categories: [], departments: [] }}
+        selected={["street"]}
+        onChange={onChange}
+        extraColumn={<div role="group" aria-label="Camera and exposure" />}
+        extraChips={[
+          { key: "tone", department: "Tone", label: "Color", onRemove },
+        ]}
+        onReset={onReset}
+      />,
+    );
+    // One category and one metadata choice.
+    expect(filtersButton()).toHaveTextContent("2");
+    await userEvent.click(filtersButton());
+    expect(
+      screen.getByRole("group", { name: "Camera and exposure" }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove filter Tone Color" }),
+    );
+    expect(onRemove).toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    );
+    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onReset).toHaveBeenCalled();
+  });
+
+  it("enables reset for metadata choices alone and opens a panel for them", async () => {
+    render(
+      <GalleryFilters
+        categories={[]}
+        settings={{ categories: [], departments: [] }}
+        selected={[]}
+        onChange={vi.fn()}
+        extraColumn={<p>Metadata column</p>}
+        extraChips={[
+          { key: "lens", department: "Lens", label: "XF23", onRemove: vi.fn() },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    ).toBeEnabled();
+    await userEvent.click(filtersButton());
+    expect(screen.getByText("Metadata column")).toBeVisible();
+  });
+});

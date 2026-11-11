@@ -39,6 +39,9 @@ export function GalleryFilters({
   anchor = "end",
   layout: savedLayout,
   onArrange,
+  extraColumn,
+  extraChips = [],
+  onReset,
 }: {
   categories: CatalogCategory[];
   settings: Pick<GallerySettings, "departments" | "categories">;
@@ -62,6 +65,17 @@ export function GalleryFilters({
    * into place; the new tree comes back here.
    */
   onArrange?: (layout: FilterGroup) => void;
+  /** Another department for the panel, after the categories' (camera and exposure). */
+  extraColumn?: ReactNode;
+  /** Choices made outside the categories, as chips beside theirs. */
+  extraChips?: {
+    key: string;
+    department: string;
+    label: string;
+    onRemove: () => void;
+  }[];
+  /** Clears what the categories do not hold, with the reset. */
+  onReset?: () => void;
 }) {
   // Arranging starts from the usual bar when there is no tree yet.
   const layout = savedLayout ?? (onArrange ? defaultFilterLayout() : undefined);
@@ -82,6 +96,7 @@ export function GalleryFilters({
       .filter((category) => selected.includes(category.id))
       .map((category) => ({ category, department: department.label })),
   );
+  const total = selected.length + extraChips.length;
   const toggle = (categoryId: string) =>
     onChange(
       selected.includes(categoryId)
@@ -135,7 +150,8 @@ export function GalleryFilters({
     else if (event.key === "ArrowLeft") side(-1);
   };
   const panelId = `${id}-panel`;
-  const hasPanel = departments.length > 0 || Boolean(panelDisplay);
+  const hasPanel =
+    departments.length > 0 || Boolean(panelDisplay) || Boolean(extraColumn);
   const toggleEl = hasPanel && (
     <button
       ref={toggleButton}
@@ -143,7 +159,7 @@ export function GalleryFilters({
       className="gallery-browse__toggle"
       aria-expanded={open}
       aria-controls={panelId}
-      data-active={selected.length > 0 || undefined}
+      data-active={total > 0 || undefined}
       onClick={() => setOpen(!open)}
       onKeyDown={(event) => {
         if (event.key !== "ArrowDown" || !departments[0]) return;
@@ -164,8 +180,8 @@ export function GalleryFilters({
         <path d="M3 5h14M6 10h8M8.5 15h3" />
       </svg>
       <span>Filters</span>
-      {selected.length > 0 && (
-        <span className="gallery-department__badge">{selected.length}</span>
+      {total > 0 && (
+        <span className="gallery-department__badge">{total}</span>
       )}
       <svg
         className="gallery-department__caret"
@@ -187,9 +203,10 @@ export function GalleryFilters({
       className="gallery-browse__reset"
       aria-label="Clear all filters"
       title="Clear all filters"
-      disabled={selected.length === 0}
+      disabled={total === 0}
       onClick={() => {
         onChange([]);
+        onReset?.();
         setOpen(false);
       }}
     >
@@ -207,7 +224,7 @@ export function GalleryFilters({
       </svg>
     </button>
   );
-  const chipsEl = chosen.length > 0 && (
+  const chipsEl = chosen.length + extraChips.length > 0 && (
     <ul className="gallery-browse__chips" aria-label="Active filters">
       {chosen.map(({ category, department }) => (
         <li key={category.id}>
@@ -218,6 +235,19 @@ export function GalleryFilters({
           >
             <small>{department}</small>
             {category.name}
+            <span aria-hidden="true">×</span>
+          </button>
+        </li>
+      ))}
+      {extraChips.map((chip) => (
+        <li key={chip.key}>
+          <button
+            type="button"
+            aria-label={`Remove filter ${chip.department} ${chip.label}`}
+            onClick={chip.onRemove}
+          >
+            <small>{chip.department}</small>
+            {chip.label}
             <span aria-hidden="true">×</span>
           </button>
         </li>
@@ -374,7 +404,7 @@ export function GalleryFilters({
           role="region"
           aria-label="Filters and view"
         >
-          {departments.length > 0 && (
+          {(departments.length > 0 || extraColumn) && (
             <div className="gallery-browse__columns">
               {departments.map((department) => {
                 const chosenHere = department.categories.filter((category) =>
@@ -417,6 +447,7 @@ export function GalleryFilters({
                   </div>
                 );
               })}
+              {extraColumn}
             </div>
           )}
           {panelDisplay && (
@@ -446,7 +477,7 @@ export function GalleryFilters({
           </div>
         </div>
       )}
-      {!layout && (chosen.length > 0 || count) && (
+      {!layout && (chosen.length + extraChips.length > 0 || count) && (
         <div className="gallery-browse__meta">
           {chipsEl}
           {count}

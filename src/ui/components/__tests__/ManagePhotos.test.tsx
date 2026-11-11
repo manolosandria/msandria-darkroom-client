@@ -43,6 +43,7 @@ vi.mock("@/src/infrastructure/photoServices", () => ({
   replacePhoto: { execute: vi.fn() },
   savePhoto: { execute: vi.fn() },
   getPhotoById: { execute: vi.fn() },
+  classifyPhotoTonality: { execute: vi.fn() },
 }));
 const photo = new Photo({
   id: "photo",
@@ -528,6 +529,46 @@ describe("ManagePhotos", () => {
     expect(
       vi.mocked(savePhoto.execute).mock.calls[0][0].getTitlePosition(),
     ).toBe("BOTTOM_RIGHT");
+  });
+
+  it("corrects the tone Gallery filters by, starting from the photo's own", async () => {
+    vi.mocked(getPhotoById.execute).mockResolvedValue(
+      new Photo({
+        id: "photo",
+        title: "The coast",
+        width: 1800,
+        height: 1200,
+        tonality: "COLOR",
+        renditions: [{ width: 1800, url: "https://cdn/detail.jpg" }],
+      }),
+    );
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "The coast" }),
+    );
+    const tone = await screen.findByRole("radiogroup", { name: "Tone" });
+    expect(within(tone).getByRole("radio", { name: "Color" })).toBeChecked();
+    await userEvent.click(
+      within(tone).getByRole("radio", { name: "Black & white" }),
+    );
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Save changes" })[0],
+    );
+    await confirmSave();
+    await screen.findByText("Changes saved.");
+    expect(
+      vi.mocked(savePhoto.execute).mock.calls[0][0].getTonality(),
+    ).toBe("MONOCHROME");
+  });
+
+  it("offers to classify the photos that have no tone yet", async () => {
+    show();
+    expect(
+      await screen.findByText(/1 photo is not classified/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Classify them" }),
+    ).toBeInTheDocument();
   });
 
   it("places the variant thumbnails in any corner but the title's", async () => {

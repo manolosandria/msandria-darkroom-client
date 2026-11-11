@@ -597,9 +597,40 @@ Existing groups are edited in the Variants panel, not silently merged.
 The collection editor can replace an entry with a variant, retaining layout,
 caption visibility and cover selection. The viewer offers variant thumbnails,
 including collection-only variants, from the photo's own detail. Category filtering keeps only matching variants and chooses a matching
-photo for each work's single tile. A dedicated color/monochrome classification and
-filter remains a future addition.
+photo for each work's single tile. Colour or black and white is a filter of its own
+(see "Gallery filters by camera, exposure and tone").
 
+
+## Gallery filters by camera, exposure and tone
+
+The Filters panel of Gallery ends with one more department, **Camera & exposure**
+(`GalleryMetadataFilters`), filled from public `GET /photos/facets` (`GetPhotoFacets`):
+**Tone** (Any, Color, Black & white), the **Camera** and **Lens** names found among the
+public photographs as checkable options (a camera travels as `make|model`, shown as
+`formatCamera` writes it), and a range for **Focal length**, **Shutter speed**,
+**Aperture** and **ISO** when it varies: two sliders, **From** and **To**, over the ends
+and the usual stops between them (`rangeStops`). A slider at its limit leaves that end
+open, so a full range is no filter; the range is committed 350 ms after the sliders
+stop. Without facets the department is not offered, and filters already in the URL
+still apply.
+
+The choices (`PhotoMetadataFilters`) go to `GET /photos/browse` with the page:
+`camera` and `lens` repeated once per value (names may hold commas), `focalMin`/
+`focalMax`, `shutterMin`/`shutterMax` (seconds), `apertureMin`/`apertureMax`,
+`isoMin`/`isoMax` and `tone` (`color`/`monochrome`). The URL keeps them under the same
+names (`galleryNavigationState`), dropping values the API would refuse. Each choice is a
+chip with its department beside the categories', the Filters badge counts both, and the
+reset icon clears both. The API filters before grouping and paging; a photograph without
+the data a filter asks about is left out only while that filter applies.
+
+In Curator → Photos, **Details** has **Tone** (`PhotoTonalityField`): Color or Black &
+white, saved as `tonality` with the photo's version (an unclassified photo sends
+nothing). The API measures it when a file is uploaded or replaced; photographs uploaded
+before that are listed above the library (`TonalityBackfill`) with **Classify them**,
+which calls `POST /photos/tonality/classify` batch after batch until none remain or a
+batch classifies nothing, counting files that could not be read. The API's
+`20261112000000_photo_tonality` migration and its `/photos/facets` route must be
+deployed before this client.
 
 ## Multiple photo highlights
 
