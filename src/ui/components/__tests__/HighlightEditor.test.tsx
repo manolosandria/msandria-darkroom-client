@@ -557,7 +557,6 @@ it("edits distribution and aspect cells without enabling other layouts", async (
       onChange={onChange}
     />,
   );
-  await userEvent.click(screen.getByText("Gallery layouts and proportions"));
   await userEvent.click(
     screen.getByRole("checkbox", { name: "Square in Random square" }),
   );
@@ -584,4 +583,67 @@ it("edits distribution and aspect cells without enabling other layouts", async (
       (rule: { views: string[] }) => !rule.views.includes("square"),
     ),
   ).toBe(true);
+});
+
+it("shows only compatible layouts and toggles all destinations for the selected crop", async () => {
+  const onChange = vi.fn();
+  render(
+    <Harness
+      initial={{ square: { x: 0, y: 0, width: 0.4, height: 0.6 } }}
+      onChange={onChange}
+    />,
+  );
+  expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+  expect(
+    screen.queryByRole("checkbox", { name: "Square in Random portrait" }),
+  ).toBeNull();
+  expect(screen.getAllByText("Hidden")).toHaveLength(2);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Show everywhere" }),
+  );
+  expect(screen.getByText("Visible")).toBeInTheDocument();
+  let presentation = onChange.mock.lastCall![0].presentation;
+  expect(presentation.home).toEqual(["original", "square"]);
+  expect(
+    presentation.galleryRules.filter((rule: GalleryViewRule) =>
+      rule.views.includes("square"),
+    ),
+  ).toHaveLength(3);
+  expect(
+    presentation.galleryRules
+      .filter((rule: GalleryViewRule) => rule.aspect !== "square")
+      .every((rule: GalleryViewRule) => !rule.views.includes("square")),
+  ).toBe(true);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Hide everywhere" }),
+  );
+  presentation = onChange.mock.lastCall![0].presentation;
+  expect(presentation.home).toEqual(["original"]);
+  expect(presentation.gallery).toEqual(["original"]);
+  expect(
+    presentation.galleryRules.every(
+      (rule: GalleryViewRule) => !rule.views.includes("square"),
+    ),
+  ).toBe(true);
+  await userEvent.click(tab("original"));
+  await userEvent.click(
+    screen.getByRole("button", { name: "Hide everywhere" }),
+  );
+  expect(onChange.mock.lastCall![0].presentation.home).toEqual([]);
+  expect(onChange.mock.lastCall![0].presentation.gallery).toEqual([]);
+});
+
+it("labels size icons on hover and focus without changing the selection", async () => {
+  render(<Harness activeKey="original" />);
+  const caption = document.querySelector(".highlight-size-label")!;
+  expect(caption).toHaveTextContent("Original");
+  await userEvent.hover(tab("portrait"));
+  expect(caption).toHaveTextContent("Portrait");
+  expect(tab("original")).toHaveAttribute("aria-selected", "true");
+  await userEvent.unhover(tab("portrait"));
+  expect(caption).toHaveTextContent("Original");
+  fireEvent.focus(tab("landscape"));
+  expect(caption).toHaveTextContent("Landscape");
+  await userEvent.click(tab("square"));
+  expect(tab("square")).toHaveAttribute("aria-selected", "true");
 });

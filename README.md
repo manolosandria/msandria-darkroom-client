@@ -1410,7 +1410,7 @@ skipped and Upload remains available at every step. Arrow keys, Home and End mov
 between tabs. Upload All still publishes the pending queue directly.
 
 Collections offers **Upload new photos…** through the same `UploadPanel` in embedded
-mode. Photos start as collections-only and enter the composition draft after upload;
+mode. Photos start as collections-only and enter the collection library after upload;
 **Save collection** persists that composition. Upload or remove pending files before
 saving. Folding the uploader or switching collections preserves prepared files.
 
@@ -1425,3 +1425,40 @@ expand. In compact mode each step has the same height, the inspector scrolls
 independently and starts at its top on a step change. Review lists metadata, border
 trimming, frame, highlights, presentation choices and classification, with links back
 to each step. The same card is used by Photos, Posts and Collections.
+
+### Compact highlight controls and page spacing
+
+Highlights use size icons with one hover/focus label. Visibility shows whether the
+selected view is enabled in Gallery or Home; each thumbnail names its destinations
+or says Hidden. Show everywhere and Hide everywhere update only that view, including
+all compatible Gallery layouts. The three layout checkboxes omit incompatible aspects;
+additional guidance opens from the information icon. Save the photo to persist changes.
+Collections and ordinary workspace pages share Gallery's responsive top gap. The
+expanded header has no ancestor clip path isolating its glass backdrop filter. Glass
+needs content behind it to show blur; over a flat background its effect remains subtle.
+
+## Collection library and Contact appearance
+
+Collections separates **All photos** from **Collection photos**. Adding or uploading a
+photo puts it in the collection library; selecting it there places it in the mosaic.
+Removing a mosaic piece keeps the photo in the library. **Manage collection photos**
+removes membership as well. Save the collection to persist either change. The category
+field is shared with Photos, including filtering and creating category names.
+
+Curator → Contact edits the heading, description, button label, colors, heading font,
+side-by-side/stacked layout and contact notes. Desktop and phone previews do not send
+messages. Settings use versioned `GET/PUT /contact/settings`; save, cancel and conflict
+recovery use the same controls as the other page editors. Consent remains required.
+
+The API migration `20261111000000_collection_library` is required before using the new
+library. Admin catalog responses include `photoIds`; public responses expose only the
+placed entries. Photos assigned from Photos or Upload join the library without
+creating mosaic entries.
+
+
+### Page materials and preview controls (2026-11-11)
+Home uses the shared device switch with scoped preview status styling. Framing uses compact
+crop choices and Fill help. General offers solid or frosted body texture, including Home
+and Journal. Palettes compares saved Home, Gallery and Contact colors. Gallery appearance
+accepts randomMin/randomMax (0–12) for large photos; packing preserves complete rows when
+the available proportions cannot meet the minimum. Defaults remain 0–2. No migration.

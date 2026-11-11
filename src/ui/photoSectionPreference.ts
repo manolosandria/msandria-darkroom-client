@@ -63,7 +63,7 @@ export function writeInspectorView(view: InspectorView) {
  * (`photoPickerFolded`). Kept per visitor, guarded like the rest.
  */
 export type FoldablePart =
-  "photoInspectorTabsFolded" | "photoStripFolded" | "photoPickerFolded";
+  "photoInspectorTabsFolded" | "photoStripFolded" | "photoPickerFolded" | "collectionAllPhotosFolded" | "collectionLibraryFolded";
 const foldedInMemory = new Map<FoldablePart, boolean>();
 
 export function readFolded(part: FoldablePart): boolean {

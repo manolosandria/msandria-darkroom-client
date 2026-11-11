@@ -61,6 +61,8 @@ export const gridProportionRatios: Record<string, number> = {
   landscape: 3 / 2,
 };
 export type GalleryAppearance = {
+  randomMin?: number;
+  randomMax?: number;
   font: string;
   background: string;
   text: string;

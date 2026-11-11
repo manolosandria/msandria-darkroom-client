@@ -568,3 +568,20 @@
   background: #fbefec;
   color: #8f2d1d;
 }
+
+.page-palette-comparison { display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem;margin:1rem 0; }
+
+/* Palette fields light up under the pointer and the keyboard, as Photos' do. */
+.palette-manager input:not([type="color"]) {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.palette-manager input:not([type="color"]):hover {
+  border-color: #9fb38c;
+}
+.palette-manager input:not([type="color"]):focus {
+  outline: none;
+  border-color: #4f7d3f;
+  box-shadow: 0 0 0 4px #4f7d3f1f;
+}

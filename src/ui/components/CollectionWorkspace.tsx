@@ -46,11 +46,14 @@ import { CollectionCanvas, isHiddenFromPublic } from "./CollectionCanvas";
 import { useEditingWorkspace, useUnsavedEditor } from "./EditingWorkspace";
 import { CatalogConflictError } from "@/src/domain/errors/CatalogConflictError";
 import UploadPanel from "./UploadPanel";
+import { CategoryNameField } from "./PhotoClassificationFields";
 import { EmptyState } from "./EmptyState";
 
 /** The editor keeps photos and text blocks in one reading order. */
 type EditorDraft = Omit<CollectionDraft, "entries" | "texts"> & {
   blocks: CollectionBlock[];
+  photoIds: string[];
+  categoryNames: string[];
 };
 const empty = (): EditorDraft => ({
   title: "",
@@ -59,10 +62,16 @@ const empty = (): EditorDraft => ({
   showVariants: false,
   categoryIds: [],
   blocks: [],
+  photoIds: [],
+  categoryNames: [],
 });
 const fromCollection = (collection?: CatalogCollection): EditorDraft =>
   collection
     ? {
+        photoIds:
+          collection.photoIds ??
+          collection.entries.map((entry) => entry.photoId),
+        categoryNames: collection.categories.map((category) => category.name),
         version: collection.version,
         title: collection.title,
         description: collection.description ?? "",
@@ -73,7 +82,7 @@ const fromCollection = (collection?: CatalogCollection): EditorDraft =>
       }
     : empty();
 const toPayload = (
-  { blocks, ...draft }: EditorDraft,
+  { blocks, categoryNames: _categoryNames, ...draft }: EditorDraft,
   excluded: string[] = [],
 ): CollectionDraft => ({ ...draft, ...splitBlocks(blocks, excluded) });
 const toggle = (ids: string[], id: string) =>
@@ -373,11 +382,13 @@ function CollectionEditor({
   };
   const saved = toPayload(baseline);
   const dirty =
+    JSON.stringify(draft.categoryNames) !==
+      JSON.stringify(baseline.categoryNames) ||
     JSON.stringify(payload) !==
-    JSON.stringify({
-      ...saved,
-      categoryIds: existingCategoryIds(saved.categoryIds),
-    });
+      JSON.stringify({
+        ...saved,
+        categoryIds: existingCategoryIds(saved.categoryIds),
+      });
   const privatePhotos = included.flatMap((entry) => {
     const photo = findPhoto(photos, entry.photoId);
     return photo && isHiddenFromPublic(photo) ? [photo.getTitle()] : [];
@@ -489,14 +500,36 @@ function CollectionEditor({
     setError("");
     setNotice("");
     try {
+      const latestCategories = [...(await manageCatalog.load()).categories];
+      for (const name of draft.categoryNames) {
+        if (
+          !latestCategories.some(
+            (category) => category.name.toLowerCase() === name.toLowerCase(),
+          )
+        ) {
+          await manageCatalog.saveCategory(name);
+          latestCategories.splice(
+            0,
+            latestCategories.length,
+            ...(await manageCatalog.load()).categories,
+          );
+        }
+      }
+      const categoryIds = draft.categoryNames.map(
+        (name) =>
+          latestCategories.find(
+            (category) => category.name.toLowerCase() === name.toLowerCase(),
+          )!.id,
+      );
       const result = await manageCatalog.saveCollection(
-        payload,
+        { ...payload, categoryIds },
         id || undefined,
       );
       const next = id
         ? {
             ...draft,
             ...payload,
+            categoryIds,
             blocks: draft.blocks.filter(
               (block) =>
                 block.kind === "text" || !excluded.includes(block.photoId),
@@ -563,6 +596,7 @@ function CollectionEditor({
     if (!entry) return;
     const key = `photo:${nextId}`;
     update({
+      photoIds: [...new Set([...draft.photoIds, nextId])],
       blocks: draft.blocks.map((item) =>
         item.key === entry.key ? { ...entry, photoId: nextId, key } : item,
       ),
@@ -611,10 +645,10 @@ function CollectionEditor({
         <div className="studio-toolbar">
           <button
             type="button"
-            className="studio-back"
+            className="studio-back collection-return"
             onClick={() => onClose()}
           >
-            ← All collections
+            <span aria-hidden="true">←</span> All collections
           </button>
           <h3>{draft.title || "New collection"}</h3>
           {dirty && <span className="studio-dirty">Unsaved changes</span>}
@@ -677,31 +711,82 @@ function CollectionEditor({
         )}
         {notice && <p role="status">{notice}</p>}
         <PhotoPicker
+          heading="All photos"
+          preferenceKey="collectionAllPhotosFolded"
           catalog={catalog}
           photos={photos.filter(
-            (photo) =>
-              !draft.blocks.some(
-                (item) =>
-                  item.kind === "photo" && item.photoId === photo.getId(),
-              ),
+            (photo) => !draft.photoIds.includes(photo.getId()),
           )}
+          addLabel={(photo) => `Add ${photo.getTitle()} to collection`}
+          onPick={(photo) =>
+            update({ photoIds: [...draft.photoIds, photo.getId()] })
+          }
+        />
+        <PhotoPicker
+          heading="Collection photos"
+          preferenceKey="collectionLibraryFolded"
+          placedIds={included.map((entry) => entry.photoId)}
+          catalog={catalog}
+          photos={photos.filter((photo) =>
+            draft.photoIds.includes(photo.getId()),
+          )}
+          addLabel={(photo) =>
+            draft.blocks.some(
+              (block) => block.key === `photo:${photo.getId()}`,
+            ) && !excluded.includes(photo.getId())
+              ? `Edit ${photo.getTitle()} in mosaic`
+              : `Place ${photo.getTitle()} in mosaic`
+          }
+          emptyText="Add photos from the library above."
           onPick={(photo) => {
             const key = `photo:${photo.getId()}`;
-            update({
-              blocks: [
-                ...draft.blocks,
-                {
-                  kind: "photo",
-                  key,
-                  photoId: photo.getId(),
-                  ...DEFAULT_PHOTO_SIZE,
-                  showTitle: true,
-                },
-              ],
-            });
+            if (!draft.blocks.some((block) => block.key === key)) {
+              update({
+                blocks: [
+                  ...draft.blocks,
+                  {
+                    kind: "photo",
+                    key,
+                    photoId: photo.getId(),
+                    ...DEFAULT_PHOTO_SIZE,
+                    showTitle: true,
+                  },
+                ],
+              });
+            }
+            setExcluded((current) =>
+              current.filter((id) => id !== photo.getId()),
+            );
             select(key);
           }}
-        />
+        >
+          <p className="upload-muted">
+            Choose a photo to place it in the mosaic. Photos already placed open
+            their properties.
+          </p>
+          <details>
+            <summary>Manage collection photos</summary>
+            {draft.photoIds.map((photoId) => (
+              <button
+                type="button"
+                key={photoId}
+                onClick={() => {
+                  update({
+                    photoIds: draft.photoIds.filter((id) => id !== photoId),
+                    blocks: draft.blocks.filter(
+                      (block) =>
+                        block.kind !== "photo" || block.photoId !== photoId,
+                    ),
+                  });
+                  deselect();
+                }}
+              >
+                Remove {findPhoto(photos, photoId)?.getTitle() ?? "photo"} from
+                collection
+              </button>
+            ))}
+          </details>
+        </PhotoPicker>
         <div className="collection-upload">
           <button
             type="button"
@@ -717,7 +802,7 @@ function CollectionEditor({
           <div hidden={!showUploads}>
             <p>
               Uploaded photos are stored immediately. Save collection to keep
-              them in this composition.
+              them in this collection’s library.
             </p>
             {uploadsOpened && (
               <UploadPanel
@@ -725,21 +810,12 @@ function CollectionEditor({
                 onPendingChange={setPendingUploads}
                 onPublished={({ photo }) => {
                   setUploadedPhotos((previous) => [...previous, photo]);
-                  const key = `photo:${photo.getId()}`;
                   setDraft((previous) => ({
                     ...previous,
-                    blocks: [
-                      ...previous.blocks,
-                      {
-                        kind: "photo",
-                        key,
-                        photoId: photo.getId(),
-                        ...DEFAULT_PHOTO_SIZE,
-                        showTitle: true,
-                      },
+                    photoIds: [
+                      ...new Set([...previous.photoIds, photo.getId()]),
                     ],
                   }));
-                  setSelected(key);
                 }}
               />
             )}
@@ -954,27 +1030,11 @@ function CollectionEditor({
               {...propertyPanel(prefix, "Categories", tab)}
             >
               <legend className="sr-only">Categories</legend>
-              <div className="studio-checks">
-                {catalog.categories.map((category) => (
-                  <label key={category.id} className="studio-check">
-                    <input
-                      type="checkbox"
-                      checked={draft.categoryIds.includes(category.id)}
-                      onChange={() =>
-                        update({
-                          categoryIds: toggle(draft.categoryIds, category.id),
-                        })
-                      }
-                    />
-                    {category.name}
-                  </label>
-                ))}
-              </div>
-              {!catalog.categories.length && (
-                <p className="upload-muted">
-                  Create one in the Categories tab to classify this collection.
-                </p>
-              )}
+              <CategoryNameField
+                names={draft.categoryNames}
+                categories={catalog.categories}
+                onChange={(categoryNames) => update({ categoryNames })}
+              />
             </fieldset>
             <div
               className="collection-panel"
@@ -1123,11 +1183,13 @@ function EntryDetails({
           className={removed ? "" : "studio-danger"}
           onClick={onToggleRemoved}
         >
-          {removed ? "Keep in collection" : "Remove from collection"}
+          {removed ? "Return to mosaic" : "Remove from mosaic"}
         </button>
       </div>
       {removed && (
-        <span className="upload-muted">Will be removed when you save</span>
+        <span className="upload-muted">
+          Will leave the mosaic when you save; stays in the collection library
+        </span>
       )}
     </div>
   );

@@ -43,6 +43,7 @@ export type CollectionText = MosaicSize & {
   align?: CollectionTextAlign;
 };
 export type CollectionDraft = {
+  photoIds?: string[];
   version?: number;
   /** Whether the public mosaic lets visitors switch each work's variant. */
   showVariants?: boolean;
@@ -55,6 +56,7 @@ export type CollectionDraft = {
   texts?: CollectionText[];
 };
 export type CatalogCollection = {
+  photoIds?: string[];
   version?: number;
   showVariants?: boolean;
   coverPhotoId?: string | null;

@@ -8,7 +8,10 @@ export type PackedTile = {
   large: boolean;
 };
 export type GalleryPacking = { rows: number; tiles: PackedTile[] };
-export function galleryPriorities(keys: string[]) {
+export function galleryPriorities(
+  keys: string[],
+  maximum = Math.min(2, Math.floor(keys.length / 3)),
+) {
   const seed = keys.join("|");
   return new Set(
     keys
@@ -19,7 +22,7 @@ export function galleryPriorities(keys: string[]) {
         return { index, score: hash >>> 0 };
       })
       .sort((a, b) => a.score - b.score)
-      .slice(0, Math.min(2, Math.floor(keys.length / 3)))
+      .slice(0, Math.min(maximum, keys.length))
       .map((item) => item.index),
   );
 }
@@ -29,9 +32,26 @@ export function packGallery(
   keys: string[],
   views: PhotoView[][],
   columns: number,
+  minimum = 0,
+  maximum = 2,
 ): GalleryPacking {
   if (!keys.length) return { rows: 0, tiles: [] };
-  const priorities = galleryPriorities(keys);
+  const eligible = keys
+    .map((key, index) => ({ key, index }))
+    .filter((item) => views[item.index].some((view) => view.ratio >= 0.85));
+  const eligiblePriorities = galleryPriorities(
+    eligible.map((item) => item.key),
+    maximum,
+  );
+  const priorities = new Set(
+    eligible
+      .filter((_, index) => eligiblePriorities.has(index))
+      .map((item) => item.index),
+  );
+  const attainable = views.filter((options) =>
+    options.some((view) => view.ratio >= 0.85),
+  ).length;
+  const minLarge = Math.min(minimum, maximum, attainable);
   const choices = views.map((options, index) =>
     options.flatMap((view) => {
       const sizes =
@@ -86,7 +106,8 @@ export function packGallery(
     function search(used: number, large: number): boolean {
       if (--budget < 0) return false;
       const start = cells.indexOf(false);
-      if (start < 0) return used === (1 << keys.length) - 1;
+      if (start < 0)
+        return used === (1 << keys.length) - 1 && large >= minLarge;
       const free = cells.filter((cell) => !cell).length;
       let least = 0,
         most = 0;
@@ -110,7 +131,7 @@ export function packGallery(
           if (
             x + choice.width > columns ||
             y + choice.height > rows ||
-            large + Number(choice.large) > 2
+            large + Number(choice.large) > maximum
           )
             continue;
           const footprint: number[] = [];

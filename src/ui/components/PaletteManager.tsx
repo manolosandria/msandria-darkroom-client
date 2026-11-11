@@ -1,5 +1,7 @@
 "use client";
 import "./paletteStudio.css";
+import { manageHomeBanner } from "@/src/infrastructure/homeBannerServices";
+import { manageContactSettings } from "@/src/infrastructure/contactSettingsServices";
 import { AdminOnly } from "./AdminOnly";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -35,6 +37,53 @@ export default function PaletteManager() {
 }
 
 function Manager() {
+  const [pageColors, setPageColors] = useState<
+    { name: string; colors: string[] }[]
+  >([]);
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      manageHomeBanner.get(),
+      manageContactSettings.get(),
+      manageGallerySettings.get(),
+    ])
+      .then(([home, contact, gallery]) => {
+        if (live)
+          setPageColors([
+            {
+              name: "Home",
+              colors: [
+                home.backgroundColor,
+                home.textColor,
+                home.accentColor,
+                home.surfaceColor,
+              ],
+            },
+            {
+              name: "Gallery",
+              colors: [
+                gallery.appearance.background,
+                gallery.appearance.text,
+                gallery.appearance.accent,
+                gallery.appearance.surface,
+              ],
+            },
+            {
+              name: "Contact",
+              colors: [
+                contact.background,
+                contact.text,
+                contact.accent,
+                contact.surface,
+              ],
+            },
+          ]);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const [preview, setPreview] = useState("");
   // The color pointed at, by its row in the editor or its zone in the drawing.
   const [highlighted, setHighlighted] = useState<PaletteKey | null>(null);
@@ -60,8 +109,7 @@ function Manager() {
     // Keyed by palette, so each palette's changes are reviewed on their own.
     reviewAs: {
       wrap: byId,
-      unwrap: (value) =>
-        Object.values(value as Record<string, GalleryPalette>),
+      unwrap: (value) => Object.values(value as Record<string, GalleryPalette>),
     },
     label: "Palettes",
     savedNotice: "Palettes saved.",
@@ -123,6 +171,41 @@ function Manager() {
         busy={busy}
         onReload={reload}
       />
+      <section
+        aria-label="Saved page palettes"
+        className="page-palette-comparison"
+      >
+        {pageColors.map((page) => (
+          <article
+            key={page.name}
+            style={{
+              background: page.colors[0],
+              color: page.colors[1],
+              padding: "1rem",
+              borderRadius: "1rem",
+              border: "1px solid #8885",
+            }}
+          >
+            <h2>{page.name}</h2>
+            <div style={{ display: "flex", gap: ".5rem" }}>
+              {page.colors.map((color, index) => (
+                <span
+                  key={index}
+                  title={color}
+                  style={{
+                    background: color,
+                    width: "2rem",
+                    height: "2rem",
+                    borderRadius: "50%",
+                    border: "1px solid #8885",
+                  }}
+                />
+              ))}
+            </div>
+            <small>{page.colors.join(" · ")}</small>
+          </article>
+        ))}
+      </section>
       {!saved ? (
         <p>{busy ? "Loading palettes…" : "Palettes are unavailable."}</p>
       ) : (

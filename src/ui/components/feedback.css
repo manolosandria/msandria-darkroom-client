@@ -1,0 +1,80 @@
+/* Waiting and failing, said quietly: both take the color of the text around them, so
+   they sit on a light page, a themed gallery or the dark viewer alike. */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 2.5rem 1rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+.loading-state__ring {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: loading-state-turn 0.8s linear infinite;
+}
+@keyframes loading-state-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-state__ring {
+    animation-duration: 2.4s;
+  }
+}
+
+.error-state {
+  --error-ink: #9a3324;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.85rem;
+  padding: 0.8rem 0.9rem 0.8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--error-ink) 24%, transparent);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--error-ink) 7%, #fff);
+  color: var(--error-ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.error-state__icon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.error-state__message {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+}
+.error-state__retry {
+  flex: none;
+  margin-left: auto;
+  padding: 0.4rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--error-ink) 35%, transparent);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--error-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.error-state__retry:hover {
+  border-color: var(--error-ink);
+  background: var(--error-ink);
+  color: #fff;
+}
+.error-state__retry:focus-visible {
+  outline: 2px solid var(--error-ink);
+  outline-offset: 2px;
+}

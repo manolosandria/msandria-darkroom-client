@@ -219,13 +219,13 @@ describe("collection browser", () => {
       screen.getByRole("textbox", { name: "Collection title" }),
       " edited",
     );
-    await user.click(screen.getByRole("button", { name: "← All collections" }));
+    await user.click(screen.getByRole("button", { name: "All collections" }));
     await open(/Two/);
     await user.type(
       screen.getByRole("textbox", { name: "Collection title" }),
       " pending",
     );
-    await user.click(screen.getByRole("button", { name: "← All collections" }));
+    await user.click(screen.getByRole("button", { name: "All collections" }));
     await open(/One/);
     expect(
       screen.getByRole("textbox", { name: "Collection title" }),
@@ -237,7 +237,7 @@ describe("collection browser", () => {
       expect.objectContaining({ title: "One edited" }),
       "one",
     );
-    await user.click(screen.getByRole("button", { name: "← All collections" }));
+    await user.click(screen.getByRole("button", { name: "All collections" }));
     await open(/Two/);
     expect(
       screen.getByRole("textbox", { name: "Collection title" }),
@@ -260,7 +260,12 @@ describe("collection editor", () => {
       screen.getByRole("textbox", { name: "Collection title" }),
       "Pending",
     );
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
     vi.mocked(getManagedPhotos.execute).mockResolvedValue([
       photo("Color", "PRIVATE"),
       photos[1],
@@ -286,7 +291,12 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.click(screen.getByRole("button", { name: "Add Private coast" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Private coast to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Private coast in mosaic" }),
+    );
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Private coast");
     const canvas = screen.getByRole("list", { name: "Collection composition" });
@@ -295,7 +305,7 @@ describe("collection editor", () => {
     ).toBeTruthy();
     expect(
       screen
-        .getByRole("region", { name: "Add photos" })
+        .getByRole("region", { name: "All photos" })
         .compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     const tile = within(canvas).getByRole("listitem");
@@ -321,7 +331,12 @@ describe("collection editor", () => {
       "City",
     );
     await user.type(screen.getByLabelText("Description"), "  At night ");
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
     const width = within(
       screen.getByRole("group", { name: "Width on wide screens" }),
     );
@@ -339,6 +354,7 @@ describe("collection editor", () => {
       {
         title: "City",
         description: "At night",
+        photoIds: ["Color"],
         coverPhotoId: null,
         showVariants: false,
         categoryIds: [],
@@ -369,8 +385,18 @@ describe("collection editor", () => {
       screen.getByRole("textbox", { name: "Collection title" }),
       "City",
     );
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add Monochrome to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Monochrome in mosaic" }),
+    );
     // Moved onto Color's cell, Monochrome comes first and Color steps down.
     await user.click(screen.getByRole("button", { name: "Move left" }));
     await user.click(screen.getByRole("button", { name: "Move left" }));
@@ -392,7 +418,7 @@ describe("collection editor", () => {
       screen.getByRole("complementary", { name: "Photo details" }),
     ).toHaveTextContent("Photo 2 of 2");
     await user.click(
-      screen.getByRole("button", { name: "Remove from collection" }),
+      screen.getByRole("button", { name: "Remove from mosaic" }),
     );
     expect(
       screen.getAllByText("Will be removed when you save").length,
@@ -403,6 +429,7 @@ describe("collection editor", () => {
         title: "City",
         description: "",
         coverPhotoId: "Monochrome",
+        photoIds: ["Color", "Monochrome"],
         showVariants: false,
         categoryIds: [],
         entries: [
@@ -432,7 +459,7 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    const picker = screen.getByRole("region", { name: "Add photos" });
+    const picker = screen.getByRole("region", { name: "All photos" });
     await user.type(within(picker).getByRole("searchbox"), "colo");
     expect(
       within(picker).getAllByRole("button", { name: /^Add / }),
@@ -441,17 +468,27 @@ describe("collection editor", () => {
     await user.click(within(picker).getByLabelText("Category"));
     await user.click(within(picker).getByRole("option", { name: "Street" }));
     expect(
-      within(picker).getByRole("button", { name: "Add Monochrome" }),
+      within(picker).getByRole("button", {
+        name: "Add Monochrome to collection",
+      }),
     ).toBeInTheDocument();
     expect(
-      within(picker).queryByRole("button", { name: "Add Color" }),
+      within(picker).queryByRole("button", { name: "Add Color to collection" }),
     ).not.toBeInTheDocument();
     await user.click(
-      within(picker).getByRole("button", { name: "Add Monochrome" }),
+      within(picker).getByRole("button", {
+        name: "Add Monochrome to collection",
+      }),
     );
     expect(
       within(picker).getByText("No photos match these filters."),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Photo 1: Monochrome" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Place Monochrome in mosaic" }),
+    );
     expect(
       screen.getByRole("button", { name: "Photo 1: Monochrome" }),
     ).toBeInTheDocument();
@@ -461,8 +498,18 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add Monochrome to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Monochrome in mosaic" }),
+    );
     await user.click(screen.getByRole("button", { name: "Photo 1: Color" }));
     const position = (name: string) =>
       screen.getByRole("button", { name }).getAttribute("title");
@@ -513,8 +560,18 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
-    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add Monochrome to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Monochrome in mosaic" }),
+    );
     const piece = screen.getByRole("button", { name: "Photo 2: Monochrome" });
     fireEvent.pointerDown(piece, { button: 0, clientX: 2, clientY: 0 });
     fireEvent.pointerMove(piece, { clientX: 3, clientY: 1 });
@@ -536,7 +593,12 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
     const tile = screen
       .getByRole("button", { name: "Photo 1: Color" })
       .closest("li")!;
@@ -554,7 +616,12 @@ describe("collection editor", () => {
     const user = userEvent.setup();
     render(<CatalogEditor />);
     await startNewCollection(user);
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
     expect(
       screen.getByRole("checkbox", { name: "Own size on phones" }),
     ).not.toBeChecked();
@@ -595,7 +662,12 @@ describe("collection editor", () => {
       screen.getByRole("textbox", { name: "Collection title" }),
       "City",
     );
-    await user.click(screen.getByRole("button", { name: "Add Color" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Color to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Color in mosaic" }),
+    );
     await user.type(
       screen.getByLabelText(/Text with the photo/),
       "Taken at dawn",
@@ -620,7 +692,12 @@ describe("collection editor", () => {
     expect(
       screen.getByRole("button", { name: "Text block: Night falls" }),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Add Monochrome" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Monochrome to collection" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Place Monochrome in mosaic" }),
+    );
     await saveAndAccept(user);
     expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1062,9 +1139,41 @@ it("prepares photos with the shared steps and adds uploads to the collection dra
   await saveAndAccept(user);
   expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
     expect.objectContaining({
-      entries: [expect.objectContaining({ photoId: "New lake" })],
+      photoIds: ["New lake"],
+      entries: [],
     }),
     undefined,
   );
   vi.unstubAllGlobals();
+});
+
+it("saves collection membership without placing it and restores pending members on reopening", async () => {
+  const user = userEvent.setup();
+  vi.mocked(manageCatalog.load).mockResolvedValue(
+    catalog([
+      {
+        id: "pending",
+        version: 3,
+        title: "Pending",
+        photoIds: ["Color"],
+        categories: [],
+        entries: [],
+      },
+    ]),
+  );
+  render(<CatalogEditor />);
+  await user.click(await screen.findByRole("button", { name: /Pending/ }));
+  await user.click(screen.getByRole("button", { name: "Edit collection" }));
+  expect(
+    screen.getByRole("button", { name: "Place Color in mosaic" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Photo 1: Color" })).toBeNull();
+  await user.click(
+    screen.getByRole("button", { name: "Add Monochrome to collection" }),
+  );
+  await saveAndAccept(user);
+  expect(manageCatalog.saveCollection).toHaveBeenCalledWith(
+    expect.objectContaining({ photoIds: ["Color", "Monochrome"], entries: [] }),
+    "pending",
+  );
 });

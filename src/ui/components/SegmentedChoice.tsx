@@ -1,5 +1,5 @@
 "use client";
-import { KeyboardEvent, ReactNode, useRef } from "react";
+import { KeyboardEvent, ReactNode, useRef, useState } from "react";
 import "./choiceMenu.css";
 
 export type Segment<T extends string> = {
@@ -26,8 +26,9 @@ export function SegmentedChoice<T extends string>({
   onChange: (value: T) => void;
   disabled?: boolean;
 }) {
+  const [pointed, setPointed] = useState<string | null>(null);
   const row = useRef<HTMLDivElement>(null);
-  const current = options.find((option) => option.value === value);
+  const current = options.find((option) => option.value === (pointed ?? value));
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const by = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[
       event.key
@@ -60,6 +61,10 @@ export function SegmentedChoice<T extends string>({
             aria-checked={option.value === value}
             aria-label={option.label}
             title={option.label}
+            onMouseEnter={() => setPointed(option.value)}
+            onMouseLeave={() => setPointed(null)}
+            onFocus={() => setPointed(option.value)}
+            onBlur={() => setPointed(null)}
             tabIndex={option.value === value ? 0 : -1}
             disabled={disabled}
             onClick={() => option.value !== value && onChange(option.value)}

@@ -272,10 +272,7 @@ export default function Gallery({
   const filtersFirst = order.indexOf("filters") < order.indexOf("heading");
   const blocks: Record<GalleryPageBlock, ReactNode> = {
     heading: (
-      <header
-        className="gallery-heading"
-        data-align={pageLayout.headingAlign}
-      >
+      <header className="gallery-heading" data-align={pageLayout.headingAlign}>
         <h1 className="gallery-sr-only">Gallery</h1>
         {settings.blocks
           .filter((block) => block.text.trim())
@@ -388,7 +385,7 @@ export default function Gallery({
     photos: (
       <div className="gallery-photos">
         {catalogError && (
-          <p role="alert">
+          <p role="alert" className="gallery-note">
             Categories could not be loaded.{" "}
             <button onClick={loadCatalog}>Reload categories</button>
           </p>
@@ -400,10 +397,30 @@ export default function Gallery({
               aria-busy={loading}
               className={loading ? "gallery-loading" : undefined}
             >
-              <GalleryTiles tiles={visible} layout={layout} context={context} />
+              <GalleryTiles
+                randomMin={appearance.randomMin}
+                randomMax={appearance.randomMax}
+                tiles={visible}
+                layout={layout}
+                context={context}
+              />
             </div>
           ) : (
-            <p>No photos in this selection.</p>
+            <div className="gallery-empty">
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="9" cy="9" r="6" />
+                <path d="M13.5 13.5 17 17" />
+              </svg>
+              <p>No photos in this selection.</p>
+              <small>Try another search or clear the filters.</small>
+            </div>
           ))}
         {count > 0 && (
           <nav className="gallery-pagination" aria-label="Gallery pagination">

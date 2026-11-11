@@ -14,6 +14,9 @@ interface PhotoInfoPanelProps {
   onHighlightChange?: (key: string | null) => void;
 }
 
+// The four numbers of the exposure read together, as on a camera's display.
+const EXPOSURE = new Set(["Focal length", "Aperture", "Shutter speed", "ISO"]);
+
 // The viewer's side panel, a white column of its own beside the photo, top to bottom:
 // title, description, the details recorded when the photo was taken and the comments.
 // Ratings will go between the details and the comments when they exist.
@@ -57,7 +60,7 @@ export function PhotoInfoPanel({
         {details.length > 0 ? (
           <dl className="photo-viewer__details">
             {details.map(({ label, value }) => (
-              <div key={label}>
+              <div key={label} data-exposure={EXPOSURE.has(label) || undefined}>
                 <dt>{label}</dt>
                 <dd>{value}</dd>
               </div>

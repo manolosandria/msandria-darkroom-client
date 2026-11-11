@@ -597,11 +597,53 @@ function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
           },
           {
             value: "random",
-            label: "Random · up to two large photographs",
+            label: "Random",
             icon: arrangement("random"),
           },
         ]}
       />
+      {value.layout === "random" && (
+        <div>
+          <label>
+            Minimum large photos
+            <input
+              type="number"
+              min={0}
+              max={12}
+              value={value.randomMin ?? 0}
+              onChange={(event) => {
+                const randomMin = Math.max(
+                  0,
+                  Math.min(12, Number(event.target.value)),
+                );
+                onChange({
+                  ...value,
+                  randomMin,
+                  randomMax: Math.max(randomMin, value.randomMax ?? 2),
+                });
+              }}
+            />
+          </label>
+          <label>
+            Maximum large photos
+            <input
+              type="number"
+              min={value.randomMin ?? 0}
+              max={12}
+              value={value.randomMax ?? 2}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  randomMax: Math.max(
+                    value.randomMin ?? 0,
+                    Math.min(12, Number(event.target.value)),
+                  ),
+                })
+              }
+            />
+          </label>
+        </div>
+      )}
       <label>
         Photo size · {value.tileSize}px
         <input
@@ -626,12 +668,16 @@ function ArrangementFields({ value, disabled, onChange }: AppearanceProps) {
           }
         />
       </label>
-      <p>
-        Random stays stable while browsing. Phone layouts use smaller tiles.
-        Grid cells take the proportion the visitor chooses, cut from the centre
-        when a photograph has no crop in it; open a photograph for the full
-        composition.
-      </p>
+      {value.layout === "random" && <p>Random stays stable while browsing.</p>}
+      {value.layout === "uniform" && (
+        <p>
+          Grid cells use the visitor’s chosen proportion. Photos without a
+          matching crop are cropped from the centre.
+        </p>
+      )}
+      {value.layout === "justified" && (
+        <p>Rows preserve each photo’s proportions.</p>
+      )}
     </fieldset>
   );
 }

@@ -281,7 +281,7 @@
 }
 
 .public-gallery.gallery-styled {
-  padding-top: clamp(1.25rem, 2vw, 2rem);
+  padding-top: var(--page-top-gap);
 }
 
 .gallery-editor-check {
@@ -882,3 +882,119 @@
 }
 .gallery-option-tile:has(input:disabled) { cursor: not-allowed; }
 .gallery-option-tile:has(input:focus-visible) { outline: 2px solid #65774f; outline-offset: 2px; }
+
+/* Tiles: softly rounded, and the photograph leans in under the pointer or the keyboard
+   while its title rises. Only transform and opacity move, so the browser composites it. */
+.gallery-tile {
+  border-radius: 0.4rem;
+}
+.gallery-tiles--random .gallery-tile {
+  border-radius: 0;
+}
+.gallery-tile__image {
+  border-radius: 0.4rem;
+  overflow: hidden;
+}
+.gallery-tile__image:focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 2px;
+}
+.gallery-tile__image > :is(img, div) {
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.gallery-tile .photo-grid__caption {
+  padding: 2.5rem 0.9rem 0.7rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  transform: translateY(0.35rem);
+  transition:
+    opacity 0.25s ease-out,
+    transform 0.25s ease-out;
+}
+.gallery-tile:hover .photo-grid__caption,
+.gallery-tile:focus-within .photo-grid__caption {
+  transform: none;
+}
+@media (hover: hover) {
+  .gallery-tile:hover .gallery-tile__image > :is(img, div) {
+    transform: scale(1.035);
+  }
+}
+.gallery-tile__image:focus-visible > :is(img, div) {
+  transform: scale(1.035);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gallery-tile__image > :is(img, div),
+  .gallery-tile .photo-grid__caption {
+    transition: none;
+    transform: none !important;
+  }
+}
+
+/* Paging and the notes under the photographs. */
+.gallery-pagination button {
+  min-width: 7rem;
+  font-weight: 500;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+.gallery-pagination button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.gallery-pagination button:first-child:hover:not(:disabled) {
+  transform: translateX(-2px);
+}
+.gallery-pagination button:last-child:hover:not(:disabled) {
+  transform: translateX(2px);
+}
+.gallery-pagination span {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.gallery-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.gallery-note button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gallery-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  padding: clamp(2.5rem, 8vw, 5rem) 1rem;
+  text-align: center;
+}
+.gallery-empty svg {
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-bottom: 0.4rem;
+  color: var(--gallery-accent);
+  opacity: 0.85;
+}
+.gallery-empty p {
+  font-size: 1.15rem;
+}
+.gallery-empty small {
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+/* A short page (few results, or none) still fills the window with the gallery's own
+   ground instead of ending in a band of the site's. The studio's preview keeps its size. */
+.public-gallery.gallery-styled {
+  min-height: calc(100dvh - 4.7rem);
+}
+.gallery-editor .public-gallery.gallery-styled {
+  min-height: 0;
+}

@@ -5,7 +5,15 @@
 export const curatorGroups = [
   {
     name: "Curator",
-    sections: ["General", "Home", "Posts", "Gallery", "Collections", "Palettes"],
+    sections: [
+      "General",
+      "Home",
+      "Posts",
+      "Gallery",
+      "Collections",
+      "Contact",
+      "Palettes",
+    ],
   },
   { name: "Photos", sections: ["Photos", "Upload", "Categories", "Variants"] },
   { name: "Admin", sections: ["Dashboard", "Comments", "Inbox"] },

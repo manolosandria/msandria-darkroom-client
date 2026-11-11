@@ -132,3 +132,17 @@
 .highlight-editor .highlight-distribution-matrix input[type="checkbox"] {
   margin: 0 auto;
 }
+
+.highlight-eligibility__heading { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+.highlight-visibility { font-size: .7rem; padding: .2rem .5rem; border-radius: 1rem; background: #eee; color: #626262; }
+.highlight-visibility[data-visible="true"] { background: #e6efdc; color: #36572c; }
+.highlight-help { position: relative; margin-left: auto; }
+.highlight-help summary { cursor: pointer; list-style: none; padding: .35rem; font-size: 1.1rem; }
+.highlight-help summary::-webkit-details-marker { display: none; }
+.highlight-help p { position: absolute; z-index: 5; right: 0; width: min(18rem, 65vw); padding: .85rem; border: 1px solid #d2d7ca; border-radius: .6rem; background: #fff; box-shadow: 0 5px 20px #0002; }
+.highlight-visibility-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.highlight-editor .highlight-visibility-actions button { padding: .4rem .65rem; border: 1px solid #d2d7ca; border-radius: 1rem; background: #fff; font-size: .75rem; cursor: pointer; }
+.highlight-layouts { display: flex; flex-wrap: wrap; gap: .6rem 1rem; margin-top: .75rem; }
+.highlight-layouts label { display: inline-flex !important; align-items: center; gap: .4rem; font-size: .8rem; }
+.highlight-eligibility__view { grid-template-columns: minmax(0, 5rem) 1fr; }
+.highlight-eligibility__preview { max-height: 90px; }

@@ -5,7 +5,10 @@ import styles from "./EditorFeedback.module.css";
 import { useId, useState } from "react";
 import { Photo, PhotoClassification } from "@/src/domain/entities/Photo";
 import { CatalogCollection } from "@/src/domain/entities/Catalog";
-import { ClassificationCatalogBoundary, useClassificationCatalog } from "./ClassificationCatalog";
+import {
+  ClassificationCatalogBoundary,
+  useClassificationCatalog,
+} from "./ClassificationCatalog";
 import { PhotoImage } from "./PhotoImage";
 
 export type { PhotoClassification };
@@ -123,7 +126,9 @@ const VISIBILITY: {
     value: "SELECT",
     label: "Select",
     hint: "Reserved access",
-    icon: <path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z" />,
+    icon: (
+      <path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z" />
+    ),
   },
 ];
 
@@ -131,7 +136,11 @@ function VisibilityChoice({ value, onChange }: Props) {
   const id = useId();
   return (
     <>
-      <fieldset className="visibility-choice" role="radiogroup" aria-label="Visibility">
+      <fieldset
+        className="visibility-choice"
+        role="radiogroup"
+        aria-label="Visibility"
+      >
         <legend>Visibility</legend>
         {VISIBILITY.map((option) => (
           <label key={option.value} data-visibility={option.value}>
@@ -142,7 +151,15 @@ function VisibilityChoice({ value, onChange }: Props) {
               checked={value.visibility === option.value}
               onChange={() => onChange({ ...value, visibility: option.value })}
             />
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
               {option.icon}
             </svg>
             <strong>{option.label}</strong>
@@ -184,36 +201,56 @@ function VisibilityChoice({ value, onChange }: Props) {
 // from the same field. No dropdown: everything chosen or offered stays in view.
 function CategoryChips({ value, onChange }: Props) {
   const { catalog } = useClassificationCatalog();
+  return (
+    <CategoryNameField
+      names={value.categoryNames}
+      categories={catalog?.categories ?? []}
+      onChange={(categoryNames) => onChange({ ...value, categoryNames })}
+    />
+  );
+}
+
+export function CategoryNameField({
+  names,
+  categories,
+  onChange,
+}: {
+  names: string[];
+  categories: { id: string; name: string }[];
+  onChange: (names: string[]) => void;
+}) {
   const [text, setText] = useState("");
   function add(raw: string) {
-    const names = [...value.categoryNames];
+    const nextNames = [...names];
     for (const part of raw.split(",")) {
       const trimmed = part.trim();
       if (!trimmed) continue;
       const name =
-        catalog?.categories.find(
+        categories.find(
           (category) => category.name.toLowerCase() === trimmed.toLowerCase(),
         )?.name ?? trimmed;
       if (
-        !names.some((existing) => existing.toLowerCase() === name.toLowerCase())
+        !nextNames.some(
+          (existing) => existing.toLowerCase() === name.toLowerCase(),
+        )
       )
-        names.push(name);
+        nextNames.push(name);
     }
-    onChange({ ...value, categoryNames: names });
+    onChange(nextNames);
     setText("");
   }
   const typed = foldName(text.trim());
   const suggestions =
-    catalog?.categories.filter(
+    categories.filter(
       (category) =>
-        !value.categoryNames.some(
+        !names.some(
           (name) => name.toLowerCase() === category.name.toLowerCase(),
         ) && foldName(category.name).includes(typed),
     ) ?? [];
   const exists =
     !typed ||
-    value.categoryNames.some((name) => foldName(name) === typed) ||
-    catalog?.categories.some((category) => foldName(category.name) === typed);
+    names.some((name) => foldName(name) === typed) ||
+    categories.some((category) => foldName(category.name) === typed);
   return (
     <div className="category-field">
       <label>
@@ -239,19 +276,12 @@ function CategoryChips({ value, onChange }: Props) {
         />
       </label>
       <div className="category-chips">
-        {value.categoryNames.map((name) => (
+        {names.map((name) => (
           <button
             type="button"
             key={name}
             aria-label={`Remove category ${name}`}
-            onClick={() =>
-              onChange({
-                ...value,
-                categoryNames: value.categoryNames.filter(
-                  (item) => item !== name,
-                ),
-              })
-            }
+            onClick={() => onChange(names.filter((item) => item !== name))}
           >
             {name} ×
           </button>
@@ -287,7 +317,10 @@ function CategoryChips({ value, onChange }: Props) {
 }
 
 const foldName = (name: string) =>
-  name.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 
 function collectionCover(collection: CatalogCollection, photos?: Photo[]) {
   const id = collection.coverPhotoId ?? collection.entries[0]?.photoId;
@@ -302,7 +335,9 @@ function CollectionChoice({ value, onChange, photos }: Props) {
     value.collections.some((entry) => entry.id === collection.id),
   );
   function toggle(collection: CatalogCollection) {
-    const inside = value.collections.some((entry) => entry.id === collection.id);
+    const inside = value.collections.some(
+      (entry) => entry.id === collection.id,
+    );
     onChange({
       ...value,
       collections: inside
@@ -328,7 +363,12 @@ function CollectionChoice({ value, onChange, photos }: Props) {
             return (
               <span key={collection.id}>
                 {cover ? (
-                  <PhotoImage photo={cover} maxWidth={160} fallbackSizes="32px" className="object-cover" />
+                  <PhotoImage
+                    photo={cover}
+                    maxWidth={160}
+                    fallbackSizes="32px"
+                    className="object-cover"
+                  />
                 ) : (
                   collection.title.slice(0, 1)
                 )}
@@ -338,11 +378,15 @@ function CollectionChoice({ value, onChange, photos }: Props) {
         </span>
       </summary>
       {catalog && collections.length === 0 && (
-        <p className="upload-muted">No collections yet. Create one in Collections.</p>
+        <p className="upload-muted">
+          No collections yet. Create one in Collections.
+        </p>
       )}
       <ul className="collection-choice__grid">
         {collections.map((collection) => {
-          const entry = value.collections.find((item) => item.id === collection.id);
+          const entry = value.collections.find(
+            (item) => item.id === collection.id,
+          );
           const cover = collectionCover(collection, photos);
           return (
             <li key={collection.id} data-active={entry ? "" : undefined}>
@@ -358,7 +402,12 @@ function CollectionChoice({ value, onChange, photos }: Props) {
               >
                 <span className="collection-choice__cover">
                   {cover ? (
-                    <PhotoImage photo={cover} maxWidth={320} fallbackSizes="160px" className="object-cover" />
+                    <PhotoImage
+                      photo={cover}
+                      maxWidth={320}
+                      fallbackSizes="160px"
+                      className="object-cover"
+                    />
                   ) : (
                     <span className="collection-choice__initial">
                       {collection.title.slice(0, 1)}
