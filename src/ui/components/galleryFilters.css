@@ -399,6 +399,79 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+/* Camera & exposure: one department wider than the others, its tone, equipment and
+   ranges stacked under small labels. */
+.gallery-metadata {
+  grid-column: span 2;
+  gap: 0.7rem;
+}
+.gallery-metadata__section {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0 0.5rem;
+}
+.gallery-metadata__section ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 1px;
+  margin: 0 -0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.gallery-metadata__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  font: 600 0.7rem Arial, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.gallery-metadata__label output {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gallery-accent);
+  opacity: 1;
+}
+.gallery-metadata__tones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.gallery-browse .gallery-metadata__tone {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--browse-line);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.82rem;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s;
+}
+.gallery-browse .gallery-metadata__tone:hover {
+  background: color-mix(in srgb, var(--gallery-text) 7%, transparent);
+}
+.gallery-browse .gallery-metadata__tone[aria-checked="true"] {
+  border-color: var(--gallery-accent);
+  background: var(--gallery-accent);
+  color: var(--gallery-background);
+  font-weight: 600;
+}
+.gallery-metadata__range label {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+.gallery-metadata__range input {
+  width: 100%;
+  margin: 0;
+  --control-accent: var(--gallery-accent);
+}
+
 .gallery-browse__footer {
   display: flex;
   align-items: center;
@@ -433,6 +506,9 @@
   }
   .gallery-browse__column ul {
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+  .gallery-metadata {
+    grid-column: auto;
   }
   .gallery-browse__footer p {
     display: none;

@@ -1,4 +1,8 @@
 "use client";
+import {
+  PhotoTonalityField,
+  TonalityBackfill,
+} from "./PhotoTonalityControls";
 import { UPLOAD_IMAGE_TYPES } from "@/src/ui/uploadFiles";
 import "./catalogStudio.css";
 import { AdminOnly } from "./AdminOnly";
@@ -387,6 +391,14 @@ function PhotoLibrary({
             {listed.length === 1 ? "photo" : "photos"}
           </p>
         </div>
+        {!selected && !pendingOnly && (
+          <TonalityBackfill
+            pending={
+              all.filter((entry) => entry.photo.getTonality() === null).length
+            }
+            onDone={retry}
+          />
+        )}
         {needing.length > 0 && !pendingOnly && !selected && (
           <p className="photo-studio__alert" role="status">
             <span aria-hidden="true">⚠</span>
@@ -755,6 +767,7 @@ function PhotoEditor({
   const [description, setDescription] = useState(photo.getDescription() ?? "");
   const [highlights, setHighlights] = useState(photo.getHighlights());
   const [titlePosition, setTitlePosition] = useState(photo.getTitlePosition());
+  const [tonality, setTonality] = useState(photo.getTonality());
   const [variantPosition, setVariantPosition] = useState(
     photo.getVariantPosition(),
   );
@@ -788,6 +801,7 @@ function PhotoEditor({
     title !== photo.getTitle() ||
     description !== (photo.getDescription() ?? "") ||
     titlePosition !== photo.getTitlePosition() ||
+    tonality !== photo.getTonality() ||
     variantPosition !== photo.getVariantPosition() ||
     JSON.stringify(frame) !== JSON.stringify(photo.getFrame()) ||
     JSON.stringify(highlights) !== JSON.stringify(photo.getHighlights()) ||
@@ -798,6 +812,7 @@ function PhotoEditor({
     setDescription(photo.getDescription() ?? "");
     setHighlights(photo.getHighlights());
     setTitlePosition(photo.getTitlePosition());
+    setTonality(photo.getTonality());
     setVariantPosition(photo.getVariantPosition());
     setFrame(photo.getFrame());
     setClassification(photo.getClassification());
@@ -830,6 +845,7 @@ function PhotoEditor({
         highlights,
         titlePosition,
         variantPosition,
+        tonality,
         frame,
         width: photo.getWidth(),
         height: photo.getHeight(),
@@ -869,6 +885,7 @@ function PhotoEditor({
     title,
     description,
     titlePosition,
+    tonality,
     variantPosition,
     frame,
     highlights,
@@ -883,6 +900,7 @@ function PhotoEditor({
         title: photo.getTitle(),
         description: photo.getDescription() ?? "",
         titlePosition: photo.getTitlePosition(),
+        tonality: photo.getTonality(),
         variantPosition: photo.getVariantPosition(),
         frame: photo.getFrame(),
         highlights: photo.getHighlights(),
@@ -894,6 +912,7 @@ function PhotoEditor({
         setTitle(next.title);
         setDescription(next.description);
         setTitlePosition(next.titlePosition);
+        setTonality(next.tonality);
         setVariantPosition(next.variantPosition);
         setFrame(next.frame);
         setHighlights(next.highlights);
@@ -1098,6 +1117,14 @@ function PhotoEditor({
                   }}
                 />
               </label>
+              <PhotoTonalityField
+                value={tonality}
+                disabled={saving}
+                onChange={(next) => {
+                  setTonality(next);
+                  changed();
+                }}
+              />
               <div className="corner-pickers">
                 <TitleCorner
                   photo={photo}

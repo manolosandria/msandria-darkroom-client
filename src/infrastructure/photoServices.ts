@@ -6,6 +6,8 @@ import { UploadPhoto } from "../application/use-cases/UploadPhoto";
 import { SavePhoto } from "../application/use-cases/SavePhoto";
 import { ApiPhotoRepository } from "./ApiPhotoRepository";
 import { BrowsePhotos } from "../application/use-cases/BrowsePhotos";
+import { GetPhotoFacets } from "../application/use-cases/GetPhotoFacets";
+import { ClassifyPhotoTonality } from "../application/use-cases/ClassifyPhotoTonality";
 
 // Next.js inlines NEXT_PUBLIC_* at build time, so it must be set before building.
 const photoRepository = new ApiPhotoRepository(process.env.NEXT_PUBLIC_API_URL);
@@ -60,3 +62,5 @@ export const savePhoto = new SavePhoto(photoRepository);
 
 export const getUnoptimizedPhotos = new GetUnoptimizedPhotos(photoRepository);
 export const replacePhoto = new ReplacePhoto(photoRepository);
+export const getPhotoFacets = new GetPhotoFacets(photoRepository);
+export const classifyPhotoTonality = new ClassifyPhotoTonality(photoRepository);

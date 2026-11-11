@@ -62,3 +62,15 @@ export interface PhotoMaintenanceRepository {
     trim?: BorderTrim,
   ): Promise<PublishedPhoto>;
 }
+
+/** One round of classifying older photographs as colour or black and white. */
+export type TonalityBatch = {
+  classified: number;
+  /** Photographs whose file could not be read; they stay pending. */
+  failed: number;
+  remaining: number;
+};
+
+export interface PhotoTonalityRepository {
+  classifyPendingTonality(): Promise<TonalityBatch>;
+}

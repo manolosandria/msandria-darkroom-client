@@ -1,13 +1,19 @@
 import { rateLimitError } from "./rateLimitError";
 import {
+  PhotoFacetsRepository,
   PhotoPage,
   PhotoPageQuery,
 } from "../domain/repositories/PhotoBrowseRepository";
+import {
+  metadataQuery,
+  PhotoFacets,
+} from "../domain/entities/PhotoMetadataFilters";
 import {
   Photo,
   PhotoCamera,
   PhotoCollectionPlacement,
   PhotoRendition,
+  PhotoTonality,
   PhotoVisibility,
 } from "../domain/entities/Photo";
 import { PhotoFrame } from "../domain/entities/PhotoFrame";
@@ -27,8 +33,10 @@ import {
   PhotoDraft,
   PhotoMaintenanceRepository,
   PhotoRepository,
+  PhotoTonalityRepository,
   PhotoUploadError,
   PublishedPhoto,
+  TonalityBatch,
 } from "../domain/repositories/PhotoRepository";
 
 const NOT_IMPLEMENTED_MESSAGE =
@@ -42,6 +50,8 @@ type ApiPhotoListItem = {
   camera?: Pick<PhotoCamera, "make" | "model">;
   // Only the administrator's listing carries it, for versioned writes from Curator.
   version?: number;
+  // Only the administrator's listing and detail carry it; null until classified.
+  tonality?: PhotoTonality | null;
   id: string;
   title: string;
   width: number;
@@ -86,7 +96,11 @@ type ApiReviewedPhoto = ApiPhoto & {
 };
 
 export class ApiPhotoRepository
-  implements PhotoRepository, PhotoMaintenanceRepository
+  implements
+    PhotoRepository,
+    PhotoMaintenanceRepository,
+    PhotoFacetsRepository,
+    PhotoTonalityRepository
 {
   constructor(
     private readonly baseUrl: string | undefined,
@@ -99,11 +113,18 @@ export class ApiPhotoRepository
     signal?: AbortSignal,
   ): Promise<PhotoPage> {
     if (!this.baseUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
+    const { metadata, ...rest } = query;
     const params = new URLSearchParams(
-      Object.entries(query)
+      Object.entries(rest)
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => [key, String(value)]),
     );
+    // Cameras and lenses repeat their parameter, one value each: their names may hold
+    // commas, so they cannot share one.
+    if (metadata)
+      for (const [key, value] of Object.entries(metadataQuery(metadata)))
+        for (const item of Array.isArray(value) ? value : [value])
+          params.append(key, String(item));
     const response = await this.fetchFn(
       `${this.baseUrl.replace(/\/+$/, "")}/photos/browse?${params}`,
       { credentials: "include", signal },
@@ -126,6 +147,18 @@ export class ApiPhotoRepository
           : [];
       }),
     };
+  }
+
+  async facets(): Promise<PhotoFacets> {
+    const response = await this.get("/photos/facets");
+    if (response.status === 429) throw rateLimitError(response);
+    return (await this.ensureOk(response).json()) as PhotoFacets;
+  }
+
+  async classifyPendingTonality(): Promise<TonalityBatch> {
+    const response = await this.send("POST", "/photos/tonality/classify");
+    if (!response.ok) throw await this.toUploadError(response);
+    return (await response.json()) as TonalityBatch;
   }
 
   async findById(id: string): Promise<Photo | null> {
@@ -265,6 +298,8 @@ export class ApiPhotoRepository
       variantPosition: entry.getVariantPosition(),
       frame: entry.getFrame(),
       ...entry.getClassification(),
+      // An unclassified photo sends nothing: the API refuses null and keeps what it has.
+      ...(entry.getTonality() ? { tonality: entry.getTonality() } : {}),
     });
     const before = original ? fields(original) : null;
     const { frame, ...changed } = Object.fromEntries(
@@ -426,6 +461,7 @@ export class ApiPhotoRepository
           : null,
       titlePosition: detail?.titlePosition,
       variantPosition: detail?.variantPosition,
+      tonality: entry.tonality,
       workVariants: detail?.variants
         ?.filter((variant) => this.isDeliverable(variant))
         .map((variant) => this.toDomainPhoto(variant)),
