@@ -40,3 +40,29 @@
   overflow: hidden;
   opacity: 0;
 }
+
+/* Inbox: the addresses whose messages are dropped. */
+.inbox-blocked {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.inbox-blocked h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.inbox-blocked ul {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.inbox-blocked li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}

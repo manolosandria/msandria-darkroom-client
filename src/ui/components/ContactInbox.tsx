@@ -7,6 +7,7 @@ import {
 } from "@/src/domain/repositories/ContactRepository";
 import { manageContact } from "@/src/infrastructure/contactServices";
 import { EmptyState } from "./EmptyState";
+import "./verificationCode.css";
 
 export default function ContactInbox() {
   return (
@@ -147,7 +148,7 @@ function Inbox() {
           </ul>
         )}
         {blocked.length > 0 && (
-          <section aria-label="Blocked senders" className="upload-card">
+          <section aria-label="Blocked senders" className="upload-card inbox-blocked">
             <h2>Blocked senders</h2>
             <p className="upload-muted">
               Messages from these addresses are dropped without telling them.
