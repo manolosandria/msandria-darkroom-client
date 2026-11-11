@@ -138,8 +138,8 @@ The selected Curator tab is restored from `sessionStorage` after reloading.
 
 Private or reserved photos assigned to collections show a warning: their order
 does not make them visible in public collections. Contact uses its own English
-validation messages rather than browser-localized tooltips. Email format is checked;
-ownership verification is not implemented yet.
+validation messages rather than browser-localized tooltips. Without a session, the
+address is confirmed with an emailed code before the message reaches the inbox.
 
 Photo details carry a `version`. Saves and replacements send that version and only
 metadata that differs from the loaded photo. A stale edit receives a conflict and
@@ -487,7 +487,9 @@ does not lose unsaved edits. The older routes still work on their own.
   the editor beside it stays in view. The camera comes from the admin listing's
   `camera` (make and model).
 - **Inbox** (`ContactInbox`): messages from `/contact`, newest first, unread ones
-  marked, to mark as read or delete.
+  marked, to mark as read or delete. **Block sender** (after a confirmation) drops the
+  address's future messages without telling them; **Blocked senders** lists them with
+  **Unblock**.
 
 **Private photos.** The API keeps private and select photos in the image host's
 authenticated delivery and serves their renditions itself, as paths on its own origin
@@ -498,9 +500,19 @@ receives them; the visibility filter is the API's, not this site's.
 ## Contact
 
 `/contact` (`ContactForm`) is linked from the header for everyone. It sends name,
-email, message and an explicit consent to `POST /contact`, which keeps the message in
-the administrator's inbox; **no email is sent**. Links are refused, and the API allows
-3 messages per minute per IP. A refusal keeps the message in the form.
+email, message and an explicit consent to `POST /contact`. Signed in, the email field
+shows the account's address (read-only), the API signs the message with it and it
+reaches the administrator's inbox at once. Signed out, the API answers `pending` and
+emails a 6-digit code to the address given; `ContactCodeStep` takes it
+(`POST /contact/verify`) and only then does the message enter the inbox. The code is
+asked every time, even for an address confirmed before, and an unconfirmed message is
+deleted when its code expires. **Edit the message or the email** goes back to the form
+with everything kept. Each message that enters the inbox is emailed to the
+administrators (up to an hourly limit set in the API). A hidden trap field (`website`,
+off screen, `aria-hidden`, out of the tab order) catches form-filling programs; the API
+answers them as usual and keeps nothing. Links are refused, and the API allows 3
+messages per minute per IP and a few per address per day. A refusal keeps the message
+in the form. `VerificationCodeField` is the six-digit input shared with email sign-in.
 
 ## Collections and variants
 
@@ -1075,12 +1087,12 @@ on `/photos/:id/like` or `/photos/:id/favorite`. Signed out, the count shows and
 buttons are disabled with a hint. Saved photographs are the profile's favorites.
 
 **Email sign-in.** Beside Google, the header offers **Sign in by email**, which opens
-`/sign-in/email` (`EmailSignIn`): `POST /auth/email` emails a link, with the same answer
-whether or not the address has an account. The link opens
-`/sign-in/email#token=…`; the page removes the token from the address at once and
-trades it, a single time, with `POST /auth/email/verify`, which answers like
-`POST /auth/google` with the user and the session cookie. An expired or used link
-offers a new one. The API needs `WEB_ORIGIN` and its mail settings; without them it
+`/sign-in/email` (`EmailSignIn`): `POST /auth/email` emails a 6-digit code, with the
+same answer whether or not the address has an account, and the page asks for it in
+the same window. `POST /auth/email/verify` takes the address and the code and answers
+like `POST /auth/google` with the user and the session cookie; an account is opened
+for an address that had none. A wrong, expired or used-up code keeps the code form,
+with **Send a new code** and **Use a different email**. There is no emailed link. The API needs `WEB_ORIGIN` and its mail settings; without them it
 answers 503 and the page points to Google.
 
 ## Site header and general settings
@@ -1091,7 +1103,7 @@ in the top-right corner of every page, apart from the logo, fixed to the window:
 chevron is the rightmost control and never moves, so the header folds and unfolds
 without moving the pointer; once the header is gone the corner turns into a frosted
 pill. The account opens from a small corner arrow, as on an Office dialog launcher. Signed out, the corner is a small
-**Sign in** button whose card offers Google and the email link; signed in, it shows the
+**Sign in** button whose card offers Google and the email code; signed in, it shows the
 profile photo (or the initial) and the name, and opens a card with the cover, photo,
 name, email, the Admin label, **Profile**, **Settings** (`/account`) and sign-out. The
 profile comes from `GET /auth/me/profile`, once per account.

@@ -5,7 +5,7 @@ import { signInByEmail } from "@/src/infrastructure/sessionServices";
 
 const ports = {
   request: (email: string) => signInByEmail.request(email),
-  verify: (token: string) => signInByEmail.verify(token),
+  verify: (email: string, code: string) => signInByEmail.verify(email, code),
 };
 
 export default function EmailSignInPage() {
