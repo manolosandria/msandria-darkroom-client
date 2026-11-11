@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { AdminOnly } from "./AdminOnly";
-import { InboxMessage } from "@/src/domain/repositories/ContactRepository";
+import {
+  BlockedSender,
+  InboxMessage,
+} from "@/src/domain/repositories/ContactRepository";
 import { manageContact } from "@/src/infrastructure/contactServices";
 import { EmptyState } from "./EmptyState";
 
@@ -14,11 +17,17 @@ export default function ContactInbox() {
 }
 function Inbox() {
   const [messages, setMessages] = useState<InboxMessage[] | null>(null);
+  const [blocked, setBlocked] = useState<BlockedSender[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function load() {
     try {
-      setMessages(await manageContact.inbox());
+      const [inbox, senders] = await Promise.all([
+        manageContact.inbox(),
+        manageContact.blocked(),
+      ]);
+      setMessages(inbox);
+      setBlocked(senders);
       setError("");
     } catch {
       setError("Could not load the inbox.");
@@ -49,7 +58,10 @@ function Inbox() {
       <div className="upload-container">
         <div className="upload-heading">
           <h1>Inbox</h1>
-          <p>Private inquiries from Contact. Email delivery is not enabled.</p>
+          <p>
+            Private inquiries from Contact. Each new one is also emailed to the
+            administrators, up to an hourly limit.
+          </p>
         </div>
         {error && (
           <p role="alert">
@@ -81,6 +93,9 @@ function Inbox() {
                   {!message.readAt && (
                     <span className="curator-badge">Unread</span>
                   )}
+                  {message.senderBlocked && (
+                    <span className="curator-badge">Sender blocked</span>
+                  )}
                   <time dateTime={message.createdAt}>
                     {new Date(message.createdAt).toLocaleString()}
                   </time>
@@ -110,10 +125,50 @@ function Inbox() {
                   >
                     <span aria-hidden="true">✕</span>Delete message
                   </button>
+                  {!message.senderBlocked && (
+                    <button
+                      className="message-card__delete"
+                      disabled={busy}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Block ${message.email}? Their future messages will be dropped without telling them.`,
+                          )
+                        )
+                          void act(() => manageContact.block(message.id));
+                      }}
+                    >
+                      <span aria-hidden="true">⊘</span>Block sender
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
+        )}
+        {blocked.length > 0 && (
+          <section aria-label="Blocked senders" className="upload-card">
+            <h2>Blocked senders</h2>
+            <p className="upload-muted">
+              Messages from these addresses are dropped without telling them.
+            </p>
+            <ul>
+              {blocked.map((sender) => (
+                <li key={sender.id}>
+                  {sender.email}{" "}
+                  <button
+                    className="upload-link"
+                    disabled={busy}
+                    onClick={() =>
+                      void act(() => manageContact.unblock(sender.id))
+                    }
+                  >
+                    Unblock
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </div>
     </main>

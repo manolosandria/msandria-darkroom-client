@@ -31,16 +31,16 @@ export class ApiSessionRepository implements SessionRepository, AccountRepositor
     return this.toDomainUser((await this.ensureOk(response).json()) as ApiUser);
   }
 
-  async requestEmailLink(email: string): Promise<void> {
+  async requestEmailCode(email: string): Promise<void> {
     const response = await this.send("POST", "/auth/email", { email });
     if (response.status === 400) throw new EmailSignInError("invalidEmail");
     if (response.status === 503) throw new EmailSignInError("unavailable");
     this.ensureOk(response);
   }
 
-  async signInWithEmailLink(token: string): Promise<User> {
-    const response = await this.send("POST", "/auth/email/verify", { token });
-    if (response.status === 400) throw new EmailSignInError("invalidLink");
+  async signInWithEmailCode(email: string, code: string): Promise<User> {
+    const response = await this.send("POST", "/auth/email/verify", { email, code });
+    if (response.status === 400) throw new EmailSignInError("invalidCode");
     return this.toDomainUser((await this.ensureOk(response).json()) as ApiUser);
   }
 

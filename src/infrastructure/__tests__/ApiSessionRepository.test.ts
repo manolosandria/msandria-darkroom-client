@@ -201,9 +201,9 @@ describe("ApiSessionRepository", () => {
     });
   });
   describe("email sign-in", () => {
-    it("asks for a link with the address only", async () => {
+    it("asks for a code with the address only", async () => {
       const fetchFn = respondWith({}, 202);
-      await new ApiSessionRepository(API_URL, fetchFn).requestEmailLink("ana@example.com");
+      await new ApiSessionRepository(API_URL, fetchFn).requestEmailCode("ana@example.com");
       expect(fetchFn).toHaveBeenCalledWith(`${API_URL}/auth/email`, expect.objectContaining({
         method: "POST",
         credentials: "include",
@@ -216,18 +216,26 @@ describe("ApiSessionRepository", () => {
       [503, "unavailable"],
     ])("names a %i refusal of the request", async (status, reason) => {
       await expect(
-        new ApiSessionRepository(API_URL, respondWith({}, status)).requestEmailLink("x"),
+        new ApiSessionRepository(API_URL, respondWith({}, status)).requestEmailCode("x"),
       ).rejects.toEqual(new EmailSignInError(reason as "invalidEmail"));
     });
 
-    it("trades the token for the signed-in user, or says the link is spent", async () => {
+    it("trades the code for the signed-in user, or says the code is wrong", async () => {
       const fetchFn = respondWith(apiUser({ role: "VIEWER" }));
-      const user = await new ApiSessionRepository(API_URL, fetchFn).signInWithEmailLink("tok");
+      const user = await new ApiSessionRepository(API_URL, fetchFn).signInWithEmailCode(
+        "ana@example.com",
+        "012345",
+      );
       expect(user.getEmail()).toBe("manolo@example.com");
-      expect(optionsOf(fetchFn).body).toBe(JSON.stringify({ token: "tok" }));
+      expect(optionsOf(fetchFn).body).toBe(
+        JSON.stringify({ email: "ana@example.com", code: "012345" }),
+      );
       await expect(
-        new ApiSessionRepository(API_URL, respondWith({}, 400)).signInWithEmailLink("old"),
-      ).rejects.toMatchObject({ reason: "invalidLink" });
+        new ApiSessionRepository(API_URL, respondWith({}, 400)).signInWithEmailCode(
+          "ana@example.com",
+          "000000",
+        ),
+      ).rejects.toMatchObject({ reason: "invalidCode" });
     });
   });
 });

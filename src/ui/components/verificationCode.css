@@ -1,0 +1,42 @@
+.verification-code {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.verification-code input {
+  width: min(100%, 14rem);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 1.6rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+.verification-code input::placeholder {
+  color: #c4cbbb;
+}
+
+.email-sign-in__links,
+.contact-code__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.contact-code {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+/* Contact's trap field: off screen, not merely transparent, so nobody types in it. */
+.contact-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
