@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { defaultSiteSettings } from "@/src/domain/entities/SiteSettings";
 import type { ManageSiteSettings } from "@/src/application/use-cases/ManageSiteSettings";
+import { choose } from "./chooseOption";
 
 vi.mock("../EditingWorkspace", () => ({
   useEditingWorkspace: () => ({ confirm: async () => true }),
@@ -124,5 +125,107 @@ describe("SiteGeneralEditor", () => {
       "aria-checked",
       "true",
     );
+  });
+
+  it("adds, orders, names and removes social links, and saves them trimmed", async () => {
+    const service = serviceWith();
+    render(
+      <SiteGeneralEditor service={service as unknown as ManageSiteSettings} />,
+    );
+    const add = await screen.findByRole("button", { name: "+ Add link" });
+    expect(screen.getByText(/No links yet/)).toBeInTheDocument();
+
+    await userEvent.click(add);
+    await userEvent.click(add);
+    const addresses = screen.getAllByRole("textbox", { name: "Address" });
+    // The first two offered are LinkedIn and Instagram, as asked.
+    expect(screen.getByRole("combobox", { name: "Network of link 1" })).toHaveTextContent(
+      "LinkedIn",
+    );
+    fireEvent.change(addresses[0], {
+      target: { value: " https://www.linkedin.com/in/someone " },
+    });
+    fireEvent.change(addresses[1], {
+      target: { value: "https://instagram.com/someone" },
+    });
+    await userEvent.click(add);
+    choose(screen.getByRole("combobox", { name: "Network of link 3" }), "Other");
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Address" })[2], {
+      target: { value: "https://blog.example.com" },
+    });
+    expect(screen.getByText("Name this link.")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
+      target: { value: " Blog " },
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move Instagram link earlier" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move Other link later" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Move Other link later" }),
+    ).toBeDisabled();
+    // The preview draws the row in the same order, without real links.
+    expect(
+      screen.getByRole("list", { name: "Social links preview" }).children,
+    ).toHaveLength(3);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save general settings" }),
+    );
+    expect(service.save.mock.calls[0][0].socialLinks).toEqual([
+      { kind: "instagram", url: "https://instagram.com/someone" },
+      { kind: "linkedin", url: "https://www.linkedin.com/in/someone" },
+      { kind: "other", url: "https://blog.example.com", label: "Blog" },
+    ]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Instagram link" }),
+    );
+    expect(screen.getAllByRole("textbox", { name: "Address" })).toHaveLength(2);
+  });
+
+  it("refuses to save a link that the API would refuse and says why", async () => {
+    const service = serviceWith();
+    render(
+      <SiteGeneralEditor service={service as unknown as ManageSiteSettings} />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "+ Add link" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save general settings" }),
+    );
+    expect(service.save).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /social links cannot be saved/,
+    );
+    expect(screen.getByText("Add the address.")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Address" }), {
+      target: { value: "http://example.com" },
+    });
+    expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByText(/starts with https/)).toBeInTheDocument();
+  });
+
+  it("keeps the links when the original look is restored, and stops at twelve", async () => {
+    const service = serviceWith();
+    service.get.mockResolvedValueOnce({
+      ...defaultSiteSettings,
+      socialLinks: Array.from({ length: 12 }, (_, index) => ({
+        kind: "website",
+        url: `https://example.com/${index}`,
+      })),
+    });
+    render(
+      <SiteGeneralEditor service={service as unknown as ManageSiteSettings} />,
+    );
+    expect(await screen.findByRole("button", { name: "+ Add link" })).toBeDisabled();
+    expect(screen.getByText("12 links at most.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    await userEvent.click(screen.getByRole("button", { name: /Restore/ }));
+    expect(screen.getAllByRole("textbox", { name: "Address" })).toHaveLength(12);
   });
 });

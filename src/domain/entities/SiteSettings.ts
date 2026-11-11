@@ -1,4 +1,5 @@
 import { galleryFonts } from "./GallerySettings";
+import { publicSocialLinks, SocialLink } from "./SocialLinks";
 
 /** Light, dark, or whichever the visitor's system is set to. */
 export type SiteHeaderTone = "light" | "dark" | "auto";
@@ -22,6 +23,8 @@ export type SiteSettings = {
   headingFont: SiteFont;
   bodyFont: SiteFont;
   palette: { background: string; text: string; accent: string; surface: string };
+  /** Links to the owner's profiles elsewhere, in the order they are shown. */
+  socialLinks: SocialLink[];
   version: number;
 };
 
@@ -41,6 +44,7 @@ export const defaultSiteSettings: SiteSettings = {
     accent: "#384e2b",
     surface: "#f5f6ef",
   },
+  socialLinks: [],
   version: 1,
 };
 
@@ -74,6 +78,8 @@ export function withSiteDefaults(loaded: Partial<SiteSettings>): SiteSettings {
       ...(style ? legacyStyles[style] : undefined),
       ...header,
     },
+    // An API without links, or a stored one the site cannot show, gives none.
+    socialLinks: publicSocialLinks(loaded.socialLinks),
   };
 }
 

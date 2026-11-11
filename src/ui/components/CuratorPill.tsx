@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { curatorGroups, CuratorSection } from "@/src/ui/curatorSections";
+import { SocialLinkList } from "./SocialLinkList";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import {
   requestCuratorSection,
   useCuratorSection,
@@ -55,6 +57,7 @@ export function CuratorPill({
   footer?: (close: () => void) => ReactNode;
 }) {
   const pathname = usePathname();
+  const { settings } = useSiteSettings();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -125,6 +128,12 @@ export function CuratorPill({
               {label}
             </Link>
           ))}
+          {/* The owner's profiles elsewhere, beside Contact, for phones and a folded header. */}
+          <SocialLinkList
+            links={settings.socialLinks}
+            className="curator-pill__social"
+            size={18}
+          />
         </div>
         {renderItem &&
           curatorGroups.map((item) => (

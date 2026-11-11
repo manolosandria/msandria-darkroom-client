@@ -1,6 +1,7 @@
 "use client";
 import "./paletteStudio.css";
 import "./siteGeneral.css";
+import { useState } from "react";
 import {
   contrastRatio,
   defaultSiteSettings,
@@ -18,12 +19,18 @@ import {
   withSiteDefaults,
 } from "@/src/domain/entities/SiteSettings";
 import { defaultGalleryPalettes } from "@/src/domain/entities/GallerySettings";
+import {
+  cleanSocialLinks,
+  socialLinkProblem,
+} from "@/src/domain/entities/SocialLinks";
 import { manageSiteSettings } from "@/src/infrastructure/siteSettingsServices";
 import type { ManageSiteSettings } from "@/src/application/use-cases/ManageSiteSettings";
 import { useSettingsDocument } from "@/src/ui/hooks/useSettingsDocument";
 import { EditorActions, EditorStatus } from "./EditorActions";
 import { Segment, SegmentedChoice } from "./SegmentedChoice";
 import { useSiteSettings } from "./SiteSettingsProvider";
+import { SocialLinkList } from "./SocialLinkList";
+import { SocialLinksEditor } from "./SocialLinksEditor";
 
 const icon = (...shapes: React.ReactNode[]) => (
   <svg
@@ -138,6 +145,8 @@ export default function SiteGeneralEditor({
   service?: ManageSiteSettings;
 }) {
   const site = useSiteSettings();
+  // After a refused save, every link shows its problem, empty ones included.
+  const [checkLinks, setCheckLinks] = useState(false);
   const {
     saved,
     draft,
@@ -153,7 +162,18 @@ export default function SiteGeneralEditor({
   } = useSettingsDocument<SiteSettings>({
     initial: defaultSiteSettings,
     read: async () => withSiteDefaults(await service.get()),
-    write: (value) => service.save(value),
+    write: (value) => {
+      if (value.socialLinks.some((link) => socialLinkProblem(link))) {
+        setCheckLinks(true);
+        return Promise.reject(
+          new Error("Some social links cannot be saved yet. Check them below."),
+        );
+      }
+      return service.save({
+        ...value,
+        socialLinks: cleanSocialLinks(value.socialLinks),
+      });
+    },
     label: "General",
     savedNotice: "General settings saved.",
     onSaved: (result) => site.adopt(result),
@@ -182,8 +202,9 @@ export default function SiteGeneralEditor({
       <header>
         <h1>The whole site.</h1>
         <p>
-          The header every page shares, the fonts and the main palette. Home,
-          Gallery and collections with a look of their own keep it.
+          The header every page shares, the fonts, the main palette and the
+          links to your profiles elsewhere. Home, Gallery and collections with a
+          look of their own keep it.
         </p>
         {saved && (
           <EditorActions
@@ -192,7 +213,14 @@ export default function SiteGeneralEditor({
             dirty={dirty}
             saveLabel="Save general settings"
             onCancel={cancel}
-            onRestore={() => change({ ...defaultSiteSettings, version: draft.version })}
+            onRestore={() =>
+              // The original look; the links are content, not look, and stay.
+              change({
+                ...defaultSiteSettings,
+                socialLinks: draft.socialLinks,
+                version: draft.version,
+              })
+            }
           />
         )}
       </header>
@@ -348,6 +376,14 @@ export default function SiteGeneralEditor({
                 ))}
               </div>
             </fieldset>
+            <fieldset disabled={busy}>
+              <legend>Social links</legend>
+              <SocialLinksEditor
+                links={draft.socialLinks}
+                showAll={checkLinks}
+                onChange={(socialLinks) => change({ socialLinks })}
+              />
+            </fieldset>
           </form>
           <SitePreview settings={draft} />
         </div>
@@ -450,6 +486,12 @@ function SitePreview({ settings }: { settings: SiteSettings }) {
             <span style={{ background: palette.accent }}>Explore</span>
           </div>
         </div>
+        <SocialLinkList
+          links={settings.socialLinks}
+          className="site-general__footer"
+          label="Social links preview"
+          inert
+        />
       </div>
       {header.tone === "auto" && (
         <p className="site-general__hint">
