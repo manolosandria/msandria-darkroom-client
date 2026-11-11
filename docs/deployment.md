@@ -127,6 +127,20 @@ The site's exact origin (for example `https://www.<gallery domain>`) must be lis
 the API's `CORS_ORIGINS` and `WEB_ORIGIN` and in the OAuth client's "Authorized
 JavaScript origins".
 
+## Galleries under a path
+
+Lower-priced galleries are planned to live under a path of a shared domain
+(`https://<domain>/<gallery>`) rather than on a domain of their own. This is **not
+supported yet**. It needs:
+
+- `basePath` set from a build-time variable. Next.js `<Link>` and the router add the
+  path themselves, but hand-written `href="/…"`, URL templates and `window.location`
+  calls do not, and neither do Home's internal slide destinations.
+- `localStorage` and `sessionStorage` keys prefixed per gallery, since every gallery on
+  that domain shares one origin and therefore one storage.
+- A per-gallery plan that hides routes and Curator tabs here, while the API refuses
+  whatever the plan does not include.
+
 ## Not verified
 
 - No Cloudflare build or preview was run: neither option has been tried yet.
